@@ -6,14 +6,14 @@ from streamlit_gsheets import GSheetsConnection
 # --- CONFIGURAÇÕES DA PÁGINA ---
 st.set_page_config(page_title="PROFISSIONALIZA EAD", layout="wide", initial_sidebar_state="expanded")
 
-# --- CSS PARA DESIGN COMPACTO ---
+# --- CSS PARA DESIGN IDENTICO AO SEU PROGRAMA ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
     [data-testid="stSidebar"] { background-color: #004a99 !important; }
-    .stTextInput>div>div>input { background-color: white !important; color: black !important; height: 26px !important; font-size: 13px !important; }
-    label { color: #2ecc71 !important; font-weight: bold !important; font-size: 13px !important; margin-bottom: -5px !important; }
-    .stButton>button { height: 32px; font-size: 12px !important; border-radius: 4px; font-weight: bold; width: 100%; }
+    .stTextInput>div>div>input { background-color: white !important; color: black !important; height: 28px !important; font-size: 14px !important; }
+    label { color: #2ecc71 !important; font-weight: bold !important; font-size: 14px !important; margin-bottom: -2px !important; }
+    .stButton>button { height: 35px; font-weight: bold; width: 100%; border-radius: 4px; }
     /* Cores dos Botões */
     div[data-testid="stHorizontalBlock"] > div:nth-child(1) button { background-color: #90ee90 !important; color: black !important; }
     div[data-testid="stHorizontalBlock"] > div:nth-child(2) button { background-color: #a2d2ff !important; color: black !important; }
@@ -33,7 +33,29 @@ CODIGOS_CURSOS = {
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
-if "curso_display" not in st.session_state: st.session_state.curso_display = ""
+if "curso_atual" not in st.session_state: st.session_state.curso_atual = ""
+
+# --- FUNÇÃO DE TRADUÇÃO (DISPARADA AO DAR ENTER) ---
+def traduzir_curso():
+    # Pega o que o usuário acabou de digitar
+    valor_digitado = st.session_state.campo_curso.strip()
+    
+    # Se o valor for um dos códigos (0-10)
+    if valor_digitado in CODIGOS_CURSOS:
+        nome_do_curso = CODIGOS_CURSOS[valor_digitado]
+        
+        # Se já tiver algo escrito, adiciona o " + "
+        if st.session_state.curso_atual:
+            st.session_state.curso_atual += f" + {nome_do_curso}"
+        else:
+            st.session_state.curso_atual = nome_do_curso
+            
+    # Se não for código, mas o usuário digitou um nome manual, ele aceita
+    elif valor_digitado != "":
+        st.session_state.curso_atual = valor_digitado.upper()
+    
+    # Limpa o campo de digitação para o próximo
+    st.session_state.campo_curso = ""
 
 # --- INTERFACE ---
 with st.sidebar:
@@ -44,6 +66,7 @@ if aba == "CADASTRO":
     _, col_central, _ = st.columns([1, 2, 1])
     
     with col_central:
+        # Campos de Cadastro
         id_aluno = st.text_input("ID")
         aluno = st.text_input("Aluno")
         t_resp = st.text_input("Tel. Responsável")
@@ -51,27 +74,16 @@ if aba == "CADASTRO":
         cpf = st.text_input("CPF Responsável")
         cidade = st.text_input("Cidade")
         
-        # CAMPO DE CURSO COM TRADUÇÃO INSTANTÂNEA
-        val_input = st.text_input("Curso Contratado (Digite o número e dê Enter)", key="input_raw")
+        # O CAMPO DE CURSO CONTRATADO
+        # Ele exibe o 'curso_atual' e quando você digita algo e dá Enter, roda a função 'traduzir_curso'
+        st.text_input("Curso Contratado (Digite o código e dê Enter)", 
+                      value=st.session_state.curso_atual, 
+                      key="campo_curso", 
+                      on_change=traduzir_curso)
         
-        # Lógica de tradução: Se o que foi digitado está nos códigos, traduzimos e limpamos o input
-        if val_input in CODIGOS_CURSOS:
-            nome_traduzido = CODIGOS_CURSOS[val_input]
-            if st.session_state.curso_display:
-                st.session_state.curso_display += f" + {nome_traduzido}"
-            else:
-                st.session_state.curso_display = nome_traduzido
-            # Limpa o campo de entrada para o próximo número e recarrega
-            st.rerun()
-        elif val_input != "" and val_input not in CODIGOS_CURSOS:
-            # Se digitaram um texto que não é número, assume como nome manual
-            st.session_state.curso_display = val_input.upper()
-
-        # Exibe o curso atual (acumulado) em um campo desativado ou apenas texto verde
-        st.markdown(f"<p style='color:#2ecc71; font-weight:bold; margin-bottom:0;'>CURSO ATUAL: <span style='color:white;'>{st.session_state.curso_display}</span></p>", unsafe_allow_html=True)
-        
-        if st.button("Limpar Cursos"):
-            st.session_state.curso_display = ""
+        # Botão pequeno para limpar o curso se errar
+        if st.button("Limpar Curso"):
+            st.session_state.curso_atual = ""
             st.rerun()
 
         pagto = st.text_input("Forma de Pagamento")
@@ -84,23 +96,24 @@ if aba == "CADASTRO":
         bonus = c2.checkbox("CURSO BÔNUS")
         confirma = c3.checkbox("AGUARDANDO CONFIRMAÇÃO")
 
+        # BOTÕES DE AÇÃO
         btn_col1, btn_col2, btn_col3 = st.columns(3)
         
         if btn_col1.button("Salvar Aluno"):
             if aluno:
                 novo = {
                     "STATUS": "ATIVO", "SEC": "MGA", "TURMA": "", 
-                    "10 CURSOS?": "SIM" if "10 CURSOS" in st.session_state.curso_display else "NÃO",
-                    "INGLÊS?": "SIM" if "INGLÊS" in st.session_state.curso_display else "NÃO", 
+                    "10 CURSOS?": "SIM" if "10 CURSOS" in st.session_state.curso_atual else "NÃO",
+                    "INGLÊS?": "SIM" if "INGLÊS" in st.session_state.curso_atual else "NÃO", 
                     "Data Cadastro": date.today().strftime("%d/%m/%Y"),
                     "ID": id_aluno, "Aluno": aluno.upper(), "Tel. Resp": t_resp,
                     "Tel. Aluno": t_alu, "CPF": cpf, "Cidade": cidade.upper(),
-                    "Curso": st.session_state.curso_display, "Pagamento": pagto.upper(),
+                    "Curso": st.session_state.curso_atual, "Pagamento": pagto.upper(),
                     "Vendedor": vend.upper(), "Data Matrícula": dt_mat.strftime("%d/%m/%Y"),
                     "OBS1": "LIB INGLÊS" if lib_ing else "", "OBS2": "BONUS" if bonus else ""
                 }
                 st.session_state.lista_previa.append(novo)
-                st.session_state.curso_display = "" # Limpa para o próximo
+                st.session_state.curso_atual = "" # Limpa para o próximo aluno
                 st.rerun()
 
         if btn_col2.button("Finalizar PDF"):
@@ -111,13 +124,17 @@ if aba == "CADASTRO":
                 df_final = pd.concat([df_nuvem, df_novos, linha_v], ignore_index=True)
                 conn.update(data=df_final)
                 st.session_state.lista_previa = []
-                st.success("PDF Enviado!")
+                st.success("Enviado para o Gerenciador!")
                 st.rerun()
 
         btn_col3.button("GERENCIAMENTO MESTRE")
 
+    # TABELA DE PRÉ-VISUALIZAÇÃO (Fundo Branco embaixo)
     if st.session_state.lista_previa:
+        st.markdown("<p style='text-align:center;'>Alunos na lista de espera:</p>", unsafe_allow_html=True)
         st.table(pd.DataFrame(st.session_state.lista_previa)[["ID", "Aluno", "Curso", "Vendedor"]])
 
 elif aba == "GERENCIAMENTO":
-    st.dataframe(conn.read(ttl="0s").fillna(""), use_container_width=True, hide_index=True)
+    st.markdown("### GERENCIADOR DE ALUNOS")
+    df = conn.read(ttl="0s").fillna("")
+    st.dataframe(df, use_container_width=True, hide_index=True)
