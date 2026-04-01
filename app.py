@@ -6,12 +6,14 @@ from streamlit_gsheets import GSheetsConnection
 # --- CONFIGURAÇÕES DA PÁGINA ---
 st.set_page_config(page_title="SISTEMA ADM | PROFISSIONALIZA", layout="wide", initial_sidebar_state="collapsed")
 
-# --- CSS DEFINITIVO ---
+# --- CSS DEFINITIVO (CADASTRO ESCURO + GERENCIAMENTO CRM) ---
 st.markdown("""
     <style>
+    /* Estilo Base */
     .stApp { background-color: #1a2436; color: white; }
     .block-container { padding-top: 0.5rem !important; max-width: 99% !important; }
 
+    /* MENU SUPERIOR (TABS) */
     .stTabs [data-baseweb="tab-list"] {
         gap: 0px; background-color: #1a3a5a; padding: 0px;
         border-bottom: 2px solid #2c5282;
@@ -24,6 +26,7 @@ st.markdown("""
         background-color: #2c5282 !important; border-bottom: 4px solid #2ecc71 !important;
     }
 
+    /* INPUTS CADASTRO */
     div[data-testid="stTextInput"] > div { min-height: 22px !important; height: 22px !important; }
     .stTextInput>div>div>input { 
         background-color: white !important; color: black !important; 
@@ -38,6 +41,7 @@ st.markdown("""
     
     [data-testid="stHorizontalBlock"] { margin-bottom: 8px !important; }
 
+    /* BOTÕES */
     div.stButton > button {
         background-color: #2ecc71 !important; color: white !important;
         font-weight: bold !important; height: 38px !important; border-radius: 4px !important;
@@ -48,11 +52,13 @@ st.markdown("""
     
     header {visibility: hidden;} footer {visibility: hidden;}
     
+    /* TABELA */
     [data-testid="stDataFrame"] td, [data-testid="stDataFrame"] th { font-size: 10px !important; }
     .stDataFrame { background-color: white !important; color: black !important; border-radius: 4px; }
     </style>
     """, unsafe_allow_html=True)
 
+# --- CONEXÃO ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
@@ -71,6 +77,7 @@ def atualizar_pagto():
     if st.session_state.check_conf: base += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
     st.session_state.pagto_input = base
 
+# --- ABAS ---
 abas = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
 # ================= ABA 1: CADASTRO =================
@@ -114,43 +121,44 @@ with abas[0]:
                     df_final = pd.concat([df_sheets, df_novos], ignore_index=True)
                     conn.update(data=df_final)
                     st.session_state.lista_previa = []
-                    st.success("Enviado!")
+                    st.success("Enviado com sucesso!")
                     st.rerun()
 
     st.write("")
     df_vis = pd.DataFrame(st.session_state.lista_previa) if st.session_state.lista_previa else pd.DataFrame(columns=["ID", "Aluno", "Cidade", "Curso", "Pagamento", "Vendedor", "Data"])
     st.dataframe(df_vis, use_container_width=True, hide_index=True, height=180)
 
-# ================= ABA 2: GERENCIAMENTO =================
+# ================= ABA 2: GERENCIAMENTO (VISUALIZAÇÃO RECENTE NO TOPO) =================
 with abas[1]:
     st.write("")
-    t1, t2, t3 = st.columns([2, 1, 1])
+    t1, t2 = st.columns([3, 1])
     with t1:
-        busca = st.text_input("Filtro CRM", placeholder="🔍 Pesquise...", label_visibility="collapsed").upper()
+        busca = st.text_input("Filtro CRM", placeholder="🔍 Digite para pesquisar qualquer aluno...", label_visibility="collapsed").upper()
     with t2: 
-        if st.button("🔄 Sincronizar"):
+        if st.button("🔄 Sincronizar Base"):
             st.cache_data.clear()
             st.rerun()
-    with t3:
-        # Toggle para alternar a visão: Original ou Recentes no topo
-        ver_recentes = st.toggle("Ver Novos no Topo", value=False)
     
     try:
+        # Lê os dados da planilha
         dados = conn.read(ttl="0s").fillna("")
         
+        # Correção do ID (.0)
         if "ID" in dados.columns:
             dados["ID"] = dados["ID"].astype(str).str.replace(r'\.0$', '', regex=True)
 
-        if busca:
-            mask = dados.astype(str).apply(lambda x: x.str.contains(busca, case=False)).any(axis=1)
-            dados = dados[mask]
-        
-        # Se o botão estiver ativado, inverte a tabela para que o final vire o começo
-        if ver_recentes:
-            dados = dados.iloc[::-1]
+        # APLICA A ORDEM: Invertemos a planilha para que o "final" (alunos recentes) 
+        # apareça no "topo" da tabela. Assim, ao abrir a aba, você vê os últimos primeiro.
+        dados_exibicao = dados.iloc[::-1]
 
+        # Se houver busca, filtra na lista invertida
+        if busca:
+            mask = dados_exibicao.astype(str).apply(lambda x: x.str.contains(busca, case=False)).any(axis=1)
+            dados_exibicao = dados_exibicao[mask]
+        
+        # Exibição da Tabela
         st.dataframe(
-            dados, 
+            dados_exibicao, 
             use_container_width=True, 
             hide_index=True, 
             height=600,
@@ -165,11 +173,12 @@ with abas[1]:
             }
         )
         
-        if not ver_recentes:
-            st.caption("💡 Ative 'Ver Novos no Topo' para visualizar os últimos alunos sem precisar rolar.")
+        st.caption("ℹ️ A lista mostra os alunos mais recentes primeiro. Role para baixo para ver os antigos.")
 
     except Exception as e:
-        st.error(f"Erro: {e}")
+        st.error(f"Erro ao carregar dados: {e}")
 
+# ================= ABA 3: RELATÓRIOS =================
 with abas[2]:
     st.write("### 📊 Relatórios ADM")
+    st.info("Módulo em desenvolvimento.")
