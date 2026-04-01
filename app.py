@@ -50,20 +50,6 @@ st.markdown("""
     
     [data-testid="stDataFrame"] td, [data-testid="stDataFrame"] th { font-size: 10px !important; }
     .stDataFrame { background-color: white !important; color: black !important; border-radius: 4px; }
-    
-    /* Estilo para o link de âncora */
-    .scroll-link {
-        text-decoration: none;
-        background-color: #2ecc71;
-        color: white !important;
-        font-weight: bold;
-        padding: 10px 20px;
-        border-radius: 4px;
-        display: inline-block;
-        text-align: center;
-        width: 100%;
-        font-size: 14px;
-    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -138,8 +124,7 @@ with abas[0]:
 # ================= ABA 2: GERENCIAMENTO =================
 with abas[1]:
     st.write("")
-    # Barra de Ferramentas
-    t1, t2, t3 = st.columns([2.5, 1, 1])
+    t1, t2, t3 = st.columns([2, 1, 1])
     with t1:
         busca = st.text_input("Filtro CRM", placeholder="🔍 Pesquise...", label_visibility="collapsed").upper()
     with t2: 
@@ -147,8 +132,8 @@ with abas[1]:
             st.cache_data.clear()
             st.rerun()
     with t3:
-        # BOTÃO DE ÂNCORA: Ao clicar, o navegador pula para o elemento com id="final"
-        st.markdown('<a href="#final" class="scroll-link">⬇️ IR PARA O FINAL</a>', unsafe_allow_html=True)
+        # Toggle para alternar a visão: Original ou Recentes no topo
+        ver_recentes = st.toggle("Ver Novos no Topo", value=False)
     
     try:
         dados = conn.read(ttl="0s").fillna("")
@@ -160,7 +145,10 @@ with abas[1]:
             mask = dados.astype(str).apply(lambda x: x.str.contains(busca, case=False)).any(axis=1)
             dados = dados[mask]
         
-        # Exibição da Tabela
+        # Se o botão estiver ativado, inverte a tabela para que o final vire o começo
+        if ver_recentes:
+            dados = dados.iloc[::-1]
+
         st.dataframe(
             dados, 
             use_container_width=True, 
@@ -177,9 +165,8 @@ with abas[1]:
             }
         )
         
-        # PONTO DE ANCORAGEM (Onde a tela vai parar ao clicar no botão)
-        st.markdown('<div id="final"></div>', unsafe_allow_html=True)
-        st.write("🏁 Fim da lista.")
+        if not ver_recentes:
+            st.caption("💡 Ative 'Ver Novos no Topo' para visualizar os últimos alunos sem precisar rolar.")
 
     except Exception as e:
         st.error(f"Erro: {e}")
