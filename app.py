@@ -4,28 +4,29 @@ from datetime import date
 from streamlit_gsheets import GSheetsConnection
 
 # --- CONFIGURAÇÕES DA PÁGINA ---
-st.set_page_config(page_title="PROFISSIONALIZA EAD", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="SISTEMA ADM | PROFISSIONALIZA", layout="wide", initial_sidebar_state="collapsed")
 
-# --- CSS DEFINITIVO (CADASTRO TÉCNICO ESCURO) ---
+# --- CSS DEFINITIVO (CADASTRO TÉCNICO ESCURO + GERENCIAMENTO CRM) ---
 st.markdown("""
     <style>
-    /* Fundo Escuro para a aplicação toda para não dar erro de contraste */
+    /* Estilo Base */
     .stApp { background-color: #1a2436; color: white; }
     .block-container { padding-top: 0.5rem !important; max-width: 98% !important; }
 
-    /* MENU SUPERIOR ESTILO CRM AZUL */
+    /* MENU SUPERIOR (TABS) - ESTILO CRM AZUL */
     .stTabs [data-baseweb="tab-list"] {
         gap: 0px; background-color: #1a3a5a; padding: 0px;
+        border-bottom: 2px solid #2c5282;
     }
     .stTabs [data-baseweb="tab"] {
-        height: 45px; color: #ffffff !important; font-weight: 500;
+        height: 48px; color: #ffffff !important; font-weight: 600;
         border: none; background-color: transparent; padding: 0px 30px;
     }
     .stTabs [aria-selected="true"] {
-        background-color: #2c5282 !important; border-bottom: 3px solid #63b3ed !important;
+        background-color: #2c5282 !important; border-bottom: 4px solid #2ecc71 !important;
     }
 
-    /* FORÇAR ALTURA DOS CAMPOS BRANCOS */
+    /* FORÇAR ALTURA DOS CAMPOS BRANCOS (CADASTRO) */
     div[data-testid="stTextInput"] > div {
         min-height: 22px !important;
         height: 22px !important;
@@ -50,34 +51,43 @@ st.markdown("""
         display: flex;
         align-items: center;
         height: 22px; 
+        justify-content: flex-end;
+        padding-right: 15px;
     }
     
-    /* ESPAÇAMENTO ENTRE LINHAS (O DOBRO QUE VOCÊ PEDIU) */
+    /* ESPAÇAMENTO ENTRE LINHAS */
     [data-testid="stHorizontalBlock"] {
         margin-bottom: 8px !important;
     }
 
-    /* BOTÕES VERDES LARGOS */
+    /* BOTÕES VERDES */
     div.stButton > button {
         background-color: #2ecc71 !important;
         color: white !important;
         font-weight: bold !important;
-        height: 35px !important;
+        height: 38px !important;
         border-radius: 4px !important;
         width: 100% !important;
+        border: none !important;
     }
 
     /* CHECKBOXES VERDES */
     .stCheckbox label p { font-size: 11px !important; color: #2ecc71 !important; font-weight: bold; }
     
     header {visibility: hidden;} footer {visibility: hidden;}
-    .stDataFrame { background-color: white !important; }
+    
+    /* Ajuste da Tabela para fundo branco */
+    .stDataFrame { background-color: white !important; color: black !important; border-radius: 4px; }
+    
+    /* Estilo específico para Gerenciamento (fundo claro na aba) */
+    .p-gerenciamento { background-color: #f0f2f6; padding: 20px; color: #31333f; border-radius: 5px; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- CONEXÃO ---
+# --- CONEXÃO COM GOOGLE SHEETS ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
+# --- INICIALIZAÇÃO DE ESTADOS ---
 if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "curso_acumulado" not in st.session_state: st.session_state.curso_acumulado = ""
 
@@ -87,17 +97,19 @@ def campo_horizontal(label, key, value="", on_change=None):
     with c1: st.markdown(f"<label>{label}</label>", unsafe_allow_html=True)
     with c2: return st.text_input(label, label_visibility="collapsed", key=key, value=value, on_change=on_change)
 
-# --- LÓGICA DE PAGAMENTO ---
+# --- LÓGICA DE PAGAMENTO DINÂMICO ---
 def atualizar_pagto():
-    base = st.session_state.pagto_input.split(" | ")[0].strip().upper()
+    texto_atual = st.session_state.pagto_input
+    base = texto_atual.split(" | ")[0].strip().upper()
     if st.session_state.check_lib: base += " | APÓS PAGAMENTO LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO IN-GLÊS"
     if st.session_state.check_bonus: base += " | CASO PAGUE VIA LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO CURSO BÔNUS A ESCOLHA"
     if st.session_state.check_conf: base += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
     st.session_state.pagto_input = base
 
-# --- NAVEGAÇÃO ---
+# --- NAVEGAÇÃO POR ABAS ---
 abas = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
+# ================= ABA 1: CADASTRO =================
 with abas[0]:
     _, col_central, _ = st.columns([0.5, 3, 0.5])
     
@@ -107,22 +119,23 @@ with abas[0]:
         campo_horizontal("ALUNO:", "nome_alu")
         campo_horizontal("TEL. RESP:", "t_resp")
         campo_horizontal("TEL. ALUNO:", "t_alu")
-        campo_horizontal("CIDADE:", "cid_f", value=st.session_state.get("cidade_p", ""))
+        campo_horizontal("CIDADE:", "cid_f")
         campo_horizontal("CURSO:", "curso_field", value=st.session_state.get("curso_acumulado", ""))
         campo_horizontal("PAGAMENTO:", "pagto_input")
-        campo_horizontal("VENDEDOR:", "vend_f", value=st.session_state.get("vendedor_p", ""))
-        campo_horizontal("DATA:", "data_input", value=st.session_state.get("data_p", ""))
+        campo_horizontal("VENDEDOR:", "vend_f")
+        campo_horizontal("DATA:", "data_input")
 
         st.write("")
-        # Checkboxes e Botões Centralizados
+        # Checkboxes Centralizados
         sel1, sel2, sel3 = st.columns(3)
         with sel1: st.checkbox("LIB. IN-GLÊS", key="check_lib", on_change=atualizar_pagto)
         with sel2: st.checkbox("CURSO BÔNUS", key="check_bonus", on_change=atualizar_pagto)
         with sel3: st.checkbox("CONFIRMAÇÃO", key="check_conf", on_change=atualizar_pagto)
 
+        # Botões de Ação
         btn1, btn2 = st.columns(2)
         with btn1:
-            if st.button("SALVAR ALUNO"):
+            if st.button("💾 SALVAR ALUNO"):
                 if st.session_state.nome_alu:
                     aluno = {
                         "ID": st.session_state.id_alu.upper(), "Aluno": st.session_state.nome_alu.upper(),
@@ -131,33 +144,59 @@ with abas[0]:
                         "Data": st.session_state.data_input
                     }
                     st.session_state.lista_previa.append(aluno)
+                    # Reset simples para próxima entrada
+                    st.session_state.id_alu = ""
+                    st.session_state.nome_alu = ""
                     st.rerun()
         with btn2:
-            if st.button("FINALIZAR PDF"):
+            if st.button("📤 FINALIZAR PDF / ENVIAR"):
                 if st.session_state.lista_previa:
                     df_sheets = conn.read(ttl="0s").fillna("")
                     df_novos = pd.DataFrame(st.session_state.lista_previa)
                     df_final = pd.concat([df_sheets, df_novos], ignore_index=True)
                     conn.update(data=df_final)
                     st.session_state.lista_previa = []
+                    st.success("Dados enviados com sucesso!")
                     st.rerun()
 
-    # Tabela Branca de Prévia
+    # Tabela de Prévia (Branca)
     st.write("")
     df_vis = pd.DataFrame(st.session_state.lista_previa) if st.session_state.lista_previa else pd.DataFrame(columns=["ID", "Aluno", "Cidade", "Curso", "Pagamento", "Vendedor", "Data"])
-    st.dataframe(df_vis, use_container_width=True, hide_index=True, height=150)
+    st.dataframe(df_vis, use_container_width=True, hide_index=True, height=200)
 
+# ================= ABA 2: GERENCIAMENTO (ESTILO CRM) =================
 with abas[1]:
-    # Estilo de Gerenciamento CRM que você gostou
-    st.write("### 🖥️ Base de Dados CRM")
+    st.write("")
+    # Barra de Ferramentas
     t1, t2 = st.columns([3, 1])
-    with t1: busca = st.text_input("🔍 Filtrar...", label_visibility="collapsed").upper()
+    with t1:
+        busca = st.text_input("Filtro CRM", placeholder="🔍 Pesquise por Aluno, ID, Vendedor ou Cidade...", label_visibility="collapsed").upper()
     with t2: 
-        if st.button("🔄 Sync"): st.rerun()
+        if st.button("🔄 Sincronizar Base"):
+            st.cache_data.clear()
+            st.rerun()
     
-    dados = conn.read(ttl="0s").fillna("")
-    if busca:
-        mask = dados.astype(str).apply(lambda x: x.str.contains(busca, case=False)).any(axis=1)
-        dados = dados[mask]
-    
-    st.dataframe(dados, use_container_width=True, hide_index=True, height=600)
+    try:
+        # 1. Lê os dados brutos
+        dados = conn.read(ttl="0s").fillna("")
+        
+        # 2. CORREÇÃO DO ID (.0)
+        if "ID" in dados.columns:
+            # Converte para string e remove o .0 se existir no final
+            dados["ID"] = dados["ID"].astype(str).str.replace(r'\.0$', '', regex=True)
+
+        # 3. Lógica de busca em tempo real
+        if busca:
+            mask = dados.astype(str).apply(lambda x: x.str.contains(busca, case=False)).any(axis=1)
+            dados = dados[mask]
+        
+        # 4. Exibição Estilo Planilha CRM
+        st.dataframe(dados, use_container_width=True, hide_index=True, height=600)
+        
+    except Exception as e:
+        st.error(f"Erro ao carregar a planilha: {e}")
+
+# ================= ABA 3: RELATÓRIOS =================
+with abas[2]:
+    st.write("### 📊 Relatórios e Indicadores")
+    st.info("Módulo de estatísticas em desenvolvimento.")
