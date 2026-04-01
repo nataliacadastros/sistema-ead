@@ -6,14 +6,14 @@ from streamlit_gsheets import GSheetsConnection
 # --- CONFIGURAÇÕES DA PÁGINA ---
 st.set_page_config(page_title="SISTEMA ADM | PROFISSIONALIZA", layout="wide", initial_sidebar_state="collapsed")
 
-# --- CSS DEFINITIVO (CADASTRO ESCURO + GERENCIAMENTO CRM) ---
+# --- CSS DEFINITIVO (RESPONSIVO + SIMULADOR) ---
 st.markdown("""
     <style>
     /* Estilo Base */
     .stApp { background-color: #1a2436; color: white; }
     .block-container { padding-top: 0.5rem !important; max-width: 99% !important; }
 
-    /* MENU SUPERIOR (TABS) */
+    /* MENU SUPERIOR */
     .stTabs [data-baseweb="tab-list"] {
         gap: 0px; background-color: #1a3a5a; padding: 0px;
         border-bottom: 2px solid #2c5282;
@@ -26,21 +26,20 @@ st.markdown("""
         background-color: #2c5282 !important; border-bottom: 4px solid #2ecc71 !important;
     }
 
-    /* INPUTS CADASTRO */
-    div[data-testid="stTextInput"] > div { min-height: 22px !important; height: 22px !important; }
-    .stTextInput>div>div>input { 
+    /* INPUTS BRANCOS */
+    div[data-testid="stTextInput"] > div { min-height: 22px !important; }
+    .stTextInput input { 
         background-color: white !important; color: black !important; 
         height: 22px !important; text-transform: uppercase !important; 
         border-radius: 2px !important; font-size: 11px !important; padding: 0px 8px !important;
     }
     
+    /* LABELS VERDES */
     label { 
         color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; 
-        display: flex; align-items: center; height: 22px; justify-content: flex-end; padding-right: 15px;
+        display: flex; align-items: center; justify-content: flex-end; padding-right: 15px;
     }
     
-    [data-testid="stHorizontalBlock"] { margin-bottom: 8px !important; }
-
     /* BOTÕES */
     div.stButton > button {
         background-color: #2ecc71 !important; color: white !important;
@@ -48,13 +47,24 @@ st.markdown("""
         width: 100% !important; border: none !important;
     }
 
-    .stCheckbox label p { font-size: 11px !important; color: #2ecc71 !important; font-weight: bold; }
+    /* TABELAS */
+    .stDataFrame { background-color: white !important; color: black !important; border-radius: 4px; }
+    [data-testid="stDataFrame"] td, [data-testid="stDataFrame"] th { font-size: 10px !important; }
+
+    /* CSS DO SIMULADOR MOBILE (MOCKUP) */
+    .mobile-frame {
+        width: 320px;
+        height: 580px;
+        border: 12px solid #333;
+        border-radius: 30px;
+        margin: 0 auto;
+        overflow-y: auto;
+        background-color: #1a2436;
+        padding: 15px;
+        box-shadow: 0px 10px 30px rgba(0,0,0,0.5);
+    }
     
     header {visibility: hidden;} footer {visibility: hidden;}
-    
-    /* TABELA */
-    [data-testid="stDataFrame"] td, [data-testid="stDataFrame"] th { font-size: 10px !important; }
-    .stDataFrame { background-color: white !important; color: black !important; border-radius: 4px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -62,123 +72,130 @@ st.markdown("""
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
-if "curso_acumulado" not in st.session_state: st.session_state.curso_acumulado = ""
 
-def campo_horizontal(label, key, value="", on_change=None):
+# --- FUNÇÃO CAMPO FORMULÁRIO ---
+def campo_horizontal(label, key, value=""):
     c1, c2 = st.columns([1.2, 4]) 
     with c1: st.markdown(f"<label>{label}</label>", unsafe_allow_html=True)
-    with c2: return st.text_input(label, label_visibility="collapsed", key=key, value=value, on_change=on_change)
+    with c2: return st.text_input(label, label_visibility="collapsed", key=key, value=value)
 
-def atualizar_pagto():
-    texto_atual = st.session_state.pagto_input
-    base = texto_atual.split(" | ")[0].strip().upper()
-    if st.session_state.check_lib: base += " | APÓS PAGAMENTO LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO IN-GLÊS"
-    if st.session_state.check_bonus: base += " | CASO PAGUE VIA LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO CURSO BÔNUS A ESCOLHA"
-    if st.session_state.check_conf: base += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
-    st.session_state.pagto_input = base
-
-# --- ABAS ---
-abas = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
+# --- NAVEGAÇÃO ---
+abas = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "🎨 PREVIEW MOBILE"])
 
 # ================= ABA 1: CADASTRO =================
 with abas[0]:
-    _, col_central, _ = st.columns([0.5, 3, 0.5])
-    with col_central:
+    _, col_form, _ = st.columns([0.5, 3, 0.5])
+    with col_form:
         st.write("")
         campo_horizontal("ID:", "id_alu")
         campo_horizontal("ALUNO:", "nome_alu")
         campo_horizontal("TEL. RESP:", "t_resp")
         campo_horizontal("TEL. ALUNO:", "t_alu")
         campo_horizontal("CIDADE:", "cid_f")
-        campo_horizontal("CURSO:", "curso_field", value=st.session_state.get("curso_acumulado", ""))
+        campo_horizontal("CURSO:", "curso_field")
         campo_horizontal("PAGAMENTO:", "pagto_input")
         campo_horizontal("VENDEDOR:", "vend_f")
         campo_horizontal("DATA:", "data_input")
 
         st.write("")
-        sel1, sel2, sel3 = st.columns(3)
-        with sel1: st.checkbox("LIB. IN-GLÊS", key="check_lib", on_change=atualizar_pagto)
-        with sel2: st.checkbox("CURSO BÔNUS", key="check_bonus", on_change=atualizar_pagto)
-        with sel3: st.checkbox("CONFIRMAÇÃO", key="check_conf", on_change=atualizar_pagto)
+        c_sel = st.columns(3)
+        with c_sel[0]: st.checkbox("IN-GLÊS", key="check_lib")
+        with c_sel[1]: st.checkbox("BÔNUS", key="check_bonus")
+        with c_sel[2]: st.checkbox("CONFIRMA", key="check_conf")
 
-        btn1, btn2 = st.columns(2)
-        with btn1:
+        st.write("")
+        c_btns = st.columns(2)
+        with c_btns[0]:
             if st.button("💾 SALVAR ALUNO"):
                 if st.session_state.nome_alu:
-                    aluno = {
-                        "ID": st.session_state.id_alu.upper(), "Aluno": st.session_state.nome_alu.upper(),
-                        "Cidade": st.session_state.cid_f.upper(), "Curso": st.session_state.curso_field.upper(),
-                        "Pagamento": st.session_state.pagto_input.upper(), "Vendedor": st.session_state.vend_f.upper(),
-                        "Data": st.session_state.data_input
-                    }
+                    aluno = {"ID": st.session_state.id_alu, "Aluno": st.session_state.nome_alu, "Cidade": st.session_state.cid_f, "Curso": st.session_state.curso_field, "Pagamento": st.session_state.pagto_input, "Vendedor": st.session_state.vend_f, "Data": st.session_state.data_input}
                     st.session_state.lista_previa.append(aluno)
                     st.rerun()
-        with btn2:
-            if st.button("📤 FINALIZAR E ENVIAR"):
-                if st.session_state.lista_previa:
-                    df_sheets = conn.read(ttl="0s").fillna("")
-                    df_novos = pd.DataFrame(st.session_state.lista_previa)
-                    df_final = pd.concat([df_sheets, df_novos], ignore_index=True)
-                    conn.update(data=df_final)
-                    st.session_state.lista_previa = []
-                    st.success("Enviado com sucesso!")
-                    st.rerun()
+        with c_btns[1]:
+            if st.button("📤 FINALIZAR"):
+                # Enviar para Sheets...
+                st.session_state.lista_previa = []
+                st.rerun()
 
     st.write("")
-    df_vis = pd.DataFrame(st.session_state.lista_previa) if st.session_state.lista_previa else pd.DataFrame(columns=["ID", "Aluno", "Cidade", "Curso", "Pagamento", "Vendedor", "Data"])
-    st.dataframe(df_vis, use_container_width=True, hide_index=True, height=180)
+    st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
-# ================= ABA 2: GERENCIAMENTO (VISUALIZAÇÃO RECENTE NO TOPO) =================
+# ================= ABA 2: GERENCIAMENTO =================
 with abas[1]:
     st.write("")
     t1, t2 = st.columns([3, 1])
-    with t1:
-        busca = st.text_input("Filtro CRM", placeholder="🔍 Digite para pesquisar qualquer aluno...", label_visibility="collapsed").upper()
+    with t1: busca = st.text_input("Busca", placeholder="🔍 Pesquisar...", label_visibility="collapsed").upper()
     with t2: 
-        if st.button("🔄 Sincronizar Base"):
-            st.cache_data.clear()
-            st.rerun()
+        if st.button("🔄 Sync"): st.rerun()
     
     try:
-        # Lê os dados da planilha
         dados = conn.read(ttl="0s").fillna("")
+        if "ID" in dados.columns: dados["ID"] = dados["ID"].astype(str).str.replace(r'\.0$', '', regex=True)
         
-        # Correção do ID (.0)
-        if "ID" in dados.columns:
-            dados["ID"] = dados["ID"].astype(str).str.replace(r'\.0$', '', regex=True)
-
-        # APLICA A ORDEM: Invertemos a planilha para que o "final" (alunos recentes) 
-        # apareça no "topo" da tabela. Assim, ao abrir a aba, você vê os últimos primeiro.
+        # Ordem Invertida (Novos no Topo)
         dados_exibicao = dados.iloc[::-1]
 
-        # Se houver busca, filtra na lista invertida
         if busca:
             mask = dados_exibicao.astype(str).apply(lambda x: x.str.contains(busca, case=False)).any(axis=1)
             dados_exibicao = dados_exibicao[mask]
         
-        # Exibição da Tabela
         st.dataframe(
             dados_exibicao, 
             use_container_width=True, 
             hide_index=True, 
-            height=600,
+            height=500,
             column_config={
-                "ID": st.column_config.TextColumn("ID", width=60),
-                "Data": st.column_config.TextColumn("Data", width=80),
-                "Vendedor": st.column_config.TextColumn("Vendedor", width=100),
-                "Cidade": st.column_config.TextColumn("Cidade", width=120),
-                "Aluno": st.column_config.TextColumn("Aluno", width=250),
-                "Curso": st.column_config.TextColumn("Curso", width=200),
-                "Pagamento": st.column_config.TextColumn("Pagamento", width=400),
+                "ID": st.column_config.TextColumn("ID", width=50),
+                "Data": st.column_config.TextColumn("Dt", width=70),
+                "Vendedor": st.column_config.TextColumn("Vend", width=90),
+                "Cidade": st.column_config.TextColumn("Cid", width=100),
+                "Aluno": st.column_config.TextColumn("Aluno", width=200),
+                "Curso": st.column_config.TextColumn("Cur", width=150),
+                "Pagamento": st.column_config.TextColumn("Pag", width=300),
             }
         )
-        
-        st.caption("ℹ️ A lista mostra os alunos mais recentes primeiro. Role para baixo para ver os antigos.")
+    except:
+        st.error("Erro ao carregar dados.")
 
-    except Exception as e:
-        st.error(f"Erro ao carregar dados: {e}")
-
-# ================= ABA 3: RELATÓRIOS =================
+# ================= ABA 3: PREVIEW MOBILE (SIMULADOR) =================
 with abas[2]:
-    st.write("### 📊 Relatórios ADM")
-    st.info("Módulo em desenvolvimento.")
+    st.write("")
+    col_ctrl, col_sim = st.columns([1, 1.5])
+    
+    with col_ctrl:
+        st.subheader("⚙️ Ajustes de Visualização")
+        st.info("Use este painel para testar cores e tamanhos antes de aplicar no código principal.")
+        cor_tema = st.color_picker("Cor Principal (Verde)", "#2ecc71")
+        fonte_tabela = st.slider("Tamanho Fonte Tabela (px)", 8, 14, 10)
+        largura_col = st.number_input("Largura Coluna Aluno", 100, 400, 200)
+
+    with col_sim:
+        st.markdown(f"""
+            <div class="mobile-frame">
+                <div style="text-align:center; padding-bottom:10px; border-bottom:1px solid #333;">
+                    <span style="color:{cor_tema}; font-weight:bold; font-size:14px;">Simulação Mobile</span>
+                </div>
+                <div style="margin-top:20px;">
+                    <label style="color:{cor_tema}; font-size:10px; display:block; margin-bottom:2px;">ALUNO:</label>
+                    <div style="background:white; height:22px; border-radius:2px; margin-bottom:10px;"></div>
+                    
+                    <label style="color:{cor_tema}; font-size:10px; display:block; margin-bottom:2px;">CURSO:</label>
+                    <div style="background:white; height:22px; border-radius:2px; margin-bottom:10px;"></div>
+                    
+                    <button style="width:100%; background:{cor_tema}; color:white; border:none; padding:8px; border-radius:4px; font-weight:bold; font-size:12px; margin-top:10px;">
+                        SALVAR ALUNO
+                    </button>
+                    
+                    <div style="margin-top:25px; background:white; border-radius:4px; padding:5px; height:150px;">
+                        <table style="width:100%; color:black; font-size:{fonte_tabela}px; border-collapse:collapse;">
+                            <tr style="border-bottom:1px solid #ddd; text-align:left;">
+                                <th>ID</th><th>Aluno</th><th>Vend</th>
+                            </tr>
+                            <tr><td>10</td><td>JOÃO SILVA</td><td>MARIA</td></tr>
+                            <tr style="background:#f9f9f9;"><td>11</td><td>ANA COSTA</td><td>JOSÉ</td></tr>
+                        </table>
+                    </div>
+                </div>
+                <p style="text-align:center; font-size:8px; color:#555; margin-top:20px;">Fim da tela simulada</p>
+            </div>
+        """, unsafe_allow_html=True)
