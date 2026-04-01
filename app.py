@@ -6,14 +6,12 @@ from streamlit_gsheets import GSheetsConnection
 # --- CONFIGURAÇÕES DA PÁGINA ---
 st.set_page_config(page_title="SISTEMA ADM | PROFISSIONALIZA", layout="wide", initial_sidebar_state="collapsed")
 
-# --- CSS DEFINITIVO (CADASTRO ESCURO + GERENCIAMENTO CRM + AJUSTE DE COLUNAS) ---
+# --- CSS DEFINITIVO ---
 st.markdown("""
     <style>
-    /* Estilo Base */
     .stApp { background-color: #1a2436; color: white; }
     .block-container { padding-top: 0.5rem !important; max-width: 99% !important; }
 
-    /* MENU SUPERIOR (TABS) - ESTILO CRM AZUL */
     .stTabs [data-baseweb="tab-list"] {
         gap: 0px; background-color: #1a3a5a; padding: 0px;
         border-bottom: 2px solid #2c5282;
@@ -26,80 +24,45 @@ st.markdown("""
         background-color: #2c5282 !important; border-bottom: 4px solid #2ecc71 !important;
     }
 
-    /* FORÇAR ALTURA DOS CAMPOS BRANCOS (CADASTRO) */
-    div[data-testid="stTextInput"] > div {
-        min-height: 22px !important;
-        height: 22px !important;
-    }
-
+    div[data-testid="stTextInput"] > div { min-height: 22px !important; height: 22px !important; }
     .stTextInput>div>div>input { 
-        background-color: white !important; 
-        color: black !important; 
-        height: 22px !important; 
-        text-transform: uppercase !important; 
-        border-radius: 2px !important; 
-        font-size: 11px !important;
-        padding: 0px 8px !important;
+        background-color: white !important; color: black !important; 
+        height: 22px !important; text-transform: uppercase !important; 
+        border-radius: 2px !important; font-size: 11px !important; padding: 0px 8px !important;
     }
     
-    /* LABELS VERDES LATERAIS ALINHADAS */
     label { 
-        color: #2ecc71 !important; 
-        font-weight: bold !important; 
-        font-size: 11px !important; 
-        margin-bottom: 0px !important;
-        display: flex;
-        align-items: center;
-        height: 22px; 
-        justify-content: flex-end;
-        padding-right: 15px;
+        color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; 
+        display: flex; align-items: center; height: 22px; justify-content: flex-end; padding-right: 15px;
     }
     
-    /* ESPAÇAMENTO ENTRE LINHAS */
-    [data-testid="stHorizontalBlock"] {
-        margin-bottom: 8px !important;
-    }
+    [data-testid="stHorizontalBlock"] { margin-bottom: 8px !important; }
 
-    /* BOTÕES VERDES */
     div.stButton > button {
-        background-color: #2ecc71 !important;
-        color: white !important;
-        font-weight: bold !important;
-        height: 38px !important;
-        border-radius: 4px !important;
-        width: 100% !important;
-        border: none !important;
+        background-color: #2ecc71 !important; color: white !important;
+        font-weight: bold !important; height: 38px !important; border-radius: 4px !important;
+        width: 100% !important; border: none !important;
     }
 
-    /* CHECKBOXES VERDES */
     .stCheckbox label p { font-size: 11px !important; color: #2ecc71 !important; font-weight: bold; }
     
     header {visibility: hidden;} footer {visibility: hidden;}
     
-    /* AJUSTE PARA CABER COLUNAS NO GERENCIAMENTO */
-    [data-testid="stDataFrame"] td, [data-testid="stDataFrame"] th {
-        font-size: 10px !important;
-    }
-    
-    /* Tabela Geral */
+    [data-testid="stDataFrame"] td, [data-testid="stDataFrame"] th { font-size: 10px !important; }
     .stDataFrame { background-color: white !important; color: black !important; border-radius: 4px; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- CONEXÃO COM GOOGLE SHEETS ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# --- INICIALIZAÇÃO DE ESTADOS ---
 if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "curso_acumulado" not in st.session_state: st.session_state.curso_acumulado = ""
 
-# --- FUNÇÃO CAMPO HORIZONTAL ---
 def campo_horizontal(label, key, value="", on_change=None):
     c1, c2 = st.columns([1.2, 4]) 
     with c1: st.markdown(f"<label>{label}</label>", unsafe_allow_html=True)
     with c2: return st.text_input(label, label_visibility="collapsed", key=key, value=value, on_change=on_change)
 
-# --- LÓGICA DE PAGAMENTO DINÂMICO ---
 def atualizar_pagto():
     texto_atual = st.session_state.pagto_input
     base = texto_atual.split(" | ")[0].strip().upper()
@@ -108,13 +71,11 @@ def atualizar_pagto():
     if st.session_state.check_conf: base += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
     st.session_state.pagto_input = base
 
-# --- NAVEGAÇÃO POR ABAS ---
 abas = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
 # ================= ABA 1: CADASTRO =================
 with abas[0]:
     _, col_central, _ = st.columns([0.5, 3, 0.5])
-    
     with col_central:
         st.write("")
         campo_horizontal("ID:", "id_alu")
@@ -153,31 +114,31 @@ with abas[0]:
                     df_final = pd.concat([df_sheets, df_novos], ignore_index=True)
                     conn.update(data=df_final)
                     st.session_state.lista_previa = []
-                    st.success("Enviado com sucesso!")
+                    st.success("Enviado!")
                     st.rerun()
 
     st.write("")
-    # Definição das colunas da tabela de prévia sem OBS
-    colunas_vis = ["ID", "Aluno", "Cidade", "Curso", "Pagamento", "Vendedor", "Data"]
-    df_vis = pd.DataFrame(st.session_state.lista_previa) if st.session_state.lista_previa else pd.DataFrame(columns=colunas_vis)
+    df_vis = pd.DataFrame(st.session_state.lista_previa) if st.session_state.lista_previa else pd.DataFrame(columns=["ID", "Aluno", "Cidade", "Curso", "Pagamento", "Vendedor", "Data"])
     st.dataframe(df_vis, use_container_width=True, hide_index=True, height=180)
 
 # ================= ABA 2: GERENCIAMENTO =================
 with abas[1]:
     st.write("")
-    t1, t2 = st.columns([3, 1])
+    # Barra de Ferramentas com botão de "Ir para o Final"
+    t1, t2, t3 = st.columns([2.5, 1, 1])
     with t1:
         busca = st.text_input("Filtro CRM", placeholder="🔍 Pesquise...", label_visibility="collapsed").upper()
     with t2: 
-        if st.button("🔄 Sincronizar Base"):
+        if st.button("🔄 Sincronizar"):
             st.cache_data.clear()
             st.rerun()
+    with t3:
+        # Este botão inverte a ordem para que o último aluno apareça em primeiro na lista
+        ordem_recente = st.toggle("Ver Recentes Primeiro", value=True)
     
     try:
-        # Lê os dados (OBS1 e OBS2 não existem mais na planilha conforme sua instrução)
         dados = conn.read(ttl="0s").fillna("")
         
-        # Correção do ID (.0)
         if "ID" in dados.columns:
             dados["ID"] = dados["ID"].astype(str).str.replace(r'\.0$', '', regex=True)
 
@@ -185,7 +146,10 @@ with abas[1]:
             mask = dados.astype(str).apply(lambda x: x.str.contains(busca, case=False)).any(axis=1)
             dados = dados[mask]
         
-        # Configuração de Colunas otimizada para visualização total
+        # Se o toggle estiver ativo, ele joga os últimos registros para o topo (mais prático do que rolar)
+        if ordem_recente:
+            dados = dados.iloc[::-1]
+
         st.dataframe(
             dados, 
             use_container_width=True, 
@@ -203,9 +167,7 @@ with abas[1]:
         )
         
     except Exception as e:
-        st.error(f"Erro ao carregar dados: {e}")
+        st.error(f"Erro: {e}")
 
-# ================= ABA 3: RELATÓRIOS =================
 with abas[2]:
     st.write("### 📊 Relatórios ADM")
-    st.info("Módulo de estatísticas em desenvolvimento.")
