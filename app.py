@@ -6,12 +6,12 @@ from streamlit_gsheets import GSheetsConnection
 # --- CONFIGURAÇÕES DA PÁGINA ---
 st.set_page_config(page_title="SISTEMA ADM | PROFISSIONALIZA", layout="wide", initial_sidebar_state="collapsed")
 
-# --- CSS DEFINITIVO (CADASTRO TÉCNICO ESCURO + GERENCIAMENTO CRM) ---
+# --- CSS DEFINITIVO (CADASTRO ESCURO + GERENCIAMENTO CRM + AJUSTE DE COLUNAS) ---
 st.markdown("""
     <style>
     /* Estilo Base */
     .stApp { background-color: #1a2436; color: white; }
-    .block-container { padding-top: 0.5rem !important; max-width: 98% !important; }
+    .block-container { padding-top: 0.5rem !important; max-width: 99% !important; }
 
     /* MENU SUPERIOR (TABS) - ESTILO CRM AZUL */
     .stTabs [data-baseweb="tab-list"] {
@@ -76,11 +76,13 @@ st.markdown("""
     
     header {visibility: hidden;} footer {visibility: hidden;}
     
-    /* Ajuste da Tabela para fundo branco */
-    .stDataFrame { background-color: white !important; color: black !important; border-radius: 4px; }
+    /* AJUSTE PARA CABER COLUNAS NO GERENCIAMENTO */
+    [data-testid="stDataFrame"] td, [data-testid="stDataFrame"] th {
+        font-size: 10px !important;
+    }
     
-    /* Estilo específico para Gerenciamento (fundo claro na aba) */
-    .p-gerenciamento { background-color: #f0f2f6; padding: 20px; color: #31333f; border-radius: 5px; }
+    /* Tabela Geral */
+    .stDataFrame { background-color: white !important; color: black !important; border-radius: 4px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -126,13 +128,11 @@ with abas[0]:
         campo_horizontal("DATA:", "data_input")
 
         st.write("")
-        # Checkboxes Centralizados
         sel1, sel2, sel3 = st.columns(3)
         with sel1: st.checkbox("LIB. IN-GLÊS", key="check_lib", on_change=atualizar_pagto)
         with sel2: st.checkbox("CURSO BÔNUS", key="check_bonus", on_change=atualizar_pagto)
         with sel3: st.checkbox("CONFIRMAÇÃO", key="check_conf", on_change=atualizar_pagto)
 
-        # Botões de Ação
         btn1, btn2 = st.columns(2)
         with btn1:
             if st.button("💾 SALVAR ALUNO"):
@@ -144,59 +144,65 @@ with abas[0]:
                         "Data": st.session_state.data_input
                     }
                     st.session_state.lista_previa.append(aluno)
-                    # Reset simples para próxima entrada
-                    st.session_state.id_alu = ""
-                    st.session_state.nome_alu = ""
                     st.rerun()
         with btn2:
-            if st.button("📤 FINALIZAR PDF / ENVIAR"):
+            if st.button("📤 FINALIZAR E ENVIAR"):
                 if st.session_state.lista_previa:
                     df_sheets = conn.read(ttl="0s").fillna("")
                     df_novos = pd.DataFrame(st.session_state.lista_previa)
                     df_final = pd.concat([df_sheets, df_novos], ignore_index=True)
                     conn.update(data=df_final)
                     st.session_state.lista_previa = []
-                    st.success("Dados enviados com sucesso!")
+                    st.success("Enviado com sucesso!")
                     st.rerun()
 
-    # Tabela de Prévia (Branca)
     st.write("")
     df_vis = pd.DataFrame(st.session_state.lista_previa) if st.session_state.lista_previa else pd.DataFrame(columns=["ID", "Aluno", "Cidade", "Curso", "Pagamento", "Vendedor", "Data"])
-    st.dataframe(df_vis, use_container_width=True, hide_index=True, height=200)
+    st.dataframe(df_vis, use_container_width=True, hide_index=True, height=180)
 
-# ================= ABA 2: GERENCIAMENTO (ESTILO CRM) =================
+# ================= ABA 2: GERENCIAMENTO (SEM ROLAGEM LATERAL) =================
 with abas[1]:
     st.write("")
-    # Barra de Ferramentas
     t1, t2 = st.columns([3, 1])
     with t1:
-        busca = st.text_input("Filtro CRM", placeholder="🔍 Pesquise por Aluno, ID, Vendedor ou Cidade...", label_visibility="collapsed").upper()
+        busca = st.text_input("Filtro CRM", placeholder="🔍 Pesquise...", label_visibility="collapsed").upper()
     with t2: 
         if st.button("🔄 Sincronizar Base"):
             st.cache_data.clear()
             st.rerun()
     
     try:
-        # 1. Lê os dados brutos
         dados = conn.read(ttl="0s").fillna("")
         
-        # 2. CORREÇÃO DO ID (.0)
+        # Correção do ID (.0)
         if "ID" in dados.columns:
-            # Converte para string e remove o .0 se existir no final
             dados["ID"] = dados["ID"].astype(str).str.replace(r'\.0$', '', regex=True)
 
-        # 3. Lógica de busca em tempo real
         if busca:
             mask = dados.astype(str).apply(lambda x: x.str.contains(busca, case=False)).any(axis=1)
             dados = dados[mask]
         
-        # 4. Exibição Estilo Planilha CRM
-        st.dataframe(dados, use_container_width=True, hide_index=True, height=600)
+        # Configuração de Colunas para caber tudo na tela (sem rolagem)
+        st.dataframe(
+            dados, 
+            use_container_width=True, 
+            hide_index=True, 
+            height=600,
+            column_config={
+                "ID": st.column_config.TextColumn("ID", width=60),
+                "Data": st.column_config.TextColumn("Data", width=80),
+                "Vendedor": st.column_config.TextColumn("Vendedor", width=100),
+                "Cidade": st.column_config.TextColumn("Cidade", width=120),
+                "Aluno": st.column_config.TextColumn("Aluno", width=250),
+                "Curso": st.column_config.TextColumn("Curso", width=250),
+                "Pagamento": st.column_config.TextColumn("Pagamento", width=300),
+            }
+        )
         
     except Exception as e:
-        st.error(f"Erro ao carregar a planilha: {e}")
+        st.error(f"Erro ao carregar dados: {e}")
 
 # ================= ABA 3: RELATÓRIOS =================
 with abas[2]:
-    st.write("### 📊 Relatórios e Indicadores")
+    st.write("### 📊 Relatórios ADM")
     st.info("Módulo de estatísticas em desenvolvimento.")
