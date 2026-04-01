@@ -6,27 +6,40 @@ from streamlit_gsheets import GSheetsConnection
 # --- CONFIGURAÇÕES DA PÁGINA ---
 st.set_page_config(page_title="PROFISSIONALIZA EAD", layout="wide", initial_sidebar_state="expanded")
 
-# --- CSS PARA DESIGN IDENTICO AO PRINT ---
+# --- CSS PARA DESIGN IDENTICO AO SOLICITADO ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
     [data-testid="stSidebar"] { background-color: #004a99 !important; }
+    
+    /* Inputs Brancos com Texto Preto e Maiúsculo */
     .stTextInput>div>div>input { 
         background-color: white !important; color: black !important; 
-        height: 28px !important; text-transform: uppercase !important; 
+        height: 30px !important; text-transform: uppercase !important; 
     }
+    
+    /* Labels Verdes */
     label { color: #2ecc71 !important; font-weight: bold !important; font-size: 14px !important; margin-bottom: -5px !important; }
-    .stButton>button { height: 35px; font-size: 13px !important; border-radius: 4px; font-weight: bold; width: 100%; }
     
-    /* Cores dos botões */
-    div[data-testid="column"]:nth-child(1) button { background-color: #90ee90 !important; color: black !important; }
-    div[data-testid="column"]:nth-child(2) button { background-color: #a2d2ff !important; color: black !important; }
-    div[data-testid="column"]:nth-child(3) button { background-color: #007bff !important; color: white !important; }
+    /* Botões Verdes com Letra Branca */
+    .stButton>button { 
+        height: 40px; 
+        background-color: #2ecc71 !important; 
+        color: white !important; 
+        font-weight: bold !important; 
+        border-radius: 4px; 
+        width: 100%;
+        border: none;
+    }
     
+    /* Remover elementos padrão do Streamlit */
     header {visibility: hidden;} footer {visibility: hidden;}
     
-    /* Estilo da Tabela Branca Fixa */
+    /* Estilo da Tabela de Pré-visualização */
     .stDataFrame { background-color: white !important; border-radius: 2px !important; }
+    
+    /* Forçar alinhamento vertical dos blocos */
+    [data-testid="stVerticalBlock"] { gap: 0.5rem; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -86,18 +99,19 @@ def atualizar_pagto():
 aba = st.sidebar.radio("NAVEGAÇÃO", ["CADASTRO", "GERENCIAMENTO"])
 
 if aba == "CADASTRO":
-    _, col_central, _ = st.columns([0.2, 3, 0.2])
+    # Centralização forçada dos campos (Largura igual para todos)
+    _, col_central, _ = st.columns([1, 4, 1])
     
     with col_central:
-        id_alu = st.text_input("ID", key="id_alu")
-        nome_alu = st.text_input("Aluno", key="nome_alu")
-        t_resp = st.text_input("Tel. Responsável", key="t_resp")
-        t_alu = st.text_input("Tel. Aluno", key="t_alu")
+        st.text_input("ID", key="id_alu")
+        st.text_input("Aluno", key="nome_alu")
+        st.text_input("Tel. Responsável", key="t_resp")
+        st.text_input("Tel. Aluno", key="t_alu")
         st.text_input("CPF Responsável", key="cpf_input", on_change=aplicar_mascara_cpf)
-        cidade = st.text_input("Cidade", value=st.session_state.cidade_p, key="cid_f")
+        st.text_input("Cidade", value=st.session_state.cidade_p, key="cid_f")
         st.text_input("Curso Contratado", value=st.session_state.curso_acumulado, key="curso_field", on_change=processar_curso)
         st.text_input("Forma de Pagamento", key="pagto_input")
-        vendedor = st.text_input("Vendedor", value=st.session_state.vendedor_p, key="vend_f")
+        st.text_input("Vendedor", value=st.session_state.vendedor_p, key="vend_f")
         st.text_input("Data da Matrícula", value=st.session_state.data_p, key="data_input", on_change=aplicar_mascara_data)
 
         st.write("")
@@ -106,51 +120,64 @@ if aba == "CADASTRO":
         bon = c2.checkbox("CURSO BÔNUS", key="check_bonus", on_change=atualizar_pagto)
         con = c3.checkbox("AGUARDANDO CONFIRMAÇÃO", key="check_conf", on_change=atualizar_pagto)
 
-        b1, b2, b3 = st.columns(3)
+        # Botões centralizados e com a nova cor
+        b1_col, b2_col = st.columns(2)
         
-        if b1.button("Salvar Aluno"):
-            if nome_alu:
+        if b1_col.button("Salvar Aluno"):
+            if st.session_state.nome_alu:
                 aluno_novo = {
-                    "ID": id_alu.upper(), "Aluno": nome_alu.upper(), "Tel. Responsável": t_resp,
-                    "Tel. Aluno": t_alu, "CPF Responsável": st.session_state.cpf_input,
-                    "Cidade": cidade.upper(), "Curso Contratado": st.session_state.curso_acumulado.strip(),
+                    "ID": st.session_state.id_alu.upper(), "Aluno": st.session_state.nome_alu.upper(), 
+                    "Tel. Responsável": st.session_state.t_resp, "Tel. Aluno": st.session_state.t_alu, 
+                    "CPF Responsável": st.session_state.cpf_input, "Cidade": st.session_state.cid_f.upper(), 
+                    "Curso Contratado": st.session_state.curso_acumulado.strip(),
                     "Forma de Pagamento": st.session_state.pagto_input.upper(),
-                    "Vendedor": vendedor.upper(), "Data da Matrícula": st.session_state.data_input
+                    "Vendedor": st.session_state.vend_f.upper(), "Data da Matrícula": st.session_state.data_input
                 }
                 st.session_state.lista_previa.append(aluno_novo)
-                st.session_state.cidade_p = cidade.upper()
-                st.session_state.vendedor_p = vendedor.upper()
+                st.session_state.cidade_p = st.session_state.cid_f.upper()
+                st.session_state.vendedor_p = st.session_state.vend_f.upper()
                 st.session_state.data_p = st.session_state.data_input
                 st.session_state.curso_acumulado = ""
                 st.rerun()
 
-        if b2.button("Finalizar PDF"):
+        if b2_col.button("Finalizar PDF"):
             if st.session_state.lista_previa:
                 df_planilha = conn.read(ttl="0s").fillna("")
                 df_novos = pd.DataFrame(st.session_state.lista_previa)
+                # Adiciona colunas técnicas da planilha
+                cols_planilha = ["STATUS", "SEC", "TURMA", "10 CURSOS?", "INGLÊS?", "Data Cadastro", "ID", "Aluno", "Tel. Resp", "Tel. Aluno", "CPF", "Cidade", "Curso", "Pagamento", "Vendedor", "Data Matrícula", "OBS1", "OBS2"]
                 
-                # Garante que as colunas da planilha existam
-                for col in ["STATUS", "SEC", "TURMA", "10 CURSOS?", "INGLÊS?", "Data Cadastro"]:
-                    if col not in df_novos: df_novos[col] = ""
-                
-                df_final = pd.concat([df_planilha, df_novos, pd.DataFrame([{c: "" for c in df_planilha.columns}])], ignore_index=True)
+                # Mapeia os dados para as colunas reais da planilha
+                df_to_save = pd.DataFrame(columns=cols_planilha)
+                for aluno in st.session_state.lista_previa:
+                    nova_l = {
+                        "STATUS": "ATIVO", "SEC": "MGA", "ID": aluno["ID"], "Aluno": aluno["Aluno"],
+                        "Tel. Resp": aluno["Tel. Responsável"], "Tel. Aluno": aluno["Tel. Aluno"],
+                        "CPF": aluno["CPF Responsável"], "Cidade": aluno["Cidade"],
+                        "Curso": aluno["Curso Contratado"], "Pagamento": aluno["Forma de Pagamento"],
+                        "Vendedor": aluno["Vendedor"], "Data Matrícula": aluno["Data da Matrícula"],
+                        "Data Cadastro": date.today().strftime("%d/%m/%Y"), "10 CURSOS?": "SIM" if "10 CURSOS" in aluno["Curso Contratado"] else "NÃO",
+                        "INGLÊS?": "SIM" if "INGLÊS" in aluno["Curso Contratado"] else "NÃO"
+                    }
+                    df_to_save = pd.concat([df_to_save, pd.DataFrame([nova_l])], ignore_index=True)
+
+                df_final = pd.concat([df_planilha, df_to_save, pd.DataFrame([{c: "" for c in cols_planilha}])], ignore_index=True)
                 conn.update(data=df_final)
-                
                 st.session_state.lista_previa = []
                 st.session_state.cidade_p = ""; st.session_state.vendedor_p = ""; st.session_state.data_p = ""
-                st.success("Enviado com sucesso!")
                 st.rerun()
 
-        b3.button("GERENCIAMENTO MESTRE")
-
-        # --- TABELA DE PRÉ-VISUALIZAÇÃO FIXA ---
-        st.markdown(f"<h5 style='text-align: center; color: white; margin-top: 20px;'>Alunos na lista: {len(st.session_state.lista_previa)}</h5>", unsafe_allow_html=True)
-        
-        # Criamos o DataFrame da lista (vazio ou com dados)
-        df_visualizacao = pd.DataFrame(st.session_state.lista_previa, columns=COLUNAS_TABELA)
-        
-        # Exibição fixa da tabela branca
-        st.dataframe(df_visualizacao, use_container_width=True, hide_index=True)
+    # --- TABELA DE PRÉ-VISUALIZAÇÃO FIXA (SEM 'EMPTY') ---
+    st.markdown(f"<p style='text-align: center; margin-top: 20px;'>Alunos na lista: <b>{len(st.session_state.lista_previa)}</b></p>", unsafe_allow_html=True)
+    
+    # Criamos a tabela. Se estiver vazia, passamos um DataFrame apenas com colunas
+    if st.session_state.lista_previa:
+        df_visual = pd.DataFrame(st.session_state.lista_previa)[COLUNAS_TABELA]
+    else:
+        df_visual = pd.DataFrame(columns=COLUNAS_TABELA)
+    
+    # use_container_width garante que ela ocupe a largura total
+    st.dataframe(df_visual, use_container_width=True, hide_index=True)
 
 elif aba == "GERENCIAMENTO":
     st.dataframe(conn.read(ttl="0s").fillna(""), use_container_width=True, hide_index=True)
