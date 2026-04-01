@@ -4,14 +4,23 @@ from datetime import date
 from streamlit_gsheets import GSheetsConnection
 
 # --- CONFIGURAÇÕES DA PÁGINA ---
-st.set_page_config(page_title="PROFISSIONALIZA EAD", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="PROFISSIONALIZA EAD", layout="wide", initial_sidebar_state="collapsed")
 
-# --- CSS REFINADO: ALINHAMENTO, BOTÕES E TABELA ---
+# --- CSS PARA MENU SUPERIOR E TELA CHEIA ---
 st.markdown("""
     <style>
+    /* Fundo e preenchimento total da tela */
     .stApp { background-color: #1a2436; color: white; }
-    [data-testid="stSidebar"] { background-color: #004a99 !important; }
     
+    /* Remove as margens das laterais para ocupar a tela toda */
+    .block-container {
+        padding-top: 1rem !important;
+        padding-bottom: 0rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        max-width: 100% !important;
+    }
+
     /* Inputs Brancos com Texto Preto e Maiúsculo */
     .stTextInput>div>div>input { 
         background-color: white !important; color: black !important; 
@@ -22,7 +31,7 @@ st.markdown("""
     /* Labels Verdes */
     label { color: #2ecc71 !important; font-weight: bold !important; font-size: 14px !important; margin-bottom: -2px !important; }
     
-    /* Botões Verdes com Letra Branca - Forçando Estilo */
+    /* Botões Verdes com Letra Branca */
     div.stButton > button {
         background-color: #2ecc71 !important;
         color: white !important;
@@ -31,22 +40,31 @@ st.markdown("""
         height: 45px !important;
         width: 100% !important;
         border-radius: 5px !important;
-        transition: 0.3s;
-    }
-    div.stButton > button:hover {
-        background-color: #27ae60 !important;
-        border: none !important;
     }
 
-    /* Centralização e largura dos campos */
-    .block-container { padding-top: 2rem !important; }
-    [data-testid="stVerticalBlock"] > div { width: 100% !important; }
-    
-    /* Esconder elementos desnecessários */
+    /* Estilização das Abas (Menu Horizontal Superior) */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 20px;
+        background-color: #004a99;
+        padding: 10px 20px;
+        border-radius: 5px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 40px;
+        white-space: pre;
+        color: white !important;
+        background-color: transparent;
+        border: none;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #2ecc71 !important;
+        border-radius: 5px;
+    }
+
     header {visibility: hidden;} footer {visibility: hidden;}
     
-    /* Estilo da Tabela Branca */
-    .stDataFrame { background-color: white !important; border-radius: 4px !important; padding: 5px; }
+    /* Tabela Branca Total */
+    .stDataFrame { background-color: white !important; border-radius: 0px !important; padding: 0px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -102,14 +120,15 @@ def atualizar_pagto():
     if st.session_state.check_conf: base += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
     st.session_state.pagto_input = base
 
-# --- INTERFACE ---
-aba = st.sidebar.radio("NAVEGAÇÃO", ["CADASTRO", "GERENCIAMENTO"])
+# --- MENU SUPERIOR HORIZONTAL ---
+aba_selecionada = st.tabs(["CADASTRO", "GERENCIAMENTO", "RELATÓRIOS"])
 
-if aba == "CADASTRO":
-    # Coluna central larga para alinhamento vertical perfeito
-    _, col_central, _ = st.columns([1, 5, 1])
+# --- CONTEÚDO CADASTRO ---
+with aba_selecionada[0]:
+    # Formulário centralizado mas com campos ocupando boa largura
+    _, col_form, _ = st.columns([1, 2, 1])
     
-    with col_central:
+    with col_form:
         st.text_input("ID", key="id_alu")
         st.text_input("Aluno", key="nome_alu")
         st.text_input("Tel. Responsável", key="t_resp")
@@ -149,27 +168,50 @@ if aba == "CADASTRO":
 
         if b2_col.button("FINALIZAR PDF"):
             if st.session_state.lista_previa:
-                # Lógica de salvamento na planilha (mesma das versões anteriores)
                 df_planilha = conn.read(ttl="0s").fillna("")
                 df_to_save = pd.DataFrame(st.session_state.lista_previa)
-                # ... (mapeamento de colunas se necessário)
-                df_final = pd.concat([df_planilha, df_to_save, pd.DataFrame([{c: "" for c in df_planilha.columns}])], ignore_index=True)
+                # Adiciona colunas técnicas da planilha
+                cols_planilha = ["STATUS", "SEC", "TURMA", "10 CURSOS?", "INGLÊS?", "Data Cadastro", "ID", "Aluno", "Tel. Resp", "Tel. Aluno", "CPF", "Cidade", "Curso", "Pagamento", "Vendedor", "Data Matrícula", "OBS1", "OBS2"]
+                
+                # Mapeia os dados para as colunas reais da planilha
+                df_to_save_final = pd.DataFrame(columns=cols_planilha)
+                for aluno in st.session_state.lista_previa:
+                    nova_l = {
+                        "STATUS": "ATIVO", "SEC": "MGA", "ID": aluno["ID"], "Aluno": aluno["ID"],
+                        "Tel. Resp": aluno["Tel. Responsável"], "Tel. Aluno": aluno["Tel. Aluno"],
+                        "CPF": aluno["CPF Responsável"], "Cidade": aluno["Cidade"],
+                        "Curso": aluno["Curso Contratado"], "Pagamento": aluno["Forma de Pagamento"],
+                        "Vendedor": aluno["Vendedor"], "Data Matrícula": aluno["Data da Matrícula"],
+                        "Data Cadastro": date.today().strftime("%d/%m/%Y"), 
+                        "10 CURSOS?": "SIM" if "10 CURSOS" in aluno["Curso Contratado"] else "NÃO",
+                        "INGLÊS?": "SIM" if "INGLÊS" in aluno["Curso Contratado"] else "NÃO"
+                    }
+                    df_to_save_final = pd.concat([df_to_save_final, pd.DataFrame([nova_l])], ignore_index=True)
+
+                df_final = pd.concat([df_planilha, df_to_save_final, pd.DataFrame([{c: "" for c in cols_planilha}])], ignore_index=True)
                 conn.update(data=df_final)
                 st.session_state.lista_previa = []
                 st.session_state.cidade_p = ""; st.session_state.vendedor_p = ""; st.session_state.data_p = ""
                 st.rerun()
 
-    # --- TABELA DE PRÉ-VISUALIZAÇÃO ---
+    # --- TABELA DE PRÉ-VISUALIZAÇÃO TELA CHEIA ---
     st.markdown(f"<p style='text-align: center; margin-top: 30px; font-weight: bold;'>Alunos na lista: {len(st.session_state.lista_previa)}</p>", unsafe_allow_html=True)
     
     if st.session_state.lista_previa:
         df_visual = pd.DataFrame(st.session_state.lista_previa)[COLUNAS_TABELA]
     else:
-        # Se a lista estiver vazia, criamos uma linha cheia de espaços para esconder o "Empty"
         vazio = {col: " " for col in COLUNAS_TABELA}
         df_visual = pd.DataFrame([vazio], columns=COLUNAS_TABELA)
     
     st.dataframe(df_visual, use_container_width=True, hide_index=True)
 
-elif aba == "GERENCIAMENTO":
-    st.dataframe(conn.read(ttl="0s").fillna(""), use_container_width=True, hide_index=True)
+# --- CONTEÚDO GERENCIAMENTO ---
+with aba_selecionada[1]:
+    st.markdown("### GERENCIAMENTO DE MATRÍCULAS")
+    df_geral = conn.read(ttl="0s").fillna("")
+    st.dataframe(df_geral, use_container_width=True, hide_index=True)
+
+# --- CONTEÚDO RELATÓRIOS ---
+with aba_selecionada[2]:
+    st.markdown("### RELATÓRIOS E ESTATÍSTICAS")
+    st.info("Módulo de relatórios em desenvolvimento.")
