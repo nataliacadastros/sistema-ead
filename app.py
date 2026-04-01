@@ -34,7 +34,7 @@ if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "cidade_p" not in st.session_state: st.session_state.cidade_p = ""
 if "vendedor_p" not in st.session_state: st.session_state.vendedor_p = ""
 if "data_p" not in st.session_state: st.session_state.data_p = ""
-if "curso_acumulado" not in st.session_state: st.session_state.curso_acumulado = ""
+if "curso_final_str" not in st.session_state: st.session_state.curso_final_str = ""
 
 # --- FUNÇÕES DE FORMATAÇÃO ---
 def aplicar_mascara_cpf():
@@ -47,23 +47,24 @@ def aplicar_mascara_data():
     if len(v) == 8:
         st.session_state.data_input = f"{v[:2]}/{v[2:4]}/{v[4:]}"
 
-def traduzir_curso_automatico():
-    # Pega o que o usuário digitou (ex: "1" ou "2")
-    val = st.session_state.curso_input_temp.strip()
+def tratar_entrada_curso():
+    # Pega o que o usuário digitou no campo
+    raw_val = st.session_state.curso_input_box.strip()
     
-    if val in CODIGOS_CURSOS:
-        nome_novo = CODIGOS_CURSOS[val].upper()
-        # Lógica de somar os cursos
-        if st.session_state.curso_acumulado:
-            st.session_state.curso_acumulado += f" + {nome_novo}"
+    # Se o valor for um código (0-10)
+    if raw_val in CODIGOS_CURSOS:
+        nome_novo = CODIGOS_CURSOS[raw_val].upper()
+        # Se já existe curso, concatena, senão, substitui
+        if st.session_state.curso_final_str:
+            st.session_state.curso_final_str += f" + {nome_novo}"
         else:
-            st.session_state.curso_acumulado = nome_novo
-    elif val != "":
-        # Se não for código, aceita como texto manual
-        st.session_state.curso_acumulado = val.upper()
+            st.session_state.curso_final_str = nome_novo
+    else:
+        # Se digitou algo que não é código, assume como o valor final do campo
+        st.session_state.curso_final_str = raw_val.upper()
     
-    # IMPORTANTE: Limpa o campo de digitação para o próximo código
-    st.session_state.curso_input_temp = ""
+    # Atualiza o valor que aparece no campo de texto para o acumulado
+    st.session_state.curso_input_box = st.session_state.curso_final_str
 
 # --- INTERFACE ---
 with st.sidebar:
@@ -81,13 +82,12 @@ if aba == "CADASTRO":
         st.text_input("CPF Responsável", key="cpf_input", on_change=aplicar_mascara_cpf)
         cidade = st.text_input("Cidade", value=st.session_state.cidade_p, key="cid_f")
         
-        # CAMPO DE DIGITAÇÃO (Onde você coloca o número)
-        st.text_input("Digitar Código do Curso (Ex: 1, 2... + Enter)", 
-                      key="curso_input_temp", 
-                      on_change=traduzir_curso_automatico)
-        
-        # CAMPO DE EXIBIÇÃO (Onde o nome aparece e acumula)
-        curso_final = st.text_input("Cursos Selecionados", value=st.session_state.curso_acumulado, key="curso_visual")
+        # O CAMPO ÚNICO DE CURSO
+        # value=st.session_state.curso_final_str faz o campo mostrar o nome traduzido
+        st.text_input("Curso Contratado (Digite o código e Enter)", 
+                      value=st.session_state.curso_final_str,
+                      key="curso_input_box", 
+                      on_change=tratar_entrada_curso)
         
         pagto = st.text_input("Forma de Pagamento", key="pagto")
         vendedor = st.text_input("Vendedor", value=st.session_state.vendedor_p, key="vend_f")
@@ -103,26 +103,26 @@ if aba == "CADASTRO":
         
         if btn_col1.button("Salvar Aluno"):
             if nome_alu:
-                # Usa o que estiver acumulado
-                curso_para_salvar = st.session_state.curso_acumulado
                 novo = {
                     "STATUS": "ATIVO", "SEC": "MGA", "TURMA": "", 
-                    "10 CURSOS?": "SIM" if "10 CURSOS" in curso_para_salvar else "NÃO",
-                    "INGLÊS?": "SIM" if "INGLÊS" in curso_para_salvar else "NÃO", 
+                    "10 CURSOS?": "SIM" if "10 CURSOS" in st.session_state.curso_final_str else "NÃO",
+                    "INGLÊS?": "SIM" if "INGLÊS" in st.session_state.curso_final_str else "NÃO", 
                     "Data Cadastro": date.today().strftime("%d/%m/%Y"),
                     "ID": id_alu, "Aluno": nome_alu.upper(), "Tel. Resp": tel_r, "Tel. Aluno": tel_a,
                     "CPF": st.session_state.cpf_input, "Cidade": cidade.upper(), 
-                    "Curso": curso_para_salvar, "Pagamento": pagto.upper(), 
+                    "Curso": st.session_state.curso_final_str, "Pagamento": pagto.upper(), 
                     "Vendedor": vendedor.upper(), "Data Matrícula": st.session_state.data_input,
                     "OBS1": "LIB INGLÊS" if lib_ing else "", "OBS2": "BONUS" if bonus else ""
                 }
                 st.session_state.lista_previa.append(novo)
                 
-                # Persistência
+                # Persistência de campos
                 st.session_state.cidade_p = cidade
                 st.session_state.vendedor_p = vendedor
                 st.session_state.data_p = st.session_state.data_input
-                st.session_state.curso_acumulado = "" # Limpa para o próximo aluno
+                
+                # Limpa curso para o próximo aluno
+                st.session_state.curso_final_str = ""
                 st.rerun()
 
         if btn_col2.button("Finalizar PDF"):
@@ -131,10 +131,12 @@ if aba == "CADASTRO":
                 df_new = pd.DataFrame(st.session_state.lista_previa)
                 df_final = pd.concat([df_n, df_new, pd.DataFrame([{c: "" for c in df_new.columns}])], ignore_index=True)
                 conn.update(data=df_final)
+                
+                # Reset total
                 st.session_state.lista_previa = []
                 st.session_state.cidade_p = ""; st.session_state.vendedor_p = ""; st.session_state.data_p = ""
-                st.session_state.cpf_input = ""; st.session_state.data_input = ""; st.session_state.curso_acumulado = ""
-                st.success("Enviado!")
+                st.session_state.cpf_input = ""; st.session_state.data_input = ""; st.session_state.curso_final_str = ""
+                st.success("PDF Enviado!")
                 st.rerun()
 
         btn_col3.button("GERENCIAMENTO MESTRE")
