@@ -34,8 +34,9 @@ if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "cidade_p" not in st.session_state: st.session_state.cidade_p = ""
 if "vendedor_p" not in st.session_state: st.session_state.vendedor_p = ""
 if "data_p" not in st.session_state: st.session_state.data_p = ""
+if "curso_acumulado" not in st.session_state: st.session_state.curso_acumulado = ""
 
-# --- FUNÇÕES DE FORMATAÇÃO E TRADUÇÃO ---
+# --- FUNÇÕES DE FORMATAÇÃO ---
 def aplicar_mascara_cpf():
     v = "".join(filter(str.isdigit, st.session_state.cpf_input))
     if len(v) == 11:
@@ -47,26 +48,22 @@ def aplicar_mascara_data():
         st.session_state.data_input = f"{v[:2]}/{v[2:4]}/{v[4:]}"
 
 def traduzir_curso_automatico():
-    # Pega o que foi digitado no campo de curso
     val = st.session_state.curso_input_field.strip()
     
-    # Se for um código numérico conhecido
     if val in CODIGOS_CURSOS:
-        nome_completo = CODIGOS_CURSOS[val]
-        # Se já tiver texto lá (ex: outro curso), ele concatena com o +
-        # Se o campo estiver só com o número, ele substitui
-        texto_atual = st.session_state.get('curso_acumulado', "")
-        
-        if texto_atual and texto_atual != val:
-             st.session_state.curso_input_field = f"{texto_atual} + {nome_completo}".upper()
+        nome_novo = CODIGOS_CURSOS[val].upper()
+        # Se já tiver algo escrito, adiciona o " + " antes do novo nome
+        if st.session_state.curso_acumulado:
+            st.session_state.curso_acumulado += f" + {nome_novo}"
         else:
-             st.session_state.curso_input_field = nome_completo.upper()
+            st.session_state.curso_acumulado = nome_novo
+        
+        # O campo de input recebe o valor acumulado e adicionamos um espaço no fim
+        st.session_state.curso_input_field = st.session_state.curso_acumulado + " "
     else:
-        # Se for texto manual, apenas coloca em maiúsculas
-        st.session_state.curso_input_field = val.upper()
-    
-    # Salva o estado atualizado para o próximo curso ou para o banco
-    st.session_state.curso_acumulado = st.session_state.curso_input_field
+        # Se for texto manual, apenas atualiza o acumulado
+        st.session_state.curso_acumulado = val.upper()
+        st.session_state.curso_input_field = val.upper() + " "
 
 # --- INTERFACE ---
 with st.sidebar:
@@ -82,13 +79,10 @@ if aba == "CADASTRO":
         tel_r = st.text_input("Tel. Responsável", key="tel_r")
         tel_a = st.text_input("Tel. Aluno", key="tel_a")
         
-        # CPF com Máscara
         st.text_input("CPF Responsável", key="cpf_input", on_change=aplicar_mascara_cpf)
-        
-        # Cidade Persistente
         cidade = st.text_input("Cidade", value=st.session_state.cidade_p, key="cid_f")
         
-        # CURSO COM TRADUÇÃO NO MESMO CAMPO (IGUAL AO CPF)
+        # CURSO COM LÓGICA DE EMPILHAMENTO + E ESPAÇO
         st.text_input("Curso Contratado (Digite o código e dê Enter)", 
                       key="curso_input_field", 
                       on_change=traduzir_curso_automatico)
@@ -96,7 +90,6 @@ if aba == "CADASTRO":
         pagto = st.text_input("Forma de Pagamento", key="pagto")
         vendedor = st.text_input("Vendedor", value=st.session_state.vendedor_p, key="vend_f")
         
-        # Data com Máscara
         st.text_input("Data da Matrícula (DDMMYYYY + Enter)", value=st.session_state.data_p, key="data_input", on_change=aplicar_mascara_data)
 
         st.write("")
@@ -109,7 +102,7 @@ if aba == "CADASTRO":
         
         if btn_col1.button("Salvar Aluno"):
             if nome_alu:
-                curso_final = st.session_state.curso_input_field
+                curso_final = st.session_state.curso_input_field.strip()
                 novo = {
                     "STATUS": "ATIVO", "SEC": "MGA", "TURMA": "", 
                     "10 CURSOS?": "SIM" if "10 CURSOS" in curso_final else "NÃO",
@@ -123,12 +116,12 @@ if aba == "CADASTRO":
                 }
                 st.session_state.lista_previa.append(novo)
                 
-                # Salva os persistentes
+                # Persistência
                 st.session_state.cidade_p = cidade
                 st.session_state.vendedor_p = vendedor
                 st.session_state.data_p = st.session_state.data_input
                 
-                # Limpa o curso acumulado para o próximo aluno
+                # Limpa curso para o próximo aluno
                 st.session_state.curso_acumulado = ""
                 st.session_state.curso_input_field = ""
                 st.rerun()
@@ -140,7 +133,6 @@ if aba == "CADASTRO":
                 df_final = pd.concat([df_n, df_new, pd.DataFrame([{c: "" for c in df_new.columns}])], ignore_index=True)
                 conn.update(data=df_final)
                 
-                # Limpa TUDO para o novo lote
                 st.session_state.lista_previa = []
                 st.session_state.cidade_p = ""
                 st.session_state.vendedor_p = ""
@@ -148,7 +140,8 @@ if aba == "CADASTRO":
                 st.session_state.cpf_input = ""
                 st.session_state.data_input = ""
                 st.session_state.curso_input_field = ""
-                st.success("Enviado com sucesso!")
+                st.session_state.curso_acumulado = ""
+                st.success("Enviado!")
                 st.rerun()
 
         btn_col3.button("GERENCIAMENTO MESTRE")
