@@ -21,7 +21,7 @@ st.markdown("""
     /* Inputs Super Compactos */
     .stTextInput>div>div>input { 
         background-color: white !important; color: black !important; 
-        height: 16px !important; text-transform: uppercase !important; 
+        height: 12px !important; text-transform: uppercase !important; 
         border-radius: 2px !important; font-size: 11px !important;
         padding: 2px 5px !important;
     }
