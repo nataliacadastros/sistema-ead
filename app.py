@@ -6,18 +6,24 @@ from streamlit_gsheets import GSheetsConnection
 # --- CONFIGURAÇÕES DA PÁGINA ---
 st.set_page_config(page_title="PROFISSIONALIZA EAD", layout="wide", initial_sidebar_state="expanded")
 
-# --- CSS PARA DESIGN COMPACTO ---
+# --- CSS PARA DESIGN E MAIÚSCULAS ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
     [data-testid="stSidebar"] { background-color: #004a99 !important; }
-    .stTextInput>div>div>input { background-color: white !important; color: black !important; height: 26px !important; font-size: 13px !important; }
+    /* Força o texto a aparecer em maiúsculo enquanto você digita */
+    .stTextInput>div>div>input { 
+        background-color: white !important; 
+        color: black !important; 
+        height: 26px !important; 
+        text-transform: uppercase !important; 
+    }
     label { color: #2ecc71 !important; font-weight: bold !important; font-size: 13px !important; margin-bottom: -5px !important; }
     .stButton>button { height: 32px; font-size: 12px !important; border-radius: 4px; font-weight: bold; width: 100%; }
-    div[data-testid="stHorizontalBlock"] > div:nth-child(1) button { background-color: #90ee90 !important; color: black !important; }
-    div[data-testid="stHorizontalBlock"] > div:nth-child(2) button { background-color: #a2d2ff !important; color: black !important; }
-    div[data-testid="stHorizontalBlock"] > div:nth-child(3) button { background-color: #007bff !important; color: white !important; }
     header {visibility: hidden;} footer {visibility: hidden;}
+    
+    /* Estilo para a Tabela de Pré-visualização */
+    .styled-table { width: 100%; border-collapse: collapse; font-size: 12px; color: white; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -35,7 +41,6 @@ if "curso_acumulado" not in st.session_state: st.session_state.curso_acumulado =
 if "cidade_p" not in st.session_state: st.session_state.cidade_p = ""
 if "vendedor_p" not in st.session_state: st.session_state.vendedor_p = ""
 if "data_p" not in st.session_state: st.session_state.data_p = ""
-if "pagto_manual" not in st.session_state: st.session_state.pagto_manual = ""
 
 # --- FUNÇÕES DE LÓGICA ---
 def aplicar_mascara_cpf():
@@ -66,27 +71,22 @@ def processar_curso_contratado():
     st.session_state.curso_field = st.session_state.curso_acumulado
 
 def atualizar_pagamento_final():
-    # Esta função reconstrói o texto do campo de pagamento baseado nos botões
-    base = st.session_state.pagto_input_box.split(" | ")[0] # Pega só o que o usuário escreveu
+    base = st.session_state.pagto_input_box.split(" | ")[0]
     final = base.upper()
-    
     if st.session_state.check_lib:
         final += " | APÓS PAGAMENTO LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO IN-GLÊS"
     if st.session_state.check_bonus:
         final += " | CASO PAGUE VIA LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO CURSO BÔNUS A ESCOLHA"
     if st.session_state.check_conf:
         final += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
-    
     st.session_state.pagto_input_box = final
 
 # --- INTERFACE ---
 with st.sidebar:
-    st.title("SISTEMA EAD")
-    aba = st.radio("NAVEGAÇÃO", ["CADASTRO", "GERENCIAMENTO", "RELATÓRIOS"])
+    aba = st.radio("NAVEGAÇÃO", ["CADASTRO", "GERENCIAMENTO"])
 
 if aba == "CADASTRO":
     _, col_central, _ = st.columns([1, 2, 1])
-    
     with col_central:
         id_alu = st.text_input("ID", key="id_alu")
         nome_alu = st.text_input("Aluno", key="nome_alu")
@@ -94,20 +94,13 @@ if aba == "CADASTRO":
         tel_a = st.text_input("Tel. Aluno", key="tel_a")
         st.text_input("CPF Responsável", key="cpf_input", on_change=aplicar_mascara_cpf)
         cidade = st.text_input("Cidade", value=st.session_state.cidade_p, key="cid_f")
-        
-        st.text_input("Curso Contratado", value=st.session_state.curso_acumulado, 
-                      key="curso_field", on_change=processar_curso_contratado)
-        
-        # CAMPO PAGAMENTO (Atualiza ao interagir com os checkboxes)
-        pagto_display = st.text_input("Forma de Pagamento", key="pagto_input_box")
-        
+        st.text_input("Curso Contratado", value=st.session_state.curso_acumulado, key="curso_field", on_change=processar_curso_contratado)
+        st.text_input("Forma de Pagamento", key="pagto_input_box")
         vendedor = st.text_input("Vendedor", value=st.session_state.vendedor_p, key="vend_f")
-        st.text_input("Data da Matrícula (DDMMYYYY + Enter)", value=st.session_state.data_p, 
-                      key="data_input", on_change=aplicar_mascara_data)
+        st.text_input("Data da Matrícula", value=st.session_state.data_p, key="data_input", on_change=aplicar_mascara_data)
 
         st.write("")
         c1, c2, c3 = st.columns(3)
-        # Checkboxes que disparam a atualização do campo de texto acima
         lib_ing = c1.checkbox("LIBERAÇÃO IN-GLÊS", key="check_lib", on_change=atualizar_pagamento_final)
         bonus = c2.checkbox("CURSO BÔNUS", key="check_bonus", on_change=atualizar_pagamento_final)
         confirma = c3.checkbox("AGUARDANDO CONFIRMAÇÃO", key="check_conf", on_change=atualizar_pagamento_final)
@@ -117,23 +110,25 @@ if aba == "CADASTRO":
         if btn_col1.button("Salvar Aluno"):
             if nome_alu:
                 novo = {
-                    "STATUS": "ATIVO", "SEC": "MGA", "TURMA": "", 
-                    "10 CURSOS?": "SIM" if "10 CURSOS" in st.session_state.curso_acumulado else "NÃO",
-                    "INGLÊS?": "SIM" if "INGLÊS" in st.session_state.curso_acumulado else "NÃO", 
-                    "Data Cadastro": date.today().strftime("%d/%m/%Y"),
-                    "ID": id_alu, "Aluno": nome_alu.upper(), "Tel. Resp": tel_r, "Tel. Aluno": tel_a,
-                    "CPF": st.session_state.cpf_input, "Cidade": cidade.upper(), 
+                    "ID": id_alu.upper(), 
+                    "Aluno": nome_alu.upper(), 
+                    "Cidade": cidade.upper(), 
                     "Curso": st.session_state.curso_acumulado.strip(), 
-                    "Pagamento": st.session_state.pagto_input_box,
-                    "Vendedor": vendedor.upper(), "Data Matrícula": st.session_state.data_input,
-                    "OBS1": "LIB INGLÊS" if lib_ing else "", "OBS2": "BONUS" if bonus else ""
+                    "Pagamento": st.session_state.pagto_input_box.upper(),
+                    "Vendedor": vendedor.upper(),
+                    "Data": st.session_state.data_input,
+                    # Campos extras para a planilha
+                    "STATUS": "ATIVO", "SEC": "MGA", "Data Cadastro": date.today().strftime("%d/%m/%Y"),
+                    "Tel. Resp": tel_r, "Tel. Aluno": tel_a, "CPF": st.session_state.cpf_input
                 }
                 st.session_state.lista_previa.append(novo)
-                st.session_state.cidade_p = cidade
-                st.session_state.vendedor_p = vendedor
+                # Mantém os dados repetitivos
+                st.session_state.cidade_p = cidade.upper()
+                st.session_state.vendedor_p = vendedor.upper()
                 st.session_state.data_p = st.session_state.data_input
+                # Limpa os dados únicos
                 st.session_state.curso_acumulado = ""
-                st.session_state.pagto_input_box = "" # Limpa para o próximo aluno
+                st.session_state.pagto_input_box = ""
                 st.rerun()
 
         if btn_col2.button("Finalizar PDF"):
@@ -143,15 +138,16 @@ if aba == "CADASTRO":
                 df_final = pd.concat([df_n, df_new, pd.DataFrame([{c: "" for c in df_new.columns}])], ignore_index=True)
                 conn.update(data=df_final)
                 st.session_state.lista_previa = []
-                st.session_state.cidade_p = ""; st.session_state.vendedor_p = ""; st.session_state.data_p = ""
-                st.session_state.cpf_input = ""; st.session_state.data_input = ""; st.session_state.curso_acumulado = ""
-                st.success("PDF Enviado!")
+                st.success("Enviado com sucesso!")
                 st.rerun()
 
-        btn_col3.button("GERENCIAMENTO MESTRE")
-
+    # --- TABELA DE PRÉ-VISUALIZAÇÃO (ABAIXO DOS CAMPOS) ---
     if st.session_state.lista_previa:
-        st.table(pd.DataFrame(st.session_state.lista_previa)[["ID", "Aluno", "Curso", "Pagamento"]])
+        st.markdown("---")
+        st.markdown("### 📋 Alunos na Fila de Espera")
+        # Exibe apenas as colunas principais para não poluir a tela
+        df_preview = pd.DataFrame(st.session_state.lista_previa)[["ID", "Aluno", "Curso", "Pagamento", "Vendedor"]]
+        st.dataframe(df_preview, use_container_width=True, hide_index=True)
 
 elif aba == "GERENCIAMENTO":
     st.dataframe(conn.read(ttl="0s").fillna(""), use_container_width=True, hide_index=True)
