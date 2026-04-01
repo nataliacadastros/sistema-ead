@@ -26,16 +26,19 @@ st.markdown("""
         display: flex; align-items: center; height: 22px; justify-content: flex-end; padding-right: 10px;
     }
     
-    /* Botões Verdes */
+    /* Botões Verdes de Ação */
     div.stButton > button {
         background-color: #2ecc71 !important; color: white !important;
         font-weight: bold !important; height: 35px !important; font-size: 13px !important;
         border-radius: 4px !important; border: none !important;
     }
 
-    /* Tabs e Checkboxes */
-    .stTabs [data-baseweb="tab-list"] { gap: 8px; background-color: #004a99; padding: 2px 10px; }
-    .stCheckbox label p { font-size: 11px !important; color: #2ecc71 !important; font-weight: bold; }
+    /* Reduzindo espaço entre Checkboxes */
+    [data-testid="stHorizontalBlock"] div[data-testid="column"] {
+        padding-right: 0px !important;
+        margin-right: -20px !important; /* Puxa um botão para perto do outro */
+    }
+    .stCheckbox label p { font-size: 10px !important; color: #2ecc71 !important; font-weight: bold; white-space: nowrap; }
     
     header {visibility: hidden;} footer {visibility: hidden;}
     .stDataFrame { background-color: white !important; }
@@ -64,7 +67,6 @@ def campo_horizontal(label, key, value="", on_change=None):
 # --- LÓGICA DE PAGAMENTO DINÂMICO ---
 def atualizar_pagto():
     texto_atual = st.session_state.pagto_input
-    # Separa o que foi digitado manualmente do que foi adicionado pelos botões
     base = texto_atual.split(" | ")[0].strip().upper()
     
     if st.session_state.check_lib:
@@ -106,10 +108,12 @@ with abas[0]:
         campo_horizontal("DATA:", "data_input")
 
         st.write("")
-        # --- BOTÕES DE SELEÇÃO (ACIMA DOS BOTÕES DE SALVAR) ---
-        sel1, sel2, sel3 = st.columns(3)
-        with sel1: st.checkbox("LIB. IN-GLÊS", key="check_lib", on_change=atualizar_pagto)
-        with sel2: st.checkbox("CURSO BÔNUS", key="check_bonus", on_change=atualizar_pagto)
+        
+        # --- BOTÕES DE SELEÇÃO (JUNTOS) ---
+        # Usamos uma proporção que dá pouco espaço para cada um, "espremendo-os"
+        sel1, sel2, sel3, espaco_vazio = st.columns([1, 1, 1.2, 2]) 
+        with sel1: st.checkbox("IN-GLÊS", key="check_lib", on_change=atualizar_pagto)
+        with sel2: st.checkbox("BÔNUS", key="check_bonus", on_change=atualizar_pagto)
         with sel3: st.checkbox("CONFIRMAÇÃO", key="check_conf", on_change=atualizar_pagto)
 
         # --- BOTÕES DE AÇÃO ---
@@ -127,10 +131,8 @@ with abas[0]:
                     "Data": st.session_state.data_input
                 }
                 st.session_state.lista_previa.append(aluno)
-                # Resetando campos únicos
                 st.session_state.curso_acumulado = ""
                 st.session_state.pagto_input = ""
-                # Resetando os checkboxes
                 st.session_state.check_lib = False
                 st.session_state.check_bonus = False
                 st.session_state.check_conf = False
@@ -138,18 +140,14 @@ with abas[0]:
 
         if btn2.button("FINALIZAR PDF"):
             if st.session_state.lista_previa:
-                # Lógica para GSheets aqui (omitida para foco no layout)
                 st.session_state.lista_previa = []
-                st.success("Enviado com sucesso!")
+                st.success("Enviado!")
                 st.rerun()
 
-    # Tabela de Pré-visualização na base
+    # Tabela
     st.markdown("---")
-    if st.session_state.lista_previa:
-        st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
-    else:
-        st.dataframe(pd.DataFrame(columns=["ID", "Aluno", "Cidade", "Curso", "Pagamento", "Vendedor", "Data"]), use_container_width=True, hide_index=True)
+    df_vis = pd.DataFrame(st.session_state.lista_previa) if st.session_state.lista_previa else pd.DataFrame(columns=["ID", "Aluno", "Cidade", "Curso", "Pagamento", "Vendedor", "Data"])
+    st.dataframe(df_vis, use_container_width=True, hide_index=True)
 
 with abas[1]:
-    st.subheader("Gerenciamento")
     st.dataframe(conn.read(ttl="0s").fillna(""), use_container_width=True)
