@@ -48,35 +48,20 @@ def aplicar_mascara_data():
         st.session_state.data_input = f"{v[:2]}/{v[2:4]}/{v[4:]}"
 
 def processar_curso_contratado():
-    # Obtém o texto digitado e remove espaços extras nas pontas
     texto_bruto = st.session_state.curso_field.strip()
-    
-    # Divide o texto em partes para encontrar o último termo (possível código)
     partes = texto_bruto.split()
-    
     if partes:
         ultimo_termo = partes[-1]
-        
-        # Se o último termo for um código válido no dicionário
         if ultimo_termo in CURSOS_DICT:
             nome_curso = CURSOS_DICT[ultimo_termo].upper()
-            
-            # Pega o texto que já existia antes desse último código
             texto_anterior = " ".join(partes[:-1])
-            
-            # Se já houver conteúdo anterior (outro curso), remove o "+" se ele estiver sobrando
             if texto_anterior:
-                if texto_anterior.endswith("+"):
-                    texto_anterior = texto_anterior[:-1].strip()
+                if texto_anterior.endswith("+"): texto_anterior = texto_anterior[:-1].strip()
                 st.session_state.curso_acumulado = f"{texto_anterior} + {nome_curso} "
             else:
-                # Primeiro curso do campo
                 st.session_state.curso_acumulado = f"{nome_curso} "
         else:
-            # Se não for código, mantém o que o usuário escreveu em maiúsculo
             st.session_state.curso_acumulado = texto_bruto.upper() + " "
-    
-    # Atualiza o widget com o novo valor processado
     st.session_state.curso_field = st.session_state.curso_acumulado
 
 # --- INTERFACE ---
@@ -95,13 +80,14 @@ if aba == "CADASTRO":
         st.text_input("CPF Responsável", key="cpf_input", on_change=aplicar_mascara_cpf)
         cidade = st.text_input("Cidade", value=st.session_state.cidade_p, key="cid_f")
         
-        # CAMPO CURSO CONTRATADO COM LÓGICA DE ENTER
         st.text_input("Curso Contratado", 
                       value=st.session_state.curso_acumulado, 
                       key="curso_field", 
                       on_change=processar_curso_contratado)
         
-        pagto = st.text_input("Forma de Pagamento", key="pagto")
+        # FORMA DE PAGAMENTO
+        pagto_base = st.text_input("Forma de Pagamento", key="pagto_manual")
+        
         vendedor = st.text_input("Vendedor", value=st.session_state.vendedor_p, key="vend_f")
         st.text_input("Data da Matrícula (DDMMYYYY + Enter)", value=st.session_state.data_p, key="data_input", on_change=aplicar_mascara_data)
 
@@ -110,6 +96,19 @@ if aba == "CADASTRO":
         lib_ing = c1.checkbox("LIBERAÇÃO IN-GLÊS")
         bonus = c2.checkbox("CURSO BÔNUS")
         confirma = c3.checkbox("AGUARDANDO CONFIRMAÇÃO")
+
+        # Lógica de Sufixo do Pagamento
+        pagto_final = pagto_base.upper()
+        if lib_ing:
+            pagto_final += " | APÓS PAGAMENTO LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO IN-GLÊS"
+        if bonus:
+            pagto_final += " | CASO PAGUE VIA LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO CURSO BÔNUS A ESCOLHA"
+        if confirma:
+            pagto_final += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
+
+        # Preview do pagamento para o usuário ver
+        if lib_ing or bonus or confirma:
+            st.markdown(f"<p style='color:#76c7c0; font-size:11px;'><b>Obs Pagamento:</b> {pagto_final}</p>", unsafe_allow_html=True)
 
         btn_col1, btn_col2, btn_col3 = st.columns(3)
         
@@ -122,7 +121,8 @@ if aba == "CADASTRO":
                     "Data Cadastro": date.today().strftime("%d/%m/%Y"),
                     "ID": id_alu, "Aluno": nome_alu.upper(), "Tel. Resp": tel_r, "Tel. Aluno": tel_a,
                     "CPF": st.session_state.cpf_input, "Cidade": cidade.upper(), 
-                    "Curso": st.session_state.curso_acumulado.strip(), "Pagamento": pagto.upper(), 
+                    "Curso": st.session_state.curso_acumulado.strip(), 
+                    "Pagamento": pagto_final, # Enviando o texto completo com os sufixos
                     "Vendedor": vendedor.upper(), "Data Matrícula": st.session_state.data_input,
                     "OBS1": "LIB INGLÊS" if lib_ing else "", "OBS2": "BONUS" if bonus else ""
                 }
@@ -148,7 +148,7 @@ if aba == "CADASTRO":
         btn_col3.button("GERENCIAMENTO MESTRE")
 
     if st.session_state.lista_previa:
-        st.table(pd.DataFrame(st.session_state.lista_previa)[["ID", "Aluno", "Curso", "Vendedor"]])
+        st.table(pd.DataFrame(st.session_state.lista_previa)[["ID", "Aluno", "Curso", "Pagamento"]])
 
 elif aba == "GERENCIAMENTO":
     st.dataframe(conn.read(ttl="0s").fillna(""), use_container_width=True, hide_index=True)
