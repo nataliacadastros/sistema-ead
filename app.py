@@ -48,22 +48,22 @@ def aplicar_mascara_data():
         st.session_state.data_input = f"{v[:2]}/{v[2:4]}/{v[4:]}"
 
 def traduzir_curso_automatico():
-    val = st.session_state.curso_input_field.strip()
+    # Pega o que o usuário digitou (ex: "1" ou "2")
+    val = st.session_state.curso_input_temp.strip()
     
     if val in CODIGOS_CURSOS:
         nome_novo = CODIGOS_CURSOS[val].upper()
-        # Se já tiver algo escrito, adiciona o " + " antes do novo nome
+        # Lógica de somar os cursos
         if st.session_state.curso_acumulado:
             st.session_state.curso_acumulado += f" + {nome_novo}"
         else:
             st.session_state.curso_acumulado = nome_novo
-        
-        # O campo de input recebe o valor acumulado e adicionamos um espaço no fim
-        st.session_state.curso_input_field = st.session_state.curso_acumulado + " "
-    else:
-        # Se for texto manual, apenas atualiza o acumulado
+    elif val != "":
+        # Se não for código, aceita como texto manual
         st.session_state.curso_acumulado = val.upper()
-        st.session_state.curso_input_field = val.upper() + " "
+    
+    # IMPORTANTE: Limpa o campo de digitação para o próximo código
+    st.session_state.curso_input_temp = ""
 
 # --- INTERFACE ---
 with st.sidebar:
@@ -78,18 +78,19 @@ if aba == "CADASTRO":
         nome_alu = st.text_input("Aluno", key="nome_alu")
         tel_r = st.text_input("Tel. Responsável", key="tel_r")
         tel_a = st.text_input("Tel. Aluno", key="tel_a")
-        
         st.text_input("CPF Responsável", key="cpf_input", on_change=aplicar_mascara_cpf)
         cidade = st.text_input("Cidade", value=st.session_state.cidade_p, key="cid_f")
         
-        # CURSO COM LÓGICA DE EMPILHAMENTO + E ESPAÇO
-        st.text_input("Curso Contratado (Digite o código e dê Enter)", 
-                      key="curso_input_field", 
+        # CAMPO DE DIGITAÇÃO (Onde você coloca o número)
+        st.text_input("Digitar Código do Curso (Ex: 1, 2... + Enter)", 
+                      key="curso_input_temp", 
                       on_change=traduzir_curso_automatico)
+        
+        # CAMPO DE EXIBIÇÃO (Onde o nome aparece e acumula)
+        curso_final = st.text_input("Cursos Selecionados", value=st.session_state.curso_acumulado, key="curso_visual")
         
         pagto = st.text_input("Forma de Pagamento", key="pagto")
         vendedor = st.text_input("Vendedor", value=st.session_state.vendedor_p, key="vend_f")
-        
         st.text_input("Data da Matrícula (DDMMYYYY + Enter)", value=st.session_state.data_p, key="data_input", on_change=aplicar_mascara_data)
 
         st.write("")
@@ -102,15 +103,16 @@ if aba == "CADASTRO":
         
         if btn_col1.button("Salvar Aluno"):
             if nome_alu:
-                curso_final = st.session_state.curso_input_field.strip()
+                # Usa o que estiver acumulado
+                curso_para_salvar = st.session_state.curso_acumulado
                 novo = {
                     "STATUS": "ATIVO", "SEC": "MGA", "TURMA": "", 
-                    "10 CURSOS?": "SIM" if "10 CURSOS" in curso_final else "NÃO",
-                    "INGLÊS?": "SIM" if "INGLÊS" in curso_final else "NÃO", 
+                    "10 CURSOS?": "SIM" if "10 CURSOS" in curso_para_salvar else "NÃO",
+                    "INGLÊS?": "SIM" if "INGLÊS" in curso_para_salvar else "NÃO", 
                     "Data Cadastro": date.today().strftime("%d/%m/%Y"),
                     "ID": id_alu, "Aluno": nome_alu.upper(), "Tel. Resp": tel_r, "Tel. Aluno": tel_a,
                     "CPF": st.session_state.cpf_input, "Cidade": cidade.upper(), 
-                    "Curso": curso_final, "Pagamento": pagto.upper(), 
+                    "Curso": curso_para_salvar, "Pagamento": pagto.upper(), 
                     "Vendedor": vendedor.upper(), "Data Matrícula": st.session_state.data_input,
                     "OBS1": "LIB INGLÊS" if lib_ing else "", "OBS2": "BONUS" if bonus else ""
                 }
@@ -120,10 +122,7 @@ if aba == "CADASTRO":
                 st.session_state.cidade_p = cidade
                 st.session_state.vendedor_p = vendedor
                 st.session_state.data_p = st.session_state.data_input
-                
-                # Limpa curso para o próximo aluno
-                st.session_state.curso_acumulado = ""
-                st.session_state.curso_input_field = ""
+                st.session_state.curso_acumulado = "" # Limpa para o próximo aluno
                 st.rerun()
 
         if btn_col2.button("Finalizar PDF"):
@@ -132,15 +131,9 @@ if aba == "CADASTRO":
                 df_new = pd.DataFrame(st.session_state.lista_previa)
                 df_final = pd.concat([df_n, df_new, pd.DataFrame([{c: "" for c in df_new.columns}])], ignore_index=True)
                 conn.update(data=df_final)
-                
                 st.session_state.lista_previa = []
-                st.session_state.cidade_p = ""
-                st.session_state.vendedor_p = ""
-                st.session_state.data_p = ""
-                st.session_state.cpf_input = ""
-                st.session_state.data_input = ""
-                st.session_state.curso_input_field = ""
-                st.session_state.curso_acumulado = ""
+                st.session_state.cidade_p = ""; st.session_state.vendedor_p = ""; st.session_state.data_p = ""
+                st.session_state.cpf_input = ""; st.session_state.data_input = ""; st.session_state.curso_acumulado = ""
                 st.success("Enviado!")
                 st.rerun()
 
