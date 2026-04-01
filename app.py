@@ -30,38 +30,34 @@ CODIGOS_CURSOS = {
 # --- CONEXÃO E ESTADOS ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# Inicialização de variáveis persistentes
 if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
-if "curso_acumulado" not in st.session_state: st.session_state.curso_acumulado = ""
-if "cidade_fixa" not in st.session_state: st.session_state.cidade_fixa = ""
-if "vendedor_fixo" not in st.session_state: st.session_state.vendedor_fixo = ""
-if "data_fixa" not in st.session_state: st.session_state.data_fixa = ""
+if "curso_str" not in st.session_state: st.session_state.curso_str = ""
+if "cidade_p" not in st.session_state: st.session_state.cidade_p = ""
+if "vendedor_p" not in st.session_state: st.session_state.vendedor_p = ""
+if "data_p" not in st.session_state: st.session_state.data_p = ""
 
-# --- FUNÇÕES DE MÁSCARA E LÓGICA ---
-def formatar_cpf(valor):
-    v = "".join(filter(str.isdigit, valor))
-    if len(v) <= 3: return v
-    if len(v) <= 6: return f"{v[:3]}.{v[3:]}"
-    if len(v) <= 9: return f"{v[:3]}.{v[3:6]}.{v[6:]}"
-    return f"{v[:3]}.{v[3:6]}.{v[6:9]}-{v[9:11]}"
+# --- FUNÇÕES DE FORMATAÇÃO ---
+def aplicar_mascara_cpf():
+    v = "".join(filter(str.isdigit, st.session_state.cpf_input))
+    if len(v) == 11:
+        st.session_state.cpf_input = f"{v[:3]}.{v[3:6]}.{v[6:9]}-{v[9:11]}"
 
-def formatar_data(valor):
-    v = "".join(filter(str.isdigit, valor))
-    if len(v) <= 2: return v
-    if len(v) <= 4: return f"{v[:2]}/{v[2:]}"
-    return f"{v[:2]}/{v[2:4]}/{v[4:8]}"
+def aplicar_mascara_data():
+    v = "".join(filter(str.isdigit, st.session_state.data_input))
+    if len(v) == 8:
+        st.session_state.data_input = f"{v[:2]}/{v[2:4]}/{v[4:]}"
 
-def processar_curso():
-    val = st.session_state.input_curso_raw.strip()
+def atualizar_curso():
+    val = st.session_state.curso_input.strip()
     if val in CODIGOS_CURSOS:
         nome = CODIGOS_CURSOS[val]
-        if st.session_state.curso_acumulado:
-            st.session_state.curso_acumulado += f" + {nome}"
+        if st.session_state.curso_str:
+            st.session_state.curso_str += f" + {nome}"
         else:
-            st.session_state.curso_acumulado = nome
-        st.session_state.input_curso_raw = "" # Limpa o gatilho
+            st.session_state.curso_str = nome
     elif val != "":
-        st.session_state.curso_acumulado = val.upper()
+        st.session_state.curso_str = val.upper()
+    st.session_state.curso_input = "" # Reseta campo de digitação
 
 # --- INTERFACE ---
 with st.sidebar:
@@ -72,29 +68,27 @@ if aba == "CADASTRO":
     _, col_central, _ = st.columns([1, 2, 1])
     
     with col_central:
-        id_alu = st.text_input("ID", key="id_field")
-        nome_alu = st.text_input("Aluno", key="nome_field")
-        tel_r = st.text_input("Tel. Responsável", key="telr_field")
-        tel_a = st.text_input("Tel. Aluno", key="tela_field")
+        id_alu = st.text_input("ID", key="id_alu")
+        nome_alu = st.text_input("Aluno", key="nome_alu")
+        tel_r = st.text_input("Tel. Responsável", key="tel_r")
+        tel_a = st.text_input("Tel. Aluno", key="tel_a")
         
-        # Campo CPF com Máscara
-        raw_cpf = st.text_input("CPF Responsável (000.000.000-00)", key="cpf_raw")
-        cpf_formatado = formatar_cpf(raw_cpf)
+        # CPF com Máscara no Enter/Tab
+        st.text_input("CPF Responsável", key="cpf_input", on_change=aplicar_mascara_cpf)
         
-        # Persistência de Cidade, Vendedor e Data
-        cidade = st.text_input("Cidade", value=st.session_state.cidade_fixa, key="cid_input")
+        # Campos Persistentes
+        cidade = st.text_input("Cidade", value=st.session_state.cidade_p, key="cid_f")
         
-        # Campo Curso (Mesmo Campo)
+        # Curso (Mesmo Campo)
         st.text_input("Curso Contratado (Digite o código e Enter)", 
-                      value=st.session_state.curso_acumulado, 
-                      key="input_curso_raw", on_change=processar_curso)
+                      value=st.session_state.curso_str, 
+                      key="curso_input", on_change=atualizar_curso)
         
-        pagto = st.text_input("Forma de Pagamento", key="pagto_field")
-        vendedor = st.text_input("Vendedor", value=st.session_state.vendedor_fixo, key="vend_input")
+        pagto = st.text_input("Forma de Pagamento", key="pagto")
+        vendedor = st.text_input("Vendedor", value=st.session_state.vendedor_p, key="vend_f")
         
-        # Campo Data com Máscara (Sem Calendário)
-        raw_dt = st.text_input("Data da Matrícula (DD/MM/AAAA)", value=st.session_state.data_fixa, key="dt_raw")
-        dt_formatada = formatar_data(raw_dt)
+        # Data com Máscara no Enter/Tab
+        st.text_input("Data da Matrícula (DDMMYYYY + Enter)", value=st.session_state.data_p, key="data_input", on_change=aplicar_mascara_data)
 
         st.write("")
         c1, c2, c3 = st.columns(3)
@@ -106,42 +100,41 @@ if aba == "CADASTRO":
         
         if btn_col1.button("Salvar Aluno"):
             if nome_alu:
-                # Salva na lista prévia
                 novo = {
                     "STATUS": "ATIVO", "SEC": "MGA", "TURMA": "", 
-                    "10 CURSOS?": "SIM" if "10 CURSOS" in st.session_state.curso_acumulado else "NÃO",
-                    "INGLÊS?": "SIM" if "INGLÊS" in st.session_state.curso_acumulado else "NÃO", 
+                    "10 CURSOS?": "SIM" if "10 CURSOS" in st.session_state.curso_str else "NÃO",
+                    "INGLÊS?": "SIM" if "INGLÊS" in st.session_state.curso_str else "NÃO", 
                     "Data Cadastro": date.today().strftime("%d/%m/%Y"),
                     "ID": id_alu, "Aluno": nome_alu.upper(), "Tel. Resp": tel_r, "Tel. Aluno": tel_a,
-                    "CPF": cpf_formatado, "Cidade": cidade.upper(), "Curso": st.session_state.curso_acumulado,
-                    "Pagamento": pagto.upper(), "Vendedor": vendedor.upper(), "Data Matrícula": dt_formatada,
+                    "CPF": st.session_state.cpf_input, "Cidade": cidade.upper(), 
+                    "Curso": st.session_state.curso_str, "Pagamento": pagto.upper(), 
+                    "Vendedor": vendedor.upper(), "Data Matrícula": st.session_state.data_input,
                     "OBS1": "LIB INGLÊS" if lib_ing else "", "OBS2": "BONUS" if bonus else ""
                 }
                 st.session_state.lista_previa.append(novo)
                 
-                # Mantém Cidade, Vendedor e Data salvos no Estado
-                st.session_state.cidade_fixa = cidade
-                st.session_state.vendedor_fixo = vendedor
-                st.session_state.data_fixa = dt_formatada
-                
-                # Limpa os campos voláteis e curso
-                st.session_state.curso_acumulado = ""
+                # Salva os persistentes antes de limpar os outros
+                st.session_state.cidade_p = cidade
+                st.session_state.vendedor_p = vendedor
+                st.session_state.data_p = st.session_state.data_input
+                st.session_state.curso_str = ""
                 st.rerun()
 
         if btn_col2.button("Finalizar PDF"):
             if st.session_state.lista_previa:
-                df_nuvem = conn.read(ttl="0s").fillna("")
-                df_novos = pd.DataFrame(st.session_state.lista_previa)
-                linha_v = pd.DataFrame([{c: "" for c in df_novos.columns}])
-                df_final = pd.concat([df_nuvem, df_novos, linha_v], ignore_index=True)
+                df_n = conn.read(ttl="0s").fillna("")
+                df_new = pd.DataFrame(st.session_state.lista_previa)
+                df_final = pd.concat([df_n, df_new, pd.DataFrame([{c: "" for c in df_new.columns}])], ignore_index=True)
                 conn.update(data=df_final)
                 
-                # ZERA TUDO após enviar para a nuvem
+                # Limpa TUDO
                 st.session_state.lista_previa = []
-                st.session_state.cidade_fixa = ""
-                st.session_state.vendedor_fixo = ""
-                st.session_state.data_fixa = ""
-                st.success("Enviado e campos resetados!")
+                st.session_state.cidade_p = ""
+                st.session_state.vendedor_p = ""
+                st.session_state.data_p = ""
+                st.session_state.cpf_input = ""
+                st.session_state.data_input = ""
+                st.success("Enviado!")
                 st.rerun()
 
         btn_col3.button("GERENCIAMENTO MESTRE")
