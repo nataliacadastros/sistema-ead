@@ -4,16 +4,16 @@ from datetime import date
 from streamlit_gsheets import GSheetsConnection
 
 # --- CONFIGURAÇÕES DA PÁGINA ---
-st.set_page_config(page_title="SISTEMA ADM | PROFISSIONALIZA", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="PROFISSIONALIZA EAD", layout="wide", initial_sidebar_state="collapsed")
 
-# --- CSS INTEGRADO (CADASTRO ESCURO + GERENCIAMENTO CRM) ---
+# --- CSS DEFINITIVO (CADASTRO TÉCNICO ESCURO) ---
 st.markdown("""
     <style>
-    /* Estilo Base */
-    .stApp { background-color: #f0f2f6; }
-    .block-container { padding-top: 0rem !important; max-width: 100% !important; }
+    /* Fundo Escuro para a aplicação toda para não dar erro de contraste */
+    .stApp { background-color: #1a2436; color: white; }
+    .block-container { padding-top: 0.5rem !important; max-width: 98% !important; }
 
-    /* MENU SUPERIOR (TABS) - ESTILO CRM AZUL */
+    /* MENU SUPERIOR ESTILO CRM AZUL */
     .stTabs [data-baseweb="tab-list"] {
         gap: 0px; background-color: #1a3a5a; padding: 0px;
     }
@@ -25,43 +25,53 @@ st.markdown("""
         background-color: #2c5282 !important; border-bottom: 3px solid #63b3ed !important;
     }
 
-    /* --- ESTILO ESPECÍFICO DO CADASTRO (RESTAURADO) --- */
-    .cadastro-container {
-        background-color: #1a2436; 
-        padding: 20px; 
-        border-radius: 0px; 
-        color: white;
-        min-height: 100vh;
-    }
-    
-    /* Inputs Compactos no Cadastro */
-    div[data-testid="stTextInput"] > div { min-height: 24px !important; height: 24px !important; }
-    .stTextInput input { 
-        background-color: white !important; color: black !important; 
-        height: 24px !important; text-transform: uppercase !important; 
-        border-radius: 2px !important; font-size: 12px !important; padding: 0px 8px !important;
-    }
-    
-    /* Labels Verdes Laterais */
-    .cad-label { 
-        color: #2ecc71 !important; font-weight: bold !important; font-size: 12px !important; 
-        display: flex; align-items: center; height: 24px; justify-content: flex-end; padding-right: 15px;
-    }
-    
-    /* Botões Verdes do Cadastro */
-    .btn-cad div.stButton > button {
-        background-color: #2ecc71 !important; color: white !important;
-        font-weight: bold !important; height: 35px !important; width: 100% !important;
-        border: none !important;
+    /* FORÇAR ALTURA DOS CAMPOS BRANCOS */
+    div[data-testid="stTextInput"] > div {
+        min-height: 22px !important;
+        height: 22px !important;
     }
 
-    /* Checkboxes Cadastro */
+    .stTextInput>div>div>input { 
+        background-color: white !important; 
+        color: black !important; 
+        height: 22px !important; 
+        text-transform: uppercase !important; 
+        border-radius: 2px !important; 
+        font-size: 11px !important;
+        padding: 0px 8px !important;
+    }
+    
+    /* LABELS VERDES LATERAIS ALINHADAS */
+    label { 
+        color: #2ecc71 !important; 
+        font-weight: bold !important; 
+        font-size: 11px !important; 
+        margin-bottom: 0px !important;
+        display: flex;
+        align-items: center;
+        height: 22px; 
+    }
+    
+    /* ESPAÇAMENTO ENTRE LINHAS (O DOBRO QUE VOCÊ PEDIU) */
+    [data-testid="stHorizontalBlock"] {
+        margin-bottom: 8px !important;
+    }
+
+    /* BOTÕES VERDES LARGOS */
+    div.stButton > button {
+        background-color: #2ecc71 !important;
+        color: white !important;
+        font-weight: bold !important;
+        height: 35px !important;
+        border-radius: 4px !important;
+        width: 100% !important;
+    }
+
+    /* CHECKBOXES VERDES */
     .stCheckbox label p { font-size: 11px !important; color: #2ecc71 !important; font-weight: bold; }
-
-    /* --- ESTILO GERENCIAMENTO --- */
-    .stDataFrame { background-color: white !important; border: 1px solid #e6e9ef; }
     
     header {visibility: hidden;} footer {visibility: hidden;}
+    .stDataFrame { background-color: white !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -71,12 +81,13 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "curso_acumulado" not in st.session_state: st.session_state.curso_acumulado = ""
 
-# --- FUNÇÃO CAMPO HORIZONTAL (VOLTANDO AO PADRÃO ANTERIOR) ---
+# --- FUNÇÃO CAMPO HORIZONTAL ---
 def campo_horizontal(label, key, value="", on_change=None):
-    c1, c2 = st.columns([1, 2.5]) 
-    with c1: st.markdown(f"<div class='cad-label'>{label}</div>", unsafe_allow_html=True)
+    c1, c2 = st.columns([1.2, 4]) 
+    with c1: st.markdown(f"<label>{label}</label>", unsafe_allow_html=True)
     with c2: return st.text_input(label, label_visibility="collapsed", key=key, value=value, on_change=on_change)
 
+# --- LÓGICA DE PAGAMENTO ---
 def atualizar_pagto():
     base = st.session_state.pagto_input.split(" | ")[0].strip().upper()
     if st.session_state.check_lib: base += " | APÓS PAGAMENTO LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO IN-GLÊS"
@@ -87,36 +98,30 @@ def atualizar_pagto():
 # --- NAVEGAÇÃO ---
 abas = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
-# ================= ABA 1: CADASTRO (RESTAURADA) =================
 with abas[0]:
-    # Aplicando fundo escuro apenas nesta aba
-    st.markdown('<div class="cadastro-container">', unsafe_allow_html=True)
+    _, col_central, _ = st.columns([0.5, 3, 0.5])
     
-    _, col_form, _ = st.columns([1, 1.8, 1])
-    with col_form:
+    with col_central:
         st.write("")
         campo_horizontal("ID:", "id_alu")
         campo_horizontal("ALUNO:", "nome_alu")
         campo_horizontal("TEL. RESP:", "t_resp")
         campo_horizontal("TEL. ALUNO:", "t_alu")
-        campo_horizontal("CIDADE:", "cid_f")
-        campo_horizontal("CURSO:", "curso_field", value=st.session_state.curso_acumulado)
+        campo_horizontal("CIDADE:", "cid_f", value=st.session_state.get("cidade_p", ""))
+        campo_horizontal("CURSO:", "curso_field", value=st.session_state.get("curso_acumulado", ""))
         campo_horizontal("PAGAMENTO:", "pagto_input")
-        campo_horizontal("VENDEDOR:", "vend_f")
-        campo_horizontal("DATA:", "data_input")
+        campo_horizontal("VENDEDOR:", "vend_f", value=st.session_state.get("vendedor_p", ""))
+        campo_horizontal("DATA:", "data_input", value=st.session_state.get("data_p", ""))
 
         st.write("")
-        # Checkboxes agrupados
-        c_sel = st.columns([1, 1, 1.2])
-        with c_sel[0]: st.checkbox("LIB. IN-GLÊS", key="check_lib", on_change=atualizar_pagto)
-        with c_sel[1]: st.checkbox("CURSO BÔNUS", key="check_bonus", on_change=atualizar_pagto)
-        with c_sel[2]: st.checkbox("CONFIRMAÇÃO", key="check_conf", on_change=atualizar_pagto)
+        # Checkboxes e Botões Centralizados
+        sel1, sel2, sel3 = st.columns(3)
+        with sel1: st.checkbox("LIB. IN-GLÊS", key="check_lib", on_change=atualizar_pagto)
+        with sel2: st.checkbox("CURSO BÔNUS", key="check_bonus", on_change=atualizar_pagto)
+        with sel3: st.checkbox("CONFIRMAÇÃO", key="check_conf", on_change=atualizar_pagto)
 
-        st.write("")
-        # Botões de ação
-        st.markdown('<div class="btn-cad">', unsafe_allow_html=True)
-        c_btns = st.columns(2)
-        with c_btns[0]:
+        btn1, btn2 = st.columns(2)
+        with btn1:
             if st.button("SALVAR ALUNO"):
                 if st.session_state.nome_alu:
                     aluno = {
@@ -127,7 +132,7 @@ with abas[0]:
                     }
                     st.session_state.lista_previa.append(aluno)
                     st.rerun()
-        with c_btns[1]:
+        with btn2:
             if st.button("FINALIZAR PDF"):
                 if st.session_state.lista_previa:
                     df_sheets = conn.read(ttl="0s").fillna("")
@@ -136,37 +141,23 @@ with abas[0]:
                     conn.update(data=df_final)
                     st.session_state.lista_previa = []
                     st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
 
+    # Tabela Branca de Prévia
     st.write("")
-    # Tabela branca de prévia
     df_vis = pd.DataFrame(st.session_state.lista_previa) if st.session_state.lista_previa else pd.DataFrame(columns=["ID", "Aluno", "Cidade", "Curso", "Pagamento", "Vendedor", "Data"])
-    st.dataframe(df_vis, use_container_width=True, hide_index=True, height=200)
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.dataframe(df_vis, use_container_width=True, hide_index=True, height=150)
 
-# ================= ABA 2: GERENCIAMENTO (ESTILO CRM) =================
 with abas[1]:
-    st.write("")
-    # Barra de Ferramentas Estilo CRM
-    t1, t2, t3 = st.columns([3, 1, 1])
-    with t1:
-        busca = st.text_input("", placeholder="🔍 Filtrar base de dados...", label_visibility="collapsed").upper()
-    with t2:
-        if st.button("🔄 Sincronizar Base"):
-            st.rerun()
-    with t3:
-        st.button("➕ Novo Registro", disabled=True)
-
-    try:
-        dados_reais = conn.read(ttl="0s").fillna("")
-        if busca:
-            mask = dados_reais.astype(str).apply(lambda x: x.str.contains(busca, case=False)).any(axis=1)
-            dados_reais = dados_reais[mask]
-
-        st.dataframe(dados_reais, use_container_width=True, hide_index=True, height=600)
-    except:
-        st.error("Erro ao carregar a planilha.")
-
-# ================= ABA 3: RELATÓRIOS =================
-with abas[2]:
-    st.write("Estatísticas e gráficos.")
+    # Estilo de Gerenciamento CRM que você gostou
+    st.write("### 🖥️ Base de Dados CRM")
+    t1, t2 = st.columns([3, 1])
+    with t1: busca = st.text_input("🔍 Filtrar...", label_visibility="collapsed").upper()
+    with t2: 
+        if st.button("🔄 Sync"): st.rerun()
+    
+    dados = conn.read(ttl="0s").fillna("")
+    if busca:
+        mask = dados.astype(str).apply(lambda x: x.str.contains(busca, case=False)).any(axis=1)
+        dados = dados[mask]
+    
+    st.dataframe(dados, use_container_width=True, hide_index=True, height=600)
