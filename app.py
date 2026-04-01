@@ -17,14 +17,16 @@ st.markdown("""
     }
     label { color: #2ecc71 !important; font-weight: bold !important; font-size: 14px !important; margin-bottom: -5px !important; }
     .stButton>button { height: 35px; font-size: 13px !important; border-radius: 4px; font-weight: bold; width: 100%; }
+    
     /* Cores dos botões */
     div[data-testid="column"]:nth-child(1) button { background-color: #90ee90 !important; color: black !important; }
     div[data-testid="column"]:nth-child(2) button { background-color: #a2d2ff !important; color: black !important; }
     div[data-testid="column"]:nth-child(3) button { background-color: #007bff !important; color: white !important; }
+    
     header {visibility: hidden;} footer {visibility: hidden;}
     
-    /* Tabela de pré-visualização branca como no print */
-    .stDataFrame { background-color: white !important; border-radius: 5px !important; }
+    /* Estilo da Tabela Branca Fixa */
+    .stDataFrame { background-color: white !important; border-radius: 2px !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -33,6 +35,8 @@ CURSOS_DICT = {
     "3": "PREPARATÓRIO AGRO", "4": "INGLÊS", "5": "JOVEM NO DIREITO", "6": "PRÉ MILITAR",
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
+
+COLUNAS_TABELA = ["ID", "Aluno", "Tel. Responsável", "Tel. Aluno", "CPF Responsável", "Cidade", "Curso Contratado", "Forma de Pagamento", "Vendedor", "Data da Matrícula"]
 
 # --- CONEXÃO E ESTADOS ---
 conn = st.connection("gsheets", type=GSheetsConnection)
@@ -82,10 +86,9 @@ def atualizar_pagto():
 aba = st.sidebar.radio("NAVEGAÇÃO", ["CADASTRO", "GERENCIAMENTO"])
 
 if aba == "CADASTRO":
-    _, col_central, _ = st.columns([0.5, 3, 0.5])
+    _, col_central, _ = st.columns([0.2, 3, 0.2])
     
     with col_central:
-        # Usamos chaves dinâmicas para resetar o formulário sem erro de API
         id_alu = st.text_input("ID", key="id_alu")
         nome_alu = st.text_input("Aluno", key="nome_alu")
         t_resp = st.text_input("Tel. Responsável", key="t_resp")
@@ -115,11 +118,9 @@ if aba == "CADASTRO":
                     "Vendedor": vendedor.upper(), "Data da Matrícula": st.session_state.data_input
                 }
                 st.session_state.lista_previa.append(aluno_novo)
-                # Mantém os persistentes
                 st.session_state.cidade_p = cidade.upper()
                 st.session_state.vendedor_p = vendedor.upper()
                 st.session_state.data_p = st.session_state.data_input
-                # Limpa curso e pagto para o próximo
                 st.session_state.curso_acumulado = ""
                 st.rerun()
 
@@ -127,21 +128,29 @@ if aba == "CADASTRO":
             if st.session_state.lista_previa:
                 df_planilha = conn.read(ttl="0s").fillna("")
                 df_novos = pd.DataFrame(st.session_state.lista_previa)
-                # Adiciona colunas faltantes para bater com a planilha
+                
+                # Garante que as colunas da planilha existam
                 for col in ["STATUS", "SEC", "TURMA", "10 CURSOS?", "INGLÊS?", "Data Cadastro"]:
                     if col not in df_novos: df_novos[col] = ""
                 
                 df_final = pd.concat([df_planilha, df_novos, pd.DataFrame([{c: "" for c in df_planilha.columns}])], ignore_index=True)
                 conn.update(data=df_final)
+                
                 st.session_state.lista_previa = []
                 st.session_state.cidade_p = ""; st.session_state.vendedor_p = ""; st.session_state.data_p = ""
-                st.success("Enviado!")
+                st.success("Enviado com sucesso!")
                 st.rerun()
 
         b3.button("GERENCIAMENTO MESTRE")
 
-    # --- LISTA DE PRÉ-VISUALIZAÇÃO (IDÊNTICA AO PRINT) ---
-    st.markdown(f"<h4 style='text-align: center;'>Alunos na lista: {len(st.session_state.lista_previa)}</h4>", unsafe_allow_html=True)
-    if st.session_state.lista_previa:
-        df_visualizacao = pd.DataFrame(st.session_state.lista_previa)
+        # --- TABELA DE PRÉ-VISUALIZAÇÃO FIXA ---
+        st.markdown(f"<h5 style='text-align: center; color: white; margin-top: 20px;'>Alunos na lista: {len(st.session_state.lista_previa)}</h5>", unsafe_allow_html=True)
+        
+        # Criamos o DataFrame da lista (vazio ou com dados)
+        df_visualizacao = pd.DataFrame(st.session_state.lista_previa, columns=COLUNAS_TABELA)
+        
+        # Exibição fixa da tabela branca
         st.dataframe(df_visualizacao, use_container_width=True, hide_index=True)
+
+elif aba == "GERENCIAMENTO":
+    st.dataframe(conn.read(ttl="0s").fillna(""), use_container_width=True, hide_index=True)
