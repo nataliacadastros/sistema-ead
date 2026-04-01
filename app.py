@@ -35,8 +35,9 @@ if "curso_acumulado" not in st.session_state: st.session_state.curso_acumulado =
 if "cidade_p" not in st.session_state: st.session_state.cidade_p = ""
 if "vendedor_p" not in st.session_state: st.session_state.vendedor_p = ""
 if "data_p" not in st.session_state: st.session_state.data_p = ""
+if "pagto_manual" not in st.session_state: st.session_state.pagto_manual = ""
 
-# --- FUNÇÕES DE FORMATAÇÃO ---
+# --- FUNÇÕES DE LÓGICA ---
 def aplicar_mascara_cpf():
     v = "".join(filter(str.isdigit, st.session_state.cpf_input))
     if len(v) == 11:
@@ -64,6 +65,20 @@ def processar_curso_contratado():
             st.session_state.curso_acumulado = texto_bruto.upper() + " "
     st.session_state.curso_field = st.session_state.curso_acumulado
 
+def atualizar_pagamento_final():
+    # Esta função reconstrói o texto do campo de pagamento baseado nos botões
+    base = st.session_state.pagto_input_box.split(" | ")[0] # Pega só o que o usuário escreveu
+    final = base.upper()
+    
+    if st.session_state.check_lib:
+        final += " | APÓS PAGAMENTO LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO IN-GLÊS"
+    if st.session_state.check_bonus:
+        final += " | CASO PAGUE VIA LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO CURSO BÔNUS A ESCOLHA"
+    if st.session_state.check_conf:
+        final += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
+    
+    st.session_state.pagto_input_box = final
+
 # --- INTERFACE ---
 with st.sidebar:
     st.title("SISTEMA EAD")
@@ -80,35 +95,22 @@ if aba == "CADASTRO":
         st.text_input("CPF Responsável", key="cpf_input", on_change=aplicar_mascara_cpf)
         cidade = st.text_input("Cidade", value=st.session_state.cidade_p, key="cid_f")
         
-        st.text_input("Curso Contratado", 
-                      value=st.session_state.curso_acumulado, 
-                      key="curso_field", 
-                      on_change=processar_curso_contratado)
+        st.text_input("Curso Contratado", value=st.session_state.curso_acumulado, 
+                      key="curso_field", on_change=processar_curso_contratado)
         
-        # FORMA DE PAGAMENTO
-        pagto_base = st.text_input("Forma de Pagamento", key="pagto_manual")
+        # CAMPO PAGAMENTO (Atualiza ao interagir com os checkboxes)
+        pagto_display = st.text_input("Forma de Pagamento", key="pagto_input_box")
         
         vendedor = st.text_input("Vendedor", value=st.session_state.vendedor_p, key="vend_f")
-        st.text_input("Data da Matrícula (DDMMYYYY + Enter)", value=st.session_state.data_p, key="data_input", on_change=aplicar_mascara_data)
+        st.text_input("Data da Matrícula (DDMMYYYY + Enter)", value=st.session_state.data_p, 
+                      key="data_input", on_change=aplicar_mascara_data)
 
         st.write("")
         c1, c2, c3 = st.columns(3)
-        lib_ing = c1.checkbox("LIBERAÇÃO IN-GLÊS")
-        bonus = c2.checkbox("CURSO BÔNUS")
-        confirma = c3.checkbox("AGUARDANDO CONFIRMAÇÃO")
-
-        # Lógica de Sufixo do Pagamento
-        pagto_final = pagto_base.upper()
-        if lib_ing:
-            pagto_final += " | APÓS PAGAMENTO LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO IN-GLÊS"
-        if bonus:
-            pagto_final += " | CASO PAGUE VIA LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO CURSO BÔNUS A ESCOLHA"
-        if confirma:
-            pagto_final += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
-
-        # Preview do pagamento para o usuário ver
-        if lib_ing or bonus or confirma:
-            st.markdown(f"<p style='color:#76c7c0; font-size:11px;'><b>Obs Pagamento:</b> {pagto_final}</p>", unsafe_allow_html=True)
+        # Checkboxes que disparam a atualização do campo de texto acima
+        lib_ing = c1.checkbox("LIBERAÇÃO IN-GLÊS", key="check_lib", on_change=atualizar_pagamento_final)
+        bonus = c2.checkbox("CURSO BÔNUS", key="check_bonus", on_change=atualizar_pagamento_final)
+        confirma = c3.checkbox("AGUARDANDO CONFIRMAÇÃO", key="check_conf", on_change=atualizar_pagamento_final)
 
         btn_col1, btn_col2, btn_col3 = st.columns(3)
         
@@ -122,7 +124,7 @@ if aba == "CADASTRO":
                     "ID": id_alu, "Aluno": nome_alu.upper(), "Tel. Resp": tel_r, "Tel. Aluno": tel_a,
                     "CPF": st.session_state.cpf_input, "Cidade": cidade.upper(), 
                     "Curso": st.session_state.curso_acumulado.strip(), 
-                    "Pagamento": pagto_final, # Enviando o texto completo com os sufixos
+                    "Pagamento": st.session_state.pagto_input_box,
                     "Vendedor": vendedor.upper(), "Data Matrícula": st.session_state.data_input,
                     "OBS1": "LIB INGLÊS" if lib_ing else "", "OBS2": "BONUS" if bonus else ""
                 }
@@ -131,6 +133,7 @@ if aba == "CADASTRO":
                 st.session_state.vendedor_p = vendedor
                 st.session_state.data_p = st.session_state.data_input
                 st.session_state.curso_acumulado = ""
+                st.session_state.pagto_input_box = "" # Limpa para o próximo aluno
                 st.rerun()
 
         if btn_col2.button("Finalizar PDF"):
