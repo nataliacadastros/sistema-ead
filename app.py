@@ -157,10 +157,12 @@ with abas[0]:
                     st.rerun()
 
     st.write("")
-    df_vis = pd.DataFrame(st.session_state.lista_previa) if st.session_state.lista_previa else pd.DataFrame(columns=["ID", "Aluno", "Cidade", "Curso", "Pagamento", "Vendedor", "Data"])
+    # Definição das colunas da tabela de prévia sem OBS
+    colunas_vis = ["ID", "Aluno", "Cidade", "Curso", "Pagamento", "Vendedor", "Data"]
+    df_vis = pd.DataFrame(st.session_state.lista_previa) if st.session_state.lista_previa else pd.DataFrame(columns=colunas_vis)
     st.dataframe(df_vis, use_container_width=True, hide_index=True, height=180)
 
-# ================= ABA 2: GERENCIAMENTO (SEM ROLAGEM LATERAL) =================
+# ================= ABA 2: GERENCIAMENTO =================
 with abas[1]:
     st.write("")
     t1, t2 = st.columns([3, 1])
@@ -172,6 +174,7 @@ with abas[1]:
             st.rerun()
     
     try:
+        # Lê os dados (OBS1 e OBS2 não existem mais na planilha conforme sua instrução)
         dados = conn.read(ttl="0s").fillna("")
         
         # Correção do ID (.0)
@@ -182,7 +185,7 @@ with abas[1]:
             mask = dados.astype(str).apply(lambda x: x.str.contains(busca, case=False)).any(axis=1)
             dados = dados[mask]
         
-        # Configuração de Colunas para caber tudo na tela (sem rolagem)
+        # Configuração de Colunas otimizada para visualização total
         st.dataframe(
             dados, 
             use_container_width=True, 
@@ -194,8 +197,8 @@ with abas[1]:
                 "Vendedor": st.column_config.TextColumn("Vendedor", width=100),
                 "Cidade": st.column_config.TextColumn("Cidade", width=120),
                 "Aluno": st.column_config.TextColumn("Aluno", width=250),
-                "Curso": st.column_config.TextColumn("Curso", width=250),
-                "Pagamento": st.column_config.TextColumn("Pagamento", width=300),
+                "Curso": st.column_config.TextColumn("Curso", width=200),
+                "Pagamento": st.column_config.TextColumn("Pagamento", width=400),
             }
         )
         
