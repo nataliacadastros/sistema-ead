@@ -191,7 +191,7 @@ with tab_rel:
                 with c4: st.markdown(f'<div class="card-hud neon-purple"><small>Ticket Médio</small><div style="font-size:12px; margin-top:5px">🎫 Boleto: <b>R${tm_boleto:.2f}</b><br>💳 Cartão: <b>R${tm_cartao:.2f}</b></div></div>', unsafe_allow_html=True)
                 with c5:
                     top_v = df_f['Vendedor'].value_counts().idxmax() if not df_f.empty else "N/A"
-                    st.markdown(f'<div class="card-hud neon-blue"><small>Top Captador</small><h2 style="font-size:14px">{top_v}</h2></div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="card-hud neon-blue"><small>Maior Desempenho em Captação de Alunos</small><h2 style="font-size:14px">{top_v}</h2></div>', unsafe_allow_html=True)
 
                 st.write("---")
                 # Barra de Cidades HUD
