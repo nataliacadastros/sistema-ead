@@ -34,17 +34,17 @@ st.markdown("""
     }
     .main .block-container { padding-top: 45px !important; max-width: 1200px !important; margin: 0 auto !important; }
 
-    /* ESTILO CADASTRO */
+    /* ESTILO CADASTRO (CAMPOS 25PX) */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 3px !important; display: flex; align-items: center; justify-content: center; }
     div[data-testid="stTextInput"] > div { min-height: 25px !important; height: 25px !important; }
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 14px !important; padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end; }
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 25px !important; border-radius: 5px !important; }
-    .stCheckbox label p { color: #145a32 !important; font-weight: bold !important; font-size: 11px !important; }
+    .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
 
     /* CARDS RELATÓRIO HUD */
     .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; }
     .neon-pink { color: #ff007a; text-shadow: 0 0 10px rgba(255, 0, 122, 0.5); border-top: 2px solid #ff007a; }
-    .neon-green { color: #27ae60; text-shadow: 0 0 8px rgba(39, 174, 96, 0.4); border-top: 3px solid #145a32; }
+    .neon-green { color: #2ecc71; text-shadow: 0 0 10px rgba(46, 204, 113, 0.5); border-top: 2px solid #2ecc71; }
     .neon-blue { color: #00f2ff; text-shadow: 0 0 10px rgba(0, 242, 255, 0.5); border-top: 2px solid #00f2ff; }
     .neon-purple { color: #bc13fe; text-shadow: 0 0 10px rgba(188, 19, 254, 0.5); border-top: 2px solid #bc13fe; }
 
@@ -157,7 +157,7 @@ with tab_ger:
             if st.button("🔄 REFRESH DATABASE"): st.cache_data.clear(); st.rerun()
     except: st.error("Erro na conexão com a planilha.")
 
-# --- ABA 3: RELATÓRIOS ---
+# --- ABA 3: RELATÓRIOS (CORRIGIDA) ---
 with tab_rel:
     try:
         df_rel = conn.read(ttl="0s").dropna(how='all')
@@ -177,12 +177,12 @@ with tab_rel:
                 
                 # Cálculos Financeiros
                 df_f['Valor_Recebido'] = df_f['Pagamento'].apply(extrair_valor_recebido)
-                total_rec = df_f['Valor_Recebido'].sum()
+                total_cid = df_f['Valor_Recebido'].sum()
                 df_f['Valor_Ticket'] = df_f['Pagamento'].apply(extrair_valor_geral)
-                df_bol = df_f[df_f['Pagamento'].str.contains('BOLETO', na=False, case=False)]
-                df_car = df_f[df_f['Pagamento'].str.contains('CARTÃO|LINK|CREDITO|DEBITO', na=False, case=False)]
-                tm_bol = df_bol['Valor_Ticket'].mean() if not df_bol.empty else 0.0
-                tm_car = df_car['Valor_Ticket'].mean() if not df_car.empty else 0.0
+                df_boleto = df_f[df_f['Pagamento'].str.contains('BOLETO', na=False, case=False)]
+                df_cartao = df_f[df_f['Pagamento'].str.contains('CARTÃO|LINK|CREDITO|DEBITO', na=False, case=False)]
+                tm_boleto = df_boleto['Valor_Ticket'].mean() if not df_boleto.empty else 0.0
+                tm_cartao = df_cartao['Valor_Ticket'].mean() if not df_cartao.empty else 0.0
 
                 # CARDS KPI
                 st.write("")
@@ -191,43 +191,66 @@ with tab_rel:
                 with c2: 
                     atv = len(df_f[df_f['STATUS'].str.upper() == 'ATIVO']) if 'STATUS' in df_f.columns else 0
                     st.markdown(f'<div class="card-hud neon-green"><small>Ativos</small><h2>{atv}</h2></div>', unsafe_allow_html=True)
-                with c3: st.markdown(f'<div class="card-hud neon-blue"><small>Recebido</small><h2 style="font-size:18px">R${total_rec:,.2f}</h2></div>', unsafe_allow_html=True)
-                with c4: st.markdown(f'<div class="card-hud neon-purple"><small>Ticket Médio</small><div style="font-size:12px; margin-top:5px">🎫 Boleto: <b>R${tm_bol:.2f}</b><br>💳 Cartão: <b>R${tm_car:.2f}</b></div></div>', unsafe_allow_html=True)
+                with c3: st.markdown(f'<div class="card-hud neon-blue"><small>Recebido</small><h2 style="font-size:18px">R${total_cid:,.2f}</h2></div>', unsafe_allow_html=True)
+                with c4: st.markdown(f'<div class="card-hud neon-purple"><small>Ticket Médio</small><div style="font-size:12px; margin-top:5px">🎫 Boleto: <b>R${tm_boleto:.2f}</b><br>💳 Cartão: <b>R${tm_cartao:.2f}</b></div></div>', unsafe_allow_html=True)
                 with c5:
                     top_v = df_f['Vendedor'].value_counts().idxmax() if not df_f.empty else "N/A"
                     st.markdown(f'<div class="card-hud neon-blue"><small>Top Captador</small><h2 style="font-size:14px">{top_v}</h2></div>', unsafe_allow_html=True)
 
                 st.write("---")
                 # GEOLOCATION ANALYTICS
-                df_cid = df_f['Cidade'].value_counts().head(4)
-                if not df_cid.empty:
+                df_cid_v = df_f['Cidade'].value_counts().head(4)
+                if not df_cid_v.empty:
                     st.markdown("<small style='color:#00f2ff'>▸ GEOLOCATION ANALYTICS</small>", unsafe_allow_html=True)
-                    total_cid = df_cid.sum(); cores = ["#ff007a", "#27ae60", "#00f2ff", "#bc13fe"]
+                    total_c = df_cid_v.sum(); cores = ["#ff007a", "#2ecc71", "#00f2ff", "#bc13fe"]
                     seg_html = ""
-                    for i, (nome, qtd) in enumerate(df_cid.items()):
-                        percent = (qtd / total_cid) * 100; cor = cores[i % 4]
+                    for i, (nome, qtd) in enumerate(df_cid_v.items()):
+                        percent = (qtd / total_c) * 100; cor = cores[i % 4]
                         seg_html += f'<div class="hud-segment" style="width: {percent}%; background: {cor}; box-shadow: 0 0 10px {cor}80;"><div class="hud-label" style="color: {cor};">{qtd}</div><div class="hud-city-name" style="color: {cor};">{nome}</div></div>'
                     st.markdown(f'<div class="hud-bar-container">{seg_html}</div>', unsafe_allow_html=True)
                 
+                # --- SEÇÃO DE GRÁFICOS INFERIORES ---
                 col_g1, col_g2 = st.columns(2)
+                
                 with col_g1:
                     st.markdown("<small style='color:#64748b'>QUANTIDADE POR STATUS</small>", unsafe_allow_html=True)
                     counts = df_f['STATUS'].value_counts()
                     fig_p = go.Figure(data=[go.Pie(labels=counts.index, values=counts.values, hole=0.5, 
-                        marker=dict(colors=['#27ae60', '#ff007a', '#00f2ff'], line=dict(color='#0b0e1e', width=3)),
+                        marker=dict(colors=['#2ecc71', '#ff007a', '#00f2ff'], line=dict(color='#0b0e1e', width=3)),
                         textinfo='label+value', textfont=dict(size=14, color="white"))])
                     fig_p.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', showlegend=False, height=350)
                     st.plotly_chart(fig_p, use_container_width=True)
                     
                 with col_g2:
+                    # --- PERFORMANCE POR DIVULGADOR (RESTAURADO PARA O MODELO DE LINHA NEON) ---
                     st.markdown("<small style='color:#64748b'>PERFORMANCE POR DIVULGADOR</small>", unsafe_allow_html=True)
+                    
+                    # Prepara os dados para o gráfico de linha (precisamos resetar o index para ter colunas)
                     df_v = df_f['Vendedor'].value_counts().reset_index()
                     df_v.columns = ['Vendedor', 'Quantidade']
-                    df_v = df_v.sort_values(by='Quantidade', ascending=True)
-                    fig_v = px.bar(df_v, x='Quantidade', y='Vendedor', orientation='h', color='Quantidade', 
-                                   color_continuous_scale='Magma', text='Quantidade')
-                    fig_v.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
-                                        height=350, showlegend=False, coloraxis_showscale=False,
-                                        xaxis=dict(showgrid=False, showticklabels=False), yaxis=dict(showgrid=False, title=None))
+                    
+                    # Cria o gráfico de linha com marcadores (pontos)
+                    fig_v = px.line(df_v.head(5), x='Vendedor', y='Quantidade', markers=True)
+                    
+                    # Customização Neon: Linha ciano, Pontos rosa, visual limpo
+                    fig_v.update_traces(
+                        line_color='#00f2ff', # Linha Ciano Neon
+                        marker=dict(
+                            size=10, 
+                            color='#ff007a', # Ponto Rosa Choque
+                            line=dict(width=2, color='white') # Borda branca para dar brilho
+                        )
+                    )
+                    
+                    # Layout transparente e limpo, sem grids pesados
+                    fig_v.update_layout(
+                        template="plotly_dark", 
+                        paper_bgcolor='rgba(0,0,0,0)', 
+                        plot_bgcolor='rgba(0,0,0,0)', 
+                        height=350,
+                        xaxis=dict(showgrid=False, zeroline=False),
+                        yaxis=dict(showgrid=True, gridcolor='#1f295a', zeroline=False) # Grade muito suave
+                    )
+                    
                     st.plotly_chart(fig_v, use_container_width=True)
     except Exception as e: st.error(f"Erro: {e}")
