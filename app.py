@@ -21,7 +21,6 @@ st.markdown("""
     <style>
     .stApp { background-color: #0b0e1e; color: #e0e0e0; }
     
-    /* Menu Slim HUD */
     .stTabs [data-baseweb="tab-list"] { 
         background-color: #121629; border-bottom: 1px solid #1f295a;
         position: fixed; top: 0; left: 0 !important; width: 100vw !important;
@@ -32,7 +31,7 @@ st.markdown("""
         color: #00f2ff !important; border-bottom: 2px solid #00f2ff !important;
         background-color: rgba(0, 242, 255, 0.05) !important;
     }
-    .main .block-container { padding-top: 45px !important; max-width: 1250px !important; margin: 0 auto !important; }
+    .main .block-container { padding-top: 45px !important; max-width: 1200px !important; margin: 0 auto !important; }
 
     /* ESTILO CADASTRO */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 3px !important; display: flex; align-items: center; justify-content: center; }
@@ -185,7 +184,7 @@ with tab_rel:
                 tm_bol = df_bol['Valor_Ticket'].mean() if not df_bol.empty else 0.0
                 tm_car = df_car['Valor_Ticket'].mean() if not df_car.empty else 0.0
 
-                # --- CARDS KPI (6 COLUNAS AGORA COM CANCELADOS) ---
+                # CARDS KPI
                 st.write("")
                 c1, c2, c3, c4, c5, c6 = st.columns(6)
                 with c1: st.markdown(f'<div class="card-hud neon-pink"><small>Mats</small><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
@@ -202,7 +201,6 @@ with tab_rel:
                     st.markdown(f'<div class="card-hud neon-blue"><small>Top Captador</small><h2 style="font-size:14px">{top_v}</h2></div>', unsafe_allow_html=True)
 
                 st.write("---")
-                
                 # GEOLOCATION ANALYTICS
                 df_cid_v = df_f['Cidade'].value_counts().head(4)
                 if not df_cid_v.empty:
@@ -225,15 +223,32 @@ with tab_rel:
                     fig_p = go.Figure(data=[go.Pie(labels=counts.index, values=counts.values, hole=0.5, 
                         marker=dict(colors=['#2ecc71', '#ff4b4b', '#00f2ff'], line=dict(color='#0b0e1e', width=3)),
                         textinfo='label+value', textfont=dict(size=14, color="white"))])
-                    fig_p.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', showlegend=False, height=350)
+                    fig_p.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', showlegend=False, height=400)
                     st.plotly_chart(fig_p, use_container_width=True)
                     
                 with col_g2:
                     st.markdown("<small style='color:#64748b'>PERFORMANCE POR DIVULGADOR</small>", unsafe_allow_html=True)
                     df_v = df_f['Vendedor'].value_counts().reset_index()
                     df_v.columns = ['Vendedor', 'Quantidade']
-                    fig_v = px.line(df_v.head(5), x='Vendedor', y='Quantidade', markers=True)
-                    fig_v.update_traces(line_color='#00f2ff', marker=dict(size=10, color='#ff007a', line=dict(width=2, color='white')))
-                    fig_v.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=350)
+                    
+                    # Gráfico de linha com Nomes Visíveis (mode='lines+markers+text')
+                    fig_v = px.line(df_v.head(5), x='Vendedor', y='Quantidade', markers=True, text='Vendedor')
+                    
+                    fig_v.update_traces(
+                        line_color='#00f2ff', 
+                        marker=dict(size=10, color='#ff007a', line=dict(width=2, color='white')),
+                        textposition="top center", # Nome acima da bolinha
+                        textfont=dict(color="#00f2ff", size=10),
+                        mode='lines+markers+text' # Força o modo texto visível
+                    )
+                    
+                    fig_v.update_layout(
+                        template="plotly_dark", 
+                        paper_bgcolor='rgba(0,0,0,0)', 
+                        plot_bgcolor='rgba(0,0,0,0)', 
+                        height=400,
+                        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False), # Esconde labels do eixo pra não duplicar
+                        yaxis=dict(showgrid=True, gridcolor='#1f295a', zeroline=False)
+                    )
                     st.plotly_chart(fig_v, use_container_width=True)
     except Exception as e: st.error(f"Erro: {e}")
