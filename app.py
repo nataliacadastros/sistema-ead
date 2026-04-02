@@ -1,5 +1,5 @@
 import streamlit as st
-import pd
+import pandas as pd  # Linha corrigida aqui
 import re
 from datetime import date
 from streamlit_gsheets import GSheetsConnection
@@ -41,13 +41,13 @@ if "val_pagto" not in st.session_state: st.session_state.val_pagto = ""
 def transformar_curso():
     entrada = st.session_state.input_curso_key.strip()
     
-    # SE O USUÁRIO APAGAR TUDO, LIMPA A MEMÓRIA
+    # Se o usuário apagar tudo, limpa a memória
     if not entrada:
         st.session_state.val_curso = ""
         st.session_state.input_curso_key = ""
         return
 
-    # 1. Busca código no final da string
+    # Busca código numérico no final da string
     match = re.search(r'(\d+)$', entrada)
     
     if match:
