@@ -14,7 +14,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS PARA COLAR NO TOPO E MANTER ESPAÇAMENTO ---
+# --- CSS PARA CENTRALIZAÇÃO E TOPO ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
@@ -37,9 +37,9 @@ st.markdown("""
     }
     .stTabs [aria-selected="true"] { border-bottom: 3px solid #2ecc71 !important; }
     
-    /* ZERANDO ESPAÇO MORTO NO TOPO */
+    /* CONTEÚDO NO TOPO */
     .main .block-container { 
-        padding-top: 30px !important; /* Altura exata do menu */
+        padding-top: 30px !important; 
         margin-top: 0px !important;
     }
     
@@ -137,7 +137,8 @@ def processar_pagto():
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
 with tab_cad:
-    _, col_central, _ = st.columns([0.5, 3, 0.5])
+    # --- CENTRALIZAÇÃO TOTAL DO FRAME ---
+    _, col_central, _ = st.columns([1, 2, 1])
     
     with col_central:
         # Formulário
@@ -159,8 +160,7 @@ with tab_cad:
             else:
                 c2.text_input(label, key=key, label_visibility="collapsed")
 
-        # Checkboxes
-        st.write("")
+        # Checkboxes (Alinhados ao início dos inputs brancos)
         recuo, area_checks = st.columns([1.2, 4])
         with area_checks:
             s1, s2, s3 = st.columns(3)
@@ -168,8 +168,7 @@ with tab_cad:
             with s2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
             with s3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
 
-        # Botões
-        st.write("")
+        # Botões (Alinhados ao início dos inputs brancos)
         recuo_btn, area_btns = st.columns([1.2, 4])
         with area_btns:
             b1, b2 = st.columns(2)
@@ -184,7 +183,7 @@ with tab_cad:
                     if st.session_state.lista_previa:
                         df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa); conn.update(data=pd.concat([df_old, df_new], ignore_index=True)); st.session_state.lista_previa = []; st.success("Enviado!"); st.rerun()
 
-        # Lista de Prévia
+        # Lista de Prévia (Também centralizada no bloco)
         st.write("---") 
         qtd = len(st.session_state.lista_previa)
         st.markdown(f'<div class="contador-estilo">Alunos Salvos: {qtd}</div>', unsafe_allow_html=True)
