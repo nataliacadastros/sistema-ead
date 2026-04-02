@@ -14,12 +14,12 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS PARA ELIMINAR O ESPAÇO E COLAR NO MENU ---
+# --- CSS AJUSTADO: TOPO COLADO + ESPAÇAMENTO INTERNO ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
     
-    /* MENU DE NAVEGAÇÃO SLIM */
+    /* MENU SLIM */
     .stTabs [data-baseweb="tab-list"] { 
         background-color: #1a3a5a; 
         border-bottom: 2px solid #2c5282;
@@ -31,49 +31,45 @@ st.markdown("""
         justify-content: center;
         height: 30px !important;
     }
-
     .stTabs [data-baseweb="tab"] { 
-        color: #ffffff !important; 
-        font-weight: 600; 
-        padding: 0px 30px !important;
-        height: 30px !important;
-        line-height: 30px !important;
-        font-size: 13px !important;
+        color: #ffffff !important; font-weight: 600; padding: 0px 30px !important;
+        height: 30px !important; line-height: 30px !important; font-size: 13px !important;
     }
-
-    .stTabs [aria-selected="true"] { 
-        border-bottom: 3px solid #2ecc71 !important; 
-    }
+    .stTabs [aria-selected="true"] { border-bottom: 3px solid #2ecc71 !important; }
     
-    /* REMOÇÃO TOTAL DO ESPAÇO AMARELO */
+    /* CONTEÚDO NO TOPO */
     .main .block-container { 
-        padding-top: 30px !important; /* Altura exata do menu */
+        padding-top: 30px !important; 
         margin-top: 0px !important;
     }
-
-    /* Força o primeiro elemento a subir ignorando margens padrão do Streamlit */
     div[data-testid="stVerticalBlock"] > div:first-child {
-        margin-top: -25px !important;
+        margin-top: -20px !important;
     }
 
-    /* Inputs (Seus Ajustes) */
-    div[data-testid="stHorizontalBlock"] { margin-bottom: 2px !important; }
+    /* ESPAÇAMENTO ENTRE LINHAS (De volta aos 3px que você gostou) */
+    div[data-testid="stHorizontalBlock"] { 
+        margin-bottom: 3px !important; 
+    }
+
+    /* INPUTS */
     div[data-testid="stTextInput"] > div { 
         min-height: 25px !important; height: 25px !important;
         width: 55% !important;
     }
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; }
 
-    /* Labels */
+    /* LABELS */
     label { 
         color: #2ecc71 !important; font-weight: bold !important; font-size: 15px !important; 
         padding-right: 2px !important; height: 25px !important;
         display: flex; align-items: center; justify-content: flex-end;
     }
     
-    /* Checkboxes e Botões */
+    /* CHECKBOXES E BOTÕES (Espaçamento superior para não colar nos campos) */
+    .stCheckbox { margin-top: 5px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; white-space: nowrap; }
     
+    div.stButton { margin-top: 10px !important; }
     div.stButton > button {
         background-color: #2ecc71 !important; color: white !important; font-weight: bold !important;
         height: 40px !important; border: none !important; border-radius: 5px !important;
@@ -81,17 +77,16 @@ st.markdown("""
         white-space: nowrap !important; font-size: 13px !important; padding: 0px 20px !important;
     }
 
-    /* Lista de Prévia */
-    hr { margin-top: 5px !important; margin-bottom: 5px !important; }
+    /* LISTA E CONTADOR */
+    hr { margin-top: 10px !important; margin-bottom: 5px !important; }
     .contador-estilo {
         text-align: right;
         color: #2ecc71;
         font-weight: bold;
         font-size: 14px;
-        margin-bottom: 2px;
-        padding-right: 5px;
+        margin-bottom: 5px;
     }
-    div[data-testid="stDataFrame"] { margin-top: -10px !important; }
+    div[data-testid="stDataFrame"] { margin-top: 0px !important; }
 
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
@@ -134,12 +129,14 @@ with tab_cad:
     _, col_central, _ = st.columns([0.5, 3, 0.5])
     
     with col_central:
-        # Formulário de Cadastro
-        for label, key, func in [
+        # Loop do formulário
+        campos = [
             ("ID:", "f_id", None), ("ALUNO:", "f_nome", None), ("CIDADE:", "f_cid", None),
             ("CURSO:", "input_curso_key", transformar_curso), ("PAGAMENTO:", "input_pagto_key", None),
             ("VENDEDOR:", "f_vend", None), ("DATA:", "f_data", None)
-        ]:
+        ]
+        
+        for label, key, func in campos:
             c1, c2 = st.columns([1.2, 4])
             c1.markdown(f"<label>{label}</label>", unsafe_allow_html=True)
             if key == "input_curso_key":
@@ -151,7 +148,7 @@ with tab_cad:
             else:
                 c2.text_input(label, key=key, label_visibility="collapsed")
 
-        st.write("")
+        # Checkboxes
         recuo, area_checks = st.columns([1.2, 4])
         with area_checks:
             s1, s2, s3 = st.columns(3)
@@ -159,7 +156,7 @@ with tab_cad:
             with s2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
             with s3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
 
-        st.write("")
+        # Botões
         recuo_btn, area_btns = st.columns([1.2, 4])
         with area_btns:
             b1, b2 = st.columns(2)
@@ -174,10 +171,16 @@ with tab_cad:
                     if st.session_state.lista_previa:
                         df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa); conn.update(data=pd.concat([df_old, df_new], ignore_index=True)); st.session_state.lista_previa = []; st.success("Enviado!"); st.rerun()
 
-        # --- LISTA DE PRÉ-VISUALIZAÇÃO IMEDIATA ---
+        # Lista de Pré-Visualização
         st.write("---") 
         qtd = len(st.session_state.lista_previa)
         st.markdown(f'<div class="contador-estilo">Alunos Salvos: {qtd}</div>', unsafe_allow_html=True)
-        
         df_previa = pd.DataFrame(st.session_state.lista_previa) if st.session_state.lista_previa else pd.DataFrame(columns=["ID", "Aluno", "Cidade", "Curso", "Pagamento", "Vendedor", "Data"])
         st.dataframe(df_previa, use_container_width=True, hide_index=True)
+
+with tab_ger:
+    try:
+        dados = conn.read(ttl="0s").fillna("")
+        if "ID" in dados.columns: dados["ID"] = dados["ID"].astype(str).str.replace(r'\.0$', '', regex=True)
+        st.dataframe(dados.iloc[::-1], use_container_width=True, hide_index=True, height=600)
+    except: st.error("Erro ao carregar banco de dados.")
