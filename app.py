@@ -13,142 +13,137 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS DEFINITIVO (ESTILO TÉCNICO) ---
+# --- CSS DEFINITIVO ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
     .stTabs [data-baseweb="tab-list"] { background-color: #1a3a5a; border-bottom: 2px solid #2c5282; }
     .stTabs [data-baseweb="tab"] { color: #ffffff !important; font-weight: 600; padding: 0px 30px; }
     .stTabs [aria-selected="true"] { background-color: #2c5282 !important; border-bottom: 4px solid #2ecc71 !important; }
-    
-    /* Campos de Texto */
     div[data-testid="stTextInput"] > div { min-height: 25px !important; height: 25px !important; }
-    .stTextInput input { 
-        background-color: white !important; color: black !important; 
-        text-transform: uppercase !important; font-size: 12px !important; 
-    }
-    
-    /* Labels Verdes Alinhadas */
-    label { 
-        color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; 
-        display: flex; align-items: center; justify-content: flex-end; padding-right: 15px; height: 25px;
-    }
-    
-    div.stButton > button {
-        background-color: #2ecc71 !important; color: white !important; font-weight: bold !important;
-        height: 40px !important; width: 100% !important; border: none !important;
-    }
-    
+    .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; }
+    label { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; display: flex; align-items: center; justify-content: flex-end; padding-right: 15px; height: 25px; }
+    div.stButton > button { background-color: #2ecc71 !important; color: white !important; font-weight: bold !important; height: 40px !important; width: 100% !important; border: none !important; }
     .stDataFrame { background-color: white !important; color: black !important; border-radius: 4px; }
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
-# --- CONEXÃO E INICIALIZAÇÃO ---
+# --- CONEXÃO E ESTADOS ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# Inicializa todos os estados necessários
 if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
-if "txt_curso" not in st.session_state: st.session_state.txt_curso = ""
-if "txt_pagto" not in st.session_state: st.session_state.txt_pagto = ""
+if "val_curso" not in st.session_state: st.session_state.val_curso = ""
+if "val_pagto" not in st.session_state: st.session_state.val_pagto = ""
 
-# --- LÓGICA DE PROCESSAMENTO DO CURSO ---
-def processar_curso():
-    entrada = st.session_state.input_curso_widget.strip()
-    if entrada:
-        # Pega a última parte após o "+" ou o texto todo
-        partes = [p.strip() for p in entrada.split('+')]
-        ultimo = partes[-1]
-        
-        if ultimo in DIC_CURSOS:
-            partes[-1] = DIC_CURSOS[ultimo]
-            st.session_state.txt_curso = (" + ".join(partes)).upper() + " "
-        else:
-            st.session_state.txt_curso = entrada.upper() + " "
-    # Sincroniza o widget com o texto processado
-    st.session_state.input_curso_widget = st.session_state.txt_curso
-
-# --- LÓGICA DE PAGAMENTO (CHECKBOXES) ---
-def atualizar_pagto():
-    base = st.session_state.input_pagto_widget.split(" | ")[0].strip().upper()
-    obs = []
-    if st.session_state.chk_lib: obs.append("APÓS PAGAMENTO LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO IN-GLÊS")
-    if st.session_state.chk_bonus: obs.append("CASO PAGUE VIA LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO CURSO BÔNUS A ESCOLHA")
-    if st.session_state.chk_conf: obs.append("AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA")
+# --- LÓGICA DO CAMPO CURSO (SUBSTITUIÇÃO NO ENTER) ---
+def transformar_curso():
+    # Captura o que o usuário digitou
+    entrada = st.session_state.input_curso_key.strip()
     
-    if obs:
-        st.session_state.txt_pagto = f"{base} | {' | '.join(obs)}"
-    else:
-        st.session_state.txt_pagto = base
-    st.session_state.input_pagto_widget = st.session_state.txt_pagto
+    if entrada:
+        # Divide por "+" para pegar o último termo digitado
+        partes = [p.strip() for p in entrada.split('+') if p.strip()]
+        if not partes: return
+        
+        ultimo_termo = partes[-1]
+        
+        # Se o último termo for um código no dicionário, substitui
+        if ultimo_termo in DIC_CURSOS:
+            nome_completo = DIC_CURSOS[ultimo_termo]
+            partes[-1] = nome_completo
+            
+            # Reconstrói a string evitando duplicatas de nomes de cursos
+            resultado = []
+            for p in partes:
+                if p not in resultado: resultado.append(p)
+            
+            st.session_state.val_curso = " + ".join(resultado).upper() + " "
+        else:
+            # Se não for código, apenas limpa espaços e converte para upper
+            st.session_state.val_curso = entrada.upper() + " "
+    
+    # Atualiza o valor do widget para refletir a substituição
+    st.session_state.input_curso_key = st.session_state.val_curso
 
-# --- INTERFACE ---
-abas = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
+# --- LÓGICA DO PAGAMENTO ---
+def processar_pagto():
+    base = st.session_state.input_pagto_key.split(" | ")[0].strip().upper()
+    obs = []
+    if st.session_state.chk_1: obs.append("APÓS PAGAMENTO LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO IN-GLÊS")
+    if st.session_state.chk_2: obs.append("CASO PAGUE VIA LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO CURSO BÔNUS A ESCOLHA")
+    if st.session_state.chk_3: obs.append("AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA")
+    
+    final = base
+    if obs: final += " | " + " | ".join(obs)
+    
+    st.session_state.val_pagto = final
+    st.session_state.input_pagto_key = final
 
-with abas[0]:
-    _, col_central, _ = st.columns([0.5, 3, 0.5])
-    with col_central:
+# --- UI ---
+tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
+
+with tab_cad:
+    _, col, _ = st.columns([0.5, 3, 0.5])
+    with col:
         st.write("")
-        # Linhas do Formulário
-        c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>ID:</label>", unsafe_allow_html=True); id_val = c2.text_input("ID", key="id_k", label_visibility="collapsed")
-        c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>ALUNO:</label>", unsafe_allow_html=True); nome_val = c2.text_input("ALUNO", key="nome_k", label_visibility="collapsed")
-        c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>CIDADE:</label>", unsafe_allow_html=True); cid_val = c2.text_input("CIDADE", key="cid_k", label_visibility="collapsed")
+        # Formulário
+        c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>ID:</label>", unsafe_allow_html=True); id_alu = c2.text_input("ID", key="f_id", label_visibility="collapsed")
+        c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>ALUNO:</label>", unsafe_allow_html=True); nome_alu = c2.text_input("ALUNO", key="f_nome", label_visibility="collapsed")
+        c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>CIDADE:</label>", unsafe_allow_html=True); cid_alu = c2.text_input("CIDADE", key="f_cid", label_visibility="collapsed")
         
-        # CAMPO CURSO (SUBSTITUIÇÃO AO DAR ENTER)
+        # Campo Curso (Substituição real)
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>CURSO:</label>", unsafe_allow_html=True)
-        c2.text_input("CURSO", key="input_curso_widget", value=st.session_state.txt_curso, on_change=processar_curso, label_visibility="collapsed")
+        c2.text_input("CURSO", key="input_curso_key", value=st.session_state.val_curso, on_change=transformar_curso, label_visibility="collapsed")
         
-        # CAMPO PAGAMENTO
+        # Campo Pagamento
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>PAGAMENTO:</label>", unsafe_allow_html=True)
-        c2.text_input("PAGAMENTO", key="input_pagto_widget", value=st.session_state.txt_pagto, label_visibility="collapsed")
+        c2.text_input("PAGAMENTO", key="input_pagto_key", value=st.session_state.val_pagto, label_visibility="collapsed")
         
-        c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>VENDEDOR:</label>", unsafe_allow_html=True); vend_val = c2.text_input("VENDEDOR", key="vend_k", label_visibility="collapsed")
-        c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>DATA:</label>", unsafe_allow_html=True); data_val = c2.text_input("DATA", key="data_k", value=date.today().strftime("%d/%m/%Y"), label_visibility="collapsed")
+        c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>VENDEDOR:</label>", unsafe_allow_html=True); vend_alu = c2.text_input("VENDEDOR", key="f_vend", label_visibility="collapsed")
+        c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>DATA:</label>", unsafe_allow_html=True); data_alu = c2.text_input("DATA", key="f_data", value=date.today().strftime("%d/%m/%Y"), label_visibility="collapsed")
 
-        # CHECKBOXES (BOTÕES SELECIONÁVEIS)
+        # Checkboxes (Botões Selecionáveis)
         st.write("")
         s1, s2, s3 = st.columns(3)
-        with s1: st.checkbox("LIB. IN-GLÊS", key="chk_lib", on_change=atualizar_pagto)
-        with s2: st.checkbox("CURSO BÔNUS", key="chk_bonus", on_change=atualizar_pagto)
-        with s3: st.checkbox("CONFIRMAÇÃO", key="chk_conf", on_change=atualizar_pagto)
+        with s1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
+        with s2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
+        with s3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
 
-        # BOTÕES DE SALVAR
+        # Ações
         b1, b2 = st.columns(2)
         with b1:
-            if st.button("💾 SALVAR ALUNO"):
-                if st.session_state.nome_k:
-                    novo_aluno = {
-                        "ID": st.session_state.id_k, "Aluno": st.session_state.nome_k.upper(),
-                        "Cidade": st.session_state.cid_k.upper(), "Curso": st.session_state.input_curso_widget.strip(),
-                        "Pagamento": st.session_state.input_pagto_widget.upper(), "Vendedor": st.session_state.vend_k.upper(),
-                        "Data": st.session_state.data_k
+            if st.button("💾 SALVAR NA PRÉVIA"):
+                if st.session_state.f_nome:
+                    aluno = {
+                        "ID": st.session_state.f_id.upper(), "Aluno": st.session_state.f_nome.upper(),
+                        "Cidade": st.session_state.f_cid.upper(), "Curso": st.session_state.input_curso_key.strip(),
+                        "Pagamento": st.session_state.input_pagto_key.upper(), "Vendedor": st.session_state.f_vend.upper(),
+                        "Data": st.session_state.f_data
                     }
-                    st.session_state.lista_previa.append(novo_aluno)
-                    # Reset Campos
-                    st.session_state.txt_curso = ""; st.session_state.txt_pagto = ""
-                    st.session_state.nome_k = ""; st.session_state.id_k = ""
+                    st.session_state.lista_previa.append(aluno)
+                    # Limpa campos
+                    st.session_state.val_curso = ""; st.session_state.val_pagto = ""
+                    st.session_state.f_nome = ""; st.session_state.f_id = ""
                     st.rerun()
         with b2:
-            if st.button("📤 ENVIAR TUDO"):
+            if st.button("📤 ENVIAR PARA PLANILHA"):
                 if st.session_state.lista_previa:
-                    df_planilha = conn.read(ttl="0s").fillna("")
-                    df_novos = pd.DataFrame(st.session_state.lista_previa)
-                    df_final = pd.concat([df_planilha, df_novos], ignore_index=True)
-                    conn.update(data=df_final)
+                    df_old = conn.read(ttl="0s").fillna("")
+                    df_new = pd.DataFrame(st.session_state.lista_previa)
+                    conn.update(data=pd.concat([df_old, df_new], ignore_index=True))
                     st.session_state.lista_previa = []
-                    st.success("Enviado!")
+                    st.success("Enviado com sucesso!")
                     st.rerun()
 
-    # LISTA DE PRÉ-VISUALIZAÇÃO CORRIGIDA
-    st.write("### Pré-visualização (Aguardando Envio)")
-    df_previa = pd.DataFrame(st.session_state.lista_previa)
-    if not df_previa.empty:
-        st.dataframe(df_previa, use_container_width=True, hide_index=True)
+    # Tabela de Prévia
+    st.write("---")
+    if st.session_state.lista_previa:
+        st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
     else:
-        st.info("Nenhum aluno na lista de espera.")
+        st.info("Nenhum aluno na prévia.")
 
-with abas[1]:
-    # GERENCIAMENTO CRM
+with tab_ger:
     try:
         dados = conn.read(ttl="0s").fillna("")
         if "ID" in dados.columns:
