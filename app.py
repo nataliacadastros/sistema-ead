@@ -91,12 +91,12 @@ def transformar_curso():
 def processar_pagto():
     base = st.session_state.f_pagto.split(" | ")[0].strip().upper()
     obs = []
-    if st.session_state.chk_1: obs.append("LIBERAÇÃO IN-GLÊS")
-    if st.session_state.chk_2: obs.append("CURSO BÔNUS")
-    if st.session_state.chk_3: obs.append("CONFIRMAÇÃO MATRÍCULA")
+    if st.session_state.get('chk_1'): obs.append("LIBERAÇÃO IN-GLÊS")
+    if st.session_state.get('chk_2'): obs.append("CURSO BÔNUS")
+    if st.session_state.get('chk_3'): obs.append("CONFIRMAÇÃO MATRÍCULA")
     st.session_state.f_pagto = f"{base} | {' | '.join(obs)}" if obs else base
 
-# --- ABAS DO SISTEMA ---
+# --- ABAS ---
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
 # --- ABA 1: CADASTRO ---
@@ -141,8 +141,9 @@ with tab_cad:
 
         c_dat_lab, c_dat_inp = st.columns([1.5, 3.5])
         c_dat_lab.markdown("<label>DATA DA MATRÍCULA:</label>", unsafe_allow_html=True)
-        if "f_data_val" not in st.session_state: st.session_state.f_data_val = date.today().strftime("%d/%m/%Y")
-        f_data = c_dat_inp.text_input("DATA", key="f_data", value=st.session_state.f_data_val, label_visibility="collapsed")
+        # Inicializa data se não existir
+        if "f_data" not in st.session_state: st.session_state.f_data = date.today().strftime("%d/%m/%Y")
+        f_data = c_dat_inp.text_input("DATA", key="f_data", label_visibility="collapsed")
 
         st.write("")
         _, c_c1, c_c2, c_c3, _ = st.columns([1.5, 1.1, 1.2, 1.2, 0.1])
@@ -164,9 +165,11 @@ with tab_cad:
                     st.session_state.lista_previa.append(aluno)
                     
                     # LIMPEZA SELETIVA: Mantém Cidade, Curso, Vendedor e Data
-                    chaves_para_limpar = ["f_id", "f_nome", "f_tel_resp", "f_tel_aluno", "f_cpf", "f_pagto", "chk_1", "chk_2", "chk_3"]
-                    for k in chaves_para_limpar:
-                        if k in st.session_state: del st.session_state[k]
+                    limpar = ["f_id", "f_nome", "f_tel_resp", "f_tel_aluno", "f_cpf", "f_pagto", "chk_1", "chk_2", "chk_3"]
+                    for k in limpar:
+                        if k in st.session_state:
+                            # Para checkboxes, resetar para False. Para texto, para vazio.
+                            st.session_state[k] = False if "chk" in k else ""
                     st.rerun()
 
         with b_col2:
@@ -195,12 +198,13 @@ with tab_cad:
                         
                         st.session_state.lista_previa = []
                         
-                        # LIMPEZA TOTAL: Zera absolutamente todos os campos do formulário
-                        todas_as_chaves = ["f_id", "f_nome", "f_tel_resp", "f_tel_aluno", "f_cpf", "f_cid", 
-                                           "input_curso_key", "f_pagto", "f_vend", "f_data", "chk_1", "chk_2", "chk_3"]
-                        for k in todas_as_chaves:
-                            if k in st.session_state: del st.session_state[k]
-                            
+                        # LIMPEZA TOTAL: Zera absolutamente tudo
+                        todas = ["f_id", "f_nome", "f_tel_resp", "f_tel_aluno", "f_cpf", "f_cid", 
+                                 "input_curso_key", "f_pagto", "f_vend", "f_data", "chk_1", "chk_2", "chk_3"]
+                        for k in todas:
+                            if k in st.session_state:
+                                st.session_state[k] = False if "chk" in k else ""
+                        
                         st.success("Enviado com sucesso!")
                         st.cache_data.clear(); st.rerun()
                     except Exception as e: st.error(f"Erro: {e}")
