@@ -14,7 +14,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS DEFINITIVO: TOPO AJUSTADO E SEM SOBREPOSIÇÃO ---
+# --- CSS COM SUAS CONFIGURAÇÕES EXATAS ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
@@ -29,21 +29,21 @@ st.markdown("""
         width: 100vw !important;
         z-index: 999;
         justify-content: center;
-        height: 35px !important;
+        height: 32px !important;
     }
     .stTabs [data-baseweb="tab"] { 
         color: #ffffff !important; font-weight: 600; padding: 0px 30px !important;
-        height: 35px !important; line-height: 35px !important; font-size: 13px !important;
+        height: 32px !important; line-height: 32px !important; font-size: 13px !important;
     }
     .stTabs [aria-selected="true"] { border-bottom: 3px solid #2ecc71 !important; }
     
-    /* AJUSTE DO CONTAINER PRINCIPAL - DISTÂNCIA DO MENU */
+    /* CONTEÚDO COLADO NO MENU SEM SOBREPOR */
     .main .block-container { 
-        padding-top: 40px !important; /* Espaço exato para ficar abaixo da linha azul */
+        padding-top: 38px !important; 
         margin-top: 0px !important;
     }
 
-    /* ESPAÇAMENTO DOS CAMPOS (SUAS MEDIDAS EXATAS) */
+    /* --- SUAS CONFIGURAÇÕES SOLICITADAS --- */
     div[data-testid="stHorizontalBlock"] { 
         margin-bottom: 3px !important; 
     }
@@ -51,19 +51,20 @@ st.markdown("""
     div[data-testid="stTextInput"] > div { 
         min-height: 25px !important; 
         height: 25px !important;
-        width: 100% !important;
+        width: 55% !important; /* Ajuste de largura solicitado */
     }
 
     label { 
         color: #2ecc71 !important; 
         font-weight: bold !important; 
         font-size: 15px !important; 
-        padding-right: 10px !important; 
+        padding-right: 2px !important; 
         height: 25px !important;
         display: flex; 
         align-items: center; 
         justify-content: flex-end;
     }
+    /* -------------------------------------- */
 
     .stTextInput input { 
         background-color: white !important; 
@@ -73,12 +74,11 @@ st.markdown("""
         height: 25px !important;
     }
 
-    /* Checkboxes */
-    .stCheckbox { margin-top: 5px !important; }
+    /* Checkboxes e Botões */
+    .stCheckbox { margin-top: 8px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
     
-    /* Botões: Sem margens negativas para não sobrepor */
-    div.stButton { margin-top: 10px !important; }
+    div.stButton { margin-top: 15px !important; }
     div.stButton > button {
         background-color: #2ecc71 !important; color: white !important; font-weight: bold !important;
         height: 40px !important; border-radius: 5px !important;
@@ -86,7 +86,7 @@ st.markdown("""
     }
 
     /* Lista e Contador */
-    hr { margin-top: 15px !important; margin-bottom: 5px !important; }
+    hr { margin-top: 20px !important; margin-bottom: 5px !important; }
     .contador-estilo {
         text-align: right;
         color: #2ecc71;
@@ -133,17 +133,17 @@ def processar_pagto():
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
 with tab_cad:
-    # Centralização Total
+    # Centralização do Frame
     _, col_central, _ = st.columns([1, 2, 1])
     
     with col_central:
-        # Formulário (Linha por Linha)
+        # Formulário
         for label, key, func in [
             ("ID:", "f_id", None), ("ALUNO:", "f_nome", None), ("CIDADE:", "f_cid", None),
             ("CURSO:", "input_curso_key", transformar_curso), ("PAGAMENTO:", "input_pagto_key", None),
             ("VENDEDOR:", "f_vend", None), ("DATA:", "f_data", None)
         ]:
-            c1, c2 = st.columns([1, 3])
+            c1, c2 = st.columns([1.2, 4])
             c1.markdown(f"<label>{label}</label>", unsafe_allow_html=True)
             if key == "input_curso_key":
                 c2.text_input(label, key=key, value=st.session_state.val_curso, on_change=func, label_visibility="collapsed")
@@ -155,14 +155,13 @@ with tab_cad:
                 c2.text_input(label, key=key, label_visibility="collapsed")
 
         # Checkboxes
-        c_chk = st.columns([1, 1, 1, 1])
+        c_chk = st.columns([1.2, 1.3, 1.3, 1.3])
         with c_chk[1]: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
         with c_chk[2]: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
         with c_chk[3]: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
 
-        # Botões (Descidos para evitar sobreposição)
-        st.write("") 
-        c_btn = st.columns([1, 1.5, 1.5])
+        # Botões
+        c_btn = st.columns([1.2, 2, 2])
         with c_btn[1]:
             if st.button("💾 SALVAR ALUNO"):
                 if st.session_state.f_nome:
