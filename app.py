@@ -37,7 +37,7 @@ st.markdown("""
     /* Ajuste de conteúdo para menu fixo */
     .main .block-container { padding-top: 80px; }
 
-    /* Inputs (Seus Ajustes) */
+    /* Inputs */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 3px !important; }
     div[data-testid="stTextInput"] > div { 
         min-height: 25px !important; height: 25px !important;
@@ -62,15 +62,17 @@ st.markdown("""
         white-space: nowrap !important; font-size: 13px !important; padding: 0px 20px !important;
     }
 
-    /* Contador lateral direito - Ajustado para não sobrepor */
+    /* Ajuste de proximidade da lista */
+    hr { margin-top: 5px !important; margin-bottom: 5px !important; }
     .contador-estilo {
         text-align: right;
         color: #2ecc71;
         font-weight: bold;
         font-size: 14px;
-        margin-bottom: 5px; /* Espaço positivo para empurrar a lista para baixo */
+        margin-bottom: 2px;
         padding-right: 5px;
     }
+    div[data-testid="stDataFrame"] { margin-top: -10px !important; }
 
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
@@ -147,21 +149,19 @@ with tab_cad:
                 if st.button("💾 SALVAR ALUNO"):
                     if st.session_state.f_nome:
                         aluno = {"ID": st.session_state.f_id.upper(), "Aluno": st.session_state.f_nome.upper(), "Cidade": st.session_state.f_cid.upper(), "Curso": st.session_state.input_curso_key.strip(), "Pagamento": st.session_state.input_pagto_key.upper(), "Vendedor": st.session_state.f_vend.upper(), "Data": st.session_state.f_data}
-                        st.session_state.lista_previa.append(aluno) # Agora usa append para ficar no final
+                        st.session_state.lista_previa.append(aluno)
                         st.rerun()
             with b2:
                 if st.button("📤 ENVIAR PLANILHA"):
                     if st.session_state.lista_previa:
                         df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa); conn.update(data=pd.concat([df_old, df_new], ignore_index=True)); st.session_state.lista_previa = []; st.success("Enviado!"); st.rerun()
 
-        # --- LISTA DE PRÉ-VISUALIZAÇÃO PERMANENTE ---
-        st.write("---")
+        # --- LISTA DE PRÉ-VISUALIZAÇÃO IMEDIATA ---
+        st.write("---") # Linha divisória com margem reduzida pelo CSS
         
-        # Contador acima da lista
         qtd = len(st.session_state.lista_previa)
         st.markdown(f'<div class="contador-estilo">Alunos Salvos: {qtd}</div>', unsafe_allow_html=True)
         
-        # Tabela (Ordem: mais antigo em cima, mais recente embaixo)
         df_previa = pd.DataFrame(st.session_state.lista_previa) if st.session_state.lista_previa else pd.DataFrame(columns=["ID", "Aluno", "Cidade", "Curso", "Pagamento", "Vendedor", "Data"])
         st.dataframe(df_previa, use_container_width=True, hide_index=True)
 
