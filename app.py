@@ -21,7 +21,7 @@ DIC_CURSOS = {
     "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS ---
+# --- CSS DEFINITIVO ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
@@ -44,77 +44,82 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 # --- INICIALIZAÇÃO DE ESTADOS ---
 if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
-if "curso_final" not in st.session_state: st.session_state.curso_final = ""
+if "curso_display" not in st.session_state: st.session_state.curso_display = ""
+if "pagto_input" not in st.session_state: st.session_state.pagto_input = ""
 
-# --- LÓGICA DE CONVERSÃO DE CURSOS ---
+# --- LÓGICA DE CURSOS (SUBSTITUIÇÃO NO CAMPO) ---
 def processar_curso():
-    # Pega o que foi digitado no campo temporário
-    codigo = st.session_state.campo_temp.strip()
+    # O Streamlit guarda o que foi digitado na chave do widget antes de rodar a função
+    texto_digitado = st.session_state.curso_widget.strip()
     
-    if codigo in DIC_CURSOS:
-        nome_curso = DIC_CURSOS[codigo]
+    if texto_digitado:
+        # Isolar o último termo (caso o usuário digite "CURSO + 2")
+        partes = [p.strip() for p in texto_digitado.split('+')]
+        ultimo_termo = partes[-1]
         
-        # Se já houver cursos, concatena com " + "
-        if st.session_state.curso_final:
-            # Evita adicionar o mesmo curso duas vezes
-            if nome_curso not in st.session_state.curso_final:
-                st.session_state.curso_final += f" + {nome_curso}"
-        else:
-            st.session_state.curso_final = nome_curso
+        # Se for um código válido, substituímos o código pelo nome
+        if ultimo_termo in DIC_CURSOS:
+            nome_completo = DIC_CURSOS[ultimo_termo]
+            # Removemos o código da lista de partes e adicionamos o nome
+            partes[-1] = nome_completo
             
-        # Força maiúsculo e garante o espaço no final para a próxima digitação
-        st.session_state.curso_final = st.session_state.curso_final.upper() + " "
+            # Reconstrói a string com " + "
+            # Usamos set para evitar duplicados se você preferir, mas join mantém a ordem
+            resultado = " + ".join(partes)
+            st.session_state.curso_display = resultado.upper()
+        else:
+            # Se não for código, apenas padroniza para maiúsculo
+            st.session_state.curso_display = texto_digitado.upper()
     
-    # Limpa o campo de digitação após o ENTER para o próximo código
-    st.session_state.campo_temp = ""
+    # Regra: Sempre garantir um espaço no final para facilitar a próxima digitação
+    st.session_state.curso_display = st.session_state.curso_display.strip() + " "
 
 def atualizar_pagto():
-    texto = st.session_state.pagto_input.split(" | ")[0].strip().upper()
-    if st.session_state.check_lib: texto += " | APÓS PAGAMENTO LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO IN-GLÊS"
-    if st.session_state.check_bonus: texto += " | CASO PAGUE VIA LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO CURSO BÔNUS A ESCOLHA"
-    if st.session_state.check_conf: texto += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
-    st.session_state.pagto_input = texto
-
-def campo_horizontal(label, key, value=None, on_change=None):
-    c1, c2 = st.columns([1.2, 4]) 
-    with c1: st.markdown(f"<label>{label}</label>", unsafe_allow_html=True)
-    with c2: 
-        if value is not None:
-            return st.text_input(label, label_visibility="collapsed", key=key, value=value, on_change=on_change)
-        return st.text_input(label, label_visibility="collapsed", key=key, on_change=on_change)
+    base = st.session_state.pagto_widget.split(" | ")[0].strip().upper()
+    if st.session_state.check_lib: base += " | APÓS PAGAMENTO LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO IN-GLÊS"
+    if st.session_state.check_bonus: base += " | CASO PAGUE VIA LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO CURSO BÔNUS A ESCOLHA"
+    if st.session_state.check_conf: base += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
+    st.session_state.pagto_input = base
 
 # --- ABAS ---
-tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
+tab1, tab2, tab3 = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
-with tab_cad:
+with tab1:
     _, col_central, _ = st.columns([0.5, 3, 0.5])
     with col_central:
         st.write("")
-        campo_horizontal("ID:", "id_alu")
-        campo_horizontal("ALUNO:", "nome_alu")
-        campo_horizontal("TEL. RESP:", "t_resp")
-        campo_horizontal("TEL. ALUNO:", "t_alu")
-        campo_horizontal("CIDADE:", "cid_f")
         
-        # --- CAMPO DE CURSO (A MÁGICA ACONTECE AQUI) ---
-        # Mostramos o resultado final (curso_final) em uma linha informativa logo acima ou usamos o value
-        # Para seguir sua regra de digitar no campo e ele converter:
+        # Função auxiliar para campos simples
+        def row(label, key, val=None):
+            c1, c2 = st.columns([1.2, 4])
+            with c1: st.markdown(f"<label>{label}</label>", unsafe_allow_html=True)
+            with c2: return st.text_input(label, label_visibility="collapsed", key=key, value=val)
+
+        row("ID:", "id_alu")
+        row("ALUNO:", "nome_alu")
+        row("TEL. RESP:", "t_resp")
+        row("TEL. ALUNO:", "t_alu")
+        row("CIDADE:", "cid_f")
+        
+        # --- CAMPO CURSO (SUBSTITUIÇÃO IMEDIATA) ---
         c1, c2 = st.columns([1.2, 4])
         with c1: st.markdown("<label>CURSO:</label>", unsafe_allow_html=True)
-        with c2: 
-            # O usuário digita no 'campo_temp', que aciona o 'processar_curso'
-            # O valor exibido é o 'curso_final' + o que ele está digitando agora
-            st.text_input("CURSO", label_visibility="collapsed", key="campo_temp", 
-                          placeholder=st.session_state.curso_final if st.session_state.curso_final else "Digite o código e ENTER",
-                          on_change=processar_curso)
-            
-            # Exibição do que já foi acumulado para o usuário não se perder
-            if st.session_state.curso_final:
-                st.markdown(f"<p style='color:#2ecc71; font-size:10px; margin-top:-5px;'>Cursos: {st.session_state.curso_final}</p>", unsafe_allow_html=True)
+        with c2:
+            st.text_input(
+                "CURSO", 
+                label_visibility="collapsed", 
+                key="curso_widget", 
+                value=st.session_state.curso_display, # Ele olha para o estado processado
+                on_change=processar_curso             # Roda a conversão no Enter
+            )
 
-        campo_horizontal("PAGAMENTO:", "pagto_input")
-        campo_horizontal("VENDEDOR:", "vend_f")
-        campo_horizontal("DATA:", "data_input", value=date.today().strftime("%d/%m/%Y"))
+        # --- CAMPO PAGAMENTO ---
+        c1, c2 = st.columns([1.2, 4])
+        with c1: st.markdown("<label>PAGAMENTO:</label>", unsafe_allow_html=True)
+        with c2: st.text_input("PAGAMENTO", label_visibility="collapsed", key="pagto_widget", value=st.session_state.pagto_input)
+
+        row("VENDEDOR:", "vend_f")
+        row("DATA:", "data_input", val=date.today().strftime("%d/%m/%Y"))
 
         st.write("")
         s1, s2, s3 = st.columns(3)
@@ -122,41 +127,43 @@ with tab_cad:
         with s2: st.checkbox("CURSO BÔNUS", key="check_bonus", on_change=atualizar_pagto)
         with s3: st.checkbox("CONFIRMAÇÃO", key="check_conf", on_change=atualizar_pagto)
 
-        b1, b2 = st.columns(2)
-        with b1:
+        btn1, btn2 = st.columns(2)
+        with btn1:
             if st.button("💾 SALVAR ALUNO"):
                 if st.session_state.nome_alu:
                     aluno = {
                         "ID": st.session_state.id_alu.upper(),
                         "Aluno": st.session_state.nome_alu.upper(),
                         "Cidade": st.session_state.cid_f.upper(),
-                        "Curso": st.session_state.curso_final.strip(),
-                        "Pagamento": st.session_state.pagto_input.upper(),
+                        "Curso": st.session_state.curso_display.strip(),
+                        "Pagamento": st.session_state.pagto_widget.upper(),
                         "Vendedor": st.session_state.vend_f.upper(),
                         "Data": st.session_state.data_input
                     }
                     st.session_state.lista_previa.append(aluno)
-                    # Limpa tudo para o próximo
-                    st.session_state.curso_final = ""
+                    # Reset dos campos
+                    st.session_state.curso_display = ""
                     st.session_state.nome_alu = ""
                     st.session_state.id_alu = ""
                     st.rerun()
 
-        with b2:
+        with btn2:
             if st.button("📤 FINALIZAR E ENVIAR"):
                 if st.session_state.lista_previa:
                     df_base = conn.read(ttl="0s").fillna("")
                     df_novo = pd.DataFrame(st.session_state.lista_previa)
                     conn.update(data=pd.concat([df_base, df_novo], ignore_index=True))
                     st.session_state.lista_previa = []
-                    st.success("Enviado com sucesso!")
+                    st.success("Enviado!")
                     st.rerun()
 
     st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
-with tab_ger:
-    # ... (O restante do código do gerenciamento permanece igual)
-    dados = conn.read(ttl="0s").fillna("")
-    if "ID" in dados.columns:
-        dados["ID"] = dados["ID"].astype(str).str.replace(r'\.0$', '', regex=True)
-    st.dataframe(dados.iloc[::-1], use_container_width=True, hide_index=True)
+with tab2:
+    try:
+        dados = conn.read(ttl="0s").fillna("")
+        if "ID" in dados.columns:
+            dados["ID"] = dados["ID"].astype(str).str.replace(r'\.0$', '', regex=True)
+        st.dataframe(dados.iloc[::-1], use_container_width=True, hide_index=True, height=600)
+    except:
+        st.write("Aguardando dados...")
