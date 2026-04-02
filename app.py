@@ -65,7 +65,6 @@ st.markdown("""
     .custom-table td { padding: 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: nowrap; }
     .custom-table tr:hover { background-color: rgba(0, 242, 255, 0.1); }
 
-    /* Estilo do ID Clicável */
     .id-link { color: #00f2ff !important; font-weight: bold; text-decoration: none; cursor: pointer; border: 1px solid #00f2ff; padding: 2px 5px; border-radius: 4px; }
     .id-link:hover { background-color: #00f2ff; color: #0b0e1e !important; }
 
@@ -90,7 +89,6 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
 if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
-if "id_selecionado" not in st.session_state: st.session_state.id_selecionado = None
 if "dados_originais_edicao" not in st.session_state: st.session_state.dados_originais_edicao = {}
 
 # --- FUNÇÕES DE CONTROLE ---
@@ -124,7 +122,12 @@ def extrair_valor_geral(texto):
         return float(v[0]) if v else 0.0
     except: return 0.0
 
+# Captura do ID via URL de forma segura
+id_via_url = st.query_params.get("edit_id", None)
+
 # --- NAVEGAÇÃO ---
+# Se houver ID na URL, forçamos a aba de Gerenciamento como ativa (index 1)
+default_tab = 1 if id_via_url else 0
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
 # --- ABA 1: CADASTRO ---
@@ -167,36 +170,32 @@ with tab_cad:
 
 # --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
-    # Verificação de Parâmetros de URL para clique no ID
-    query_params = st.query_params
-    if "edit_id" in query_params:
-        st.session_state.id_selecionado = query_params["edit_id"]
-
-    if st.session_state.id_selecionado:
-        # --- TELA DE EDIÇÃO ---
-        st.markdown(f"### 📝 EDITANDO ALUNO ID: {st.session_state.id_selecionado}")
+    if id_via_url:
+        st.markdown(f"### 📝 EDITANDO ALUNO ID: {id_via_url}")
         try:
+            # Lemos a planilha e garantimos que a coluna ID seja comparável
             df_edit = conn.read(ttl="0s").fillna("")
             hd_edit = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
             df_edit.columns = hd_edit[:len(df_edit.columns)]
             
-            aluno_idx = df_edit.index[df_edit['ID'] == st.session_state.id_selecionado].tolist()
+            # Limpeza rigorosa para busca: ID vira string sem espaços
+            df_edit['ID_BUSCA'] = df_edit['ID'].astype(str).str.strip()
+            aluno_idx = df_edit.index[df_edit['ID_BUSCA'] == str(id_via_url).strip()].tolist()
             
             if aluno_idx:
                 idx = aluno_idx[0]
-                aluno_data = df_edit.iloc[idx].to_dict()
+                aluno_data = df_edit.iloc[idx].drop('ID_BUSCA').to_dict()
 
-                # Guardar originais para o "Desfazer"
-                if not st.session_state.dados_originais_edicao or st.session_state.dados_originais_edicao.get('ID') != st.session_state.id_selecionado:
+                # Backup para Desfazer
+                if "backup_id" not in st.session_state or st.session_state.backup_id != id_via_url:
                     st.session_state.dados_originais_edicao = aluno_data.copy()
+                    st.session_state.backup_id = id_via_url
 
-                # Formulário de Edição
                 with st.container():
-                    # Botão Desfazer (Seta)
-                    col_undo, col_spacer = st.columns([0.1, 0.9])
-                    if col_undo.button("↩️", help="Desfazer alterações e voltar ao original"):
+                    col_undo, _ = st.columns([0.1, 0.9])
+                    if col_undo.button("↩️", help="Desfazer alterações"):
                         for k, v in st.session_state.dados_originais_edicao.items():
-                            st.session_state[f"edit_{k}"] = v
+                            st.session_state[f"edit_{k}"] = str(v)
                         st.rerun()
 
                     edit_vals = {}
@@ -204,11 +203,9 @@ with tab_ger:
                     for i, (campo, valor) in enumerate(aluno_data.items()):
                         target_col = cols_ed[i % 2]
                         key_ed = f"edit_{campo}"
-                        # Se o valor não estiver no state, carrega o atual
                         if key_ed not in st.session_state:
                             st.session_state[key_ed] = str(valor)
-                        
-                        edit_vals[campo] = target_col.text_input(campo, value=st.session_state[key_ed], key=key_ed)
+                        edit_vals[campo] = target_col.text_input(campo, key=key_ed)
 
                 st.write("")
                 b_ed1, b_ed2 = st.columns(2)
@@ -218,34 +215,27 @@ with tab_ger:
                         client = gspread.authorize(Credentials.from_service_account_info(creds, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
                         ws = client.open_by_url(creds["spreadsheet"]).get_worksheet(0)
                         
-                        # Atualiza a linha (considerando cabeçalho e index 1)
                         row_to_update = idx + 2 
                         novos_dados = [edit_vals[h] for h in hd_edit]
                         ws.update(f'A{row_to_update}:P{row_to_update}', [novos_dados])
                         
-                        st.success("Dados atualizados com sucesso!")
-                        st.session_state.id_selecionado = None
-                        st.session_state.dados_originais_edicao = {}
+                        st.success("Atualizado!")
                         st.query_params.clear()
                         st.cache_data.clear()
                         st.rerun()
                     except Exception as e: st.error(f"Erro ao salvar: {e}")
                 
                 if b_ed2.button("❌ CANCELAR"):
-                    st.session_state.id_selecionado = None
-                    st.session_state.dados_originais_edicao = {}
                     st.query_params.clear()
                     st.rerun()
             else:
-                st.error("Aluno não encontrado.")
-                if st.button("Voltar"):
-                    st.session_state.id_selecionado = None
+                st.error(f"Aluno com ID '{id_via_url}' não foi localizado na base.")
+                if st.button("Voltar para Lista"):
                     st.query_params.clear()
                     st.rerun()
         except Exception as e: st.error(f"Erro na edição: {e}")
-
     else:
-        # --- TELA NORMAL DE GERENCIAMENTO ---
+        # TELA NORMAL
         cf1, cf2, cf3, cf4 = st.columns([2.5, 1.5, 1.5, 0.5])
         with cf1: bu = st.text_input("🔍 Buscar...", key="busca_ger", placeholder="Nome ou ID", label_visibility="collapsed")
         with cf2: fs = st.selectbox("Status", ["Todos", "ATIVO", "CANCELADO"], key="filtro_status", label_visibility="collapsed")
@@ -264,30 +254,20 @@ with tab_ger:
             rows = ""
             for _, r in df_g.iloc[::-1].iterrows():
                 sc = "status-ativo" if r['STATUS'] == "ATIVO" else "status-cancelado"
-                # ID Clicável usando link de parâmetro
+                # Link que passa o ID via URL
                 id_html = f"<a href='?edit_id={r['ID']}' target='_self' class='id-link'>{r['ID']}</a>"
                 
-                rows += f"""<tr>
-                    <td><span class='status-badge {sc}'>{r['STATUS']}</span></td>
-                    <td>{r['UNID.']}</td><td>{r['TURMA']}</td><td>{r['10C']}</td><td>{r['ING']}</td><td>{r['DT_CAD']}</td>
-                    <td>{id_html}</td>
-                    <td style='color:#00f2ff;font-weight:bold'>{r['ALUNO']}</td>
-                    <td>{r['TEL_RESP']}</td><td>{r['TEL_ALU']}</td><td>{r['CPF']}</td><td>{r['CIDADE']}</td><td>{r['CURSO']}</td><td>{r['PAGTO']}</td><td>{r['VEND.']}</td><td>{r['DT_MAT']}</td>
-                </tr>"""
+                rows += f"<tr><td><span class='status-badge {sc}'>{r['STATUS']}</span></td><td>{r['UNID.']}</td><td>{r['TURMA']}</td><td>{r['10C']}</td><td>{r['ING']}</td><td>{r['DT_CAD']}</td><td>{id_html}</td><td style='color:#00f2ff;font-weight:bold'>{r['ALUNO']}</td><td>{r['TEL_RESP']}</td><td>{r['TEL_ALU']}</td><td>{r['CPF']}</td><td>{r['CIDADE']}</td><td>{r['CURSO']}</td><td>{r['PAGTO']}</td><td>{r['VEND.']}</td><td>{r['DT_MAT']}</td></tr>"
             
             st.markdown(f"""
                 <div class="custom-table-wrapper">
                     <table class="custom-table">
-                        <thead>
-                            <tr>{''.join([f'<th>{h}</th>' for h in hd])}</tr>
-                        </thead>
-                        <tbody>
-                            {rows}
-                        </tbody>
+                        <thead><tr>{''.join([f'<th>{h}</th>' for h in hd])}</tr></thead>
+                        <tbody>{rows}</tbody>
                     </table>
                 </div>
             """, unsafe_allow_html=True)
-        except Exception as e: st.error(f"Erro ao carregar dados: {e}")
+        except Exception as e: st.error(f"Erro: {e}")
 
 # --- ABA 3: RELATÓRIOS ---
 with tab_rel:
@@ -326,4 +306,4 @@ with tab_rel:
                     dfv = df_f[v_col].value_counts().reset_index().head(5)
                     figv = px.line(dfv, x=v_col, y='count', markers=True, text='count')
                     figv.update_traces(line_color='#00f2ff'); figv.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=400); st.plotly_chart(figv, use_container_width=True)
-    except Exception as e: st.error(f"Erro nos relatórios: {e}")
+    except Exception as e: st.error(f"Erro: {e}")
