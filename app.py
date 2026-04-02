@@ -14,7 +14,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS COM SUAS CONFIGURAÇÕES EXATAS ---
+# --- CSS PARA CENTRALIZAÇÃO ABSOLUTA E SIMETRIA ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
@@ -37,34 +37,37 @@ st.markdown("""
     }
     .stTabs [aria-selected="true"] { border-bottom: 3px solid #2ecc71 !important; }
     
-    /* CONTEÚDO COLADO NO MENU SEM SOBREPOR */
+    /* CONTEÚDO COLADO NO TOPO */
     .main .block-container { 
         padding-top: 38px !important; 
-        margin-top: 0px !important;
+        max-width: 900px !important; /* Limita a largura para facilitar a centralização visual */
+        margin: 0 auto !important;
     }
 
-    /* --- SUAS CONFIGURAÇÕES SOLICITADAS --- */
+    /* --- CONFIGURAÇÕES DOS CAMPOS --- */
     div[data-testid="stHorizontalBlock"] { 
-        margin-bottom: 3px !important; 
+        margin-bottom: 3px !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     div[data-testid="stTextInput"] > div { 
         min-height: 25px !important; 
         height: 25px !important;
-        width: 55% !important; /* Ajuste de largura solicitado */
+        width: 100% !important; /* Ocupa a largura da coluna definida no Streamlit */
     }
 
     label { 
         color: #2ecc71 !important; 
         font-weight: bold !important; 
         font-size: 15px !important; 
-        padding-right: 2px !important; 
+        padding-right: 15px !important; 
         height: 25px !important;
         display: flex; 
         align-items: center; 
-        justify-content: flex-end;
+        justify-content: flex-end; /* Alinha o texto da label para a direita, encostando no input */
     }
-    /* -------------------------------------- */
 
     .stTextInput input { 
         background-color: white !important; 
@@ -72,27 +75,28 @@ st.markdown("""
         text-transform: uppercase !important; 
         font-size: 12px !important;
         height: 25px !important;
+        border-radius: 5px !important;
     }
 
-    /* Checkboxes e Botões */
-    .stCheckbox { margin-top: 8px !important; }
+    /* Checkboxes e Botões - Centralização Real */
+    .stCheckbox { display: flex; justify-content: center; margin-top: 8px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
     
-    div.stButton { margin-top: 15px !important; }
+    div.stButton { display: flex; justify-content: center; margin-top: 15px !important; }
     div.stButton > button {
         background-color: #2ecc71 !important; color: white !important; font-weight: bold !important;
         height: 40px !important; border-radius: 5px !important;
-        width: 100% !important;
+        width: 90% !important;
     }
 
     /* Lista e Contador */
     hr { margin-top: 20px !important; margin-bottom: 5px !important; }
     .contador-estilo {
-        text-align: right;
+        text-align: center; /* Centraliza o contador também */
         color: #2ecc71;
         font-weight: bold;
         font-size: 14px;
-        margin-bottom: 5px;
+        margin-bottom: 8px;
     }
     
     header {visibility: hidden;} footer {visibility: hidden;}
@@ -133,50 +137,55 @@ def processar_pagto():
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
 with tab_cad:
-    # Centralização do Frame
-    _, col_central, _ = st.columns([1, 2, 1])
+    # Usamos uma coluna central larga com bordas iguais para centralização absoluta
+    _, centro, _ = st.columns([0.5, 5, 0.5])
     
-    with col_central:
-        # Formulário
-        for label, key, func in [
+    with centro:
+        # Formulário: Labels e Inputs perfeitamente alinhados
+        campos = [
             ("ID:", "f_id", None), ("ALUNO:", "f_nome", None), ("CIDADE:", "f_cid", None),
             ("CURSO:", "input_curso_key", transformar_curso), ("PAGAMENTO:", "input_pagto_key", None),
             ("VENDEDOR:", "f_vend", None), ("DATA:", "f_data", None)
-        ]:
-            c1, c2 = st.columns([1.2, 4])
-            c1.markdown(f"<label>{label}</label>", unsafe_allow_html=True)
+        ]
+        
+        for label, key, func in campos:
+            # Colunas internas para garantir que label e input fiquem juntos e centralizados
+            c_lab, c_inp = st.columns([1.5, 3.5]) 
+            c_lab.markdown(f"<label>{label}</label>", unsafe_allow_html=True)
             if key == "input_curso_key":
-                c2.text_input(label, key=key, value=st.session_state.val_curso, on_change=func, label_visibility="collapsed")
+                c_inp.text_input(label, key=key, value=st.session_state.val_curso, on_change=func, label_visibility="collapsed")
             elif key == "input_pagto_key":
-                c2.text_input(label, key=key, value=st.session_state.val_pagto, label_visibility="collapsed")
+                c_inp.text_input(label, key=key, value=st.session_state.val_pagto, label_visibility="collapsed")
             elif key == "f_data":
-                c2.text_input(label, key=key, value=date.today().strftime("%d/%m/%Y"), label_visibility="collapsed")
+                c_inp.text_input(label, key=key, value=date.today().strftime("%d/%m/%Y"), label_visibility="collapsed")
             else:
-                c2.text_input(label, key=key, label_visibility="collapsed")
+                c_inp.text_input(label, key=key, label_visibility="collapsed")
 
-        # Checkboxes
-        c_chk = st.columns([1.2, 1.3, 1.3, 1.3])
-        with c_chk[1]: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
-        with c_chk[2]: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
-        with c_chk[3]: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
+        # Checkboxes - Alinhamento equilibrado abaixo dos inputs
+        st.write("")
+        _, c_c1, c_c2, c_c3, _ = st.columns([0.8, 1.2, 1.2, 1.2, 0.8])
+        with c_c1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
+        with c_c2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
+        with c_c3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
 
-        # Botões
-        c_btn = st.columns([1.2, 2, 2])
-        with c_btn[1]:
-            if st.button("💾 SALVAR ALUNO"):
+        # Botões - Centralizados em relação ao bloco superior
+        st.write("")
+        _, b_left, b_right, _ = st.columns([0.5, 2, 2, 0.5])
+        with b_left:
+            if st.button("💾 SALVAR ALUNO", use_container_width=True):
                 if st.session_state.f_nome:
                     aluno = {"ID": st.session_state.f_id.upper(), "Aluno": st.session_state.f_nome.upper(), "Cidade": st.session_state.f_cid.upper(), "Curso": st.session_state.input_curso_key.strip(), "Pagamento": st.session_state.input_pagto_key.upper(), "Vendedor": st.session_state.f_vend.upper(), "Data": st.session_state.f_data}
                     st.session_state.lista_previa.append(aluno)
                     st.rerun()
-        with c_btn[2]:
-            if st.button("📤 ENVIAR PLANILHA"):
+        with b_right:
+            if st.button("📤 ENVIAR PLANILHA", use_container_width=True):
                 if st.session_state.lista_previa:
                     df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa); conn.update(data=pd.concat([df_old, df_new], ignore_index=True)); st.session_state.lista_previa = []; st.success("Enviado!"); st.rerun()
 
         # Lista de Prévia
         st.write("---") 
         qtd = len(st.session_state.lista_previa)
-        st.markdown(f'<div class="contador-estilo">Alunos Salvos: {qtd}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="contador-estilo">ALUNOS SALVOS: {qtd}</div>', unsafe_allow_html=True)
         df_previa = pd.DataFrame(st.session_state.lista_previa) if st.session_state.lista_previa else pd.DataFrame(columns=["ID", "Aluno", "Cidade", "Curso", "Pagamento", "Vendedor", "Data"])
         st.dataframe(df_previa, use_container_width=True, hide_index=True)
 
