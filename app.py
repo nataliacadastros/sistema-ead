@@ -22,6 +22,7 @@ DIC_CURSOS = {
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e1e; color: #e0e0e0; }
+    
     .stTabs [data-baseweb="tab-list"] { 
         background-color: #121629; border-bottom: 1px solid #1f295a;
         position: fixed; top: 0; left: 0 !important; width: 100vw !important;
@@ -33,21 +34,28 @@ st.markdown("""
         background-color: rgba(0, 242, 255, 0.05) !important;
     }
     .main .block-container { padding-top: 45px !important; max-width: 1200px !important; margin: 0 auto !important; }
+
+    /* ESTILO CADASTRO */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 5px !important; display: flex; align-items: center; }
     div[data-testid="stTextInput"] > div { min-height: 25px !important; height: 25px !important; }
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 14px !important; padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end; }
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 25px !important; border-radius: 5px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
+
+    /* CARDS RELATÓRIO HUD */
     .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 100px; display: flex; flex-direction: column; justify-content: center; }
     .neon-pink { color: #ff007a; text-shadow: 0 0 10px rgba(255, 0, 122, 0.5); border-top: 2px solid #ff007a; }
     .neon-green { color: #2ecc71; text-shadow: 0 0 10px rgba(46, 204, 113, 0.5); border-top: 2px solid #2ecc71; }
     .neon-blue { color: #00f2ff; text-shadow: 0 0 10px rgba(0, 242, 255, 0.5); border-top: 2px solid #00f2ff; }
     .neon-purple { color: #bc13fe; text-shadow: 0 0 10px rgba(188, 19, 254, 0.5); border-top: 2px solid #bc13fe; }
     .neon-red { color: #ff4b4b; text-shadow: 0 0 10px rgba(255, 75, 75, 0.5); border-top: 2px solid #ff4b4b; }
+
+    /* BARRA DE CIDADES HUD */
     .hud-bar-container { background: rgba(31, 41, 90, 0.3); height: 14px; border-radius: 20px; width: 100%; position: relative; margin: 50px 0 40px 0; border: 1px solid #1f295a; }
     .hud-segment { height: 100%; float: left; position: relative; }
     .hud-label { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); background: #121629; border: 1px solid currentColor; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
     .hud-city-name { position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
+
     .stButton > button { background-color: #00f2ff !important; color: #0b0e1e !important; font-weight: bold !important; border: none !important; border-radius: 5px !important; width: 100%; height: 35px !important; }
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
@@ -105,7 +113,7 @@ tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "
 with tab_cad:
     _, centro, _ = st.columns([0.5, 5, 0.5])
     with centro:
-        # NOVA ORDEM DE CAMPOS SOLICITADA
+        # Nova ordem e novos campos solicitados
         campos = [
             ("ID:", "f_id"), 
             ("ALUNO:", "f_nome"), 
@@ -160,51 +168,52 @@ with tab_cad:
                         scopes = ["https://www.googleapis.com/auth/spreadsheets"]
                         credentials = Credentials.from_service_account_info(creds_info, scopes=scopes)
                         client = gspread.authorize(credentials)
+                        
                         sh = client.open_by_url(creds_info["spreadsheet"])
                         worksheet = sh.get_worksheet(0)
                         
-                        novas_linhas_formatadas = []
-                        data_cadastro_atual = date.today().strftime("%d/%m/%Y")
+                        dados_para_envio = []
+                        data_cadastro_automatico = date.today().strftime("%d/%m/%Y")
 
                         for a in st.session_state.lista_previa:
-                            # Regra Coluna D (10 CURSOS)
-                            tem_10_cursos = "SIM" if "10 CURSOS PROFISSIONALIZANTES" in a["Curso"] else "NÃO"
+                            # Regra Coluna D: 10 CURSOS PROFISSIONALIZANTES
+                            col_d_regra = "SIM" if "10 CURSOS PROFISSIONALIZANTES" in a["Curso"] else "NÃO"
                             
-                            # Regra Coluna E (INGLÊS)
-                            tem_ingles = "NÃO" # Padrão
+                            # Regra Coluna E: INGLÊS (Lógica padrão NÃO, se houver Inglês permite configurar depois)
+                            col_e_regra = "NÃO"
                             if "INGLÊS" in a["Curso"]:
-                                tem_ingles = "NÃO" # Aqui será implementado a troca por turma em lote depois
-                            
-                            # MONTAGEM DA LINHA (Colunas A até P)
+                                col_e_regra = "TURMA PENDENTE" # Placeholder para configuração em lote
+
+                            # Montagem da linha conforme mapeamento A-P
                             linha = [
-                                "ATIVO",             # A - Status Automático
-                                "MGA",               # B - Cidade Automática
-                                "NÃO CONFIGURADO",   # C - Turma (A ser mudado em lote)
-                                tem_10_cursos,       # D - Regra 10 Cursos
-                                tem_ingles,          # E - Regra Inglês
-                                data_cadastro_atual, # F - Data do Cadastro (Hoje)
-                                a["ID"],             # G - ID
-                                a["Aluno"],          # H - Aluno
-                                a["TelResp"],        # I - Tel Responsável
-                                a["TelAluno"],       # J - Tel Aluno
-                                a["CpfResp"],        # K - CPF Responsável
-                                a["Cidade"],         # L - Cidade
-                                a["Curso"],          # M - Curso Contratado
-                                a["Pagamento"],      # N - Forma de Pagamento
-                                a["Vendedor"],       # O - Vendedor
-                                a["DataMatricula"]   # P - Data da Matrícula
+                                "ATIVO",                  # A - Automático
+                                "MGA",                    # B - Automático
+                                "AGUARDANDO TURMA",       # C - Turma (Editável em lote)
+                                col_d_regra,              # D - Automático 10 Cursos
+                                col_e_regra,              # E - Automático Inglês
+                                data_cadastro_automatico, # F - Automático Data Cadastro
+                                a["ID"],                  # G
+                                a["Aluno"],               # H
+                                a["TelResp"],             # I
+                                a["TelAluno"],            # J
+                                a["CpfResp"],             # K
+                                a["Cidade"],              # L
+                                a["Curso"],               # M
+                                a["Pagamento"],           # N
+                                a["Vendedor"],            # O
+                                a["DataMatricula"]        # P
                             ]
-                            novas_linhas_formatadas.append(linha)
+                            dados_para_envio.append(linha)
                         
                         col_a_values = worksheet.col_values(1)
                         ultima_linha_real = len(col_a_values)
                         linha_inicio = ultima_linha_real + 2 if ultima_linha_real > 0 else 2
                         
                         tamanho_atual_grid = worksheet.row_count
-                        if linha_inicio + len(novas_linhas_formatadas) > tamanho_atual_grid:
-                            worksheet.add_rows((linha_inicio + len(novas_linhas_formatadas)) - tamanho_atual_grid)
+                        if linha_inicio + len(dados_para_envio) > tamanho_atual_grid:
+                            worksheet.add_rows((linha_inicio + len(dados_para_envio)) - tamanho_atual_grid)
 
-                        worksheet.insert_rows(novas_linhas_formatadas, row=linha_inicio)
+                        worksheet.insert_rows(dados_para_envio, row=linha_inicio)
                         st.session_state.lista_previa = []
                         st.success(f"Dados inseridos com sucesso a partir da linha {linha_inicio}!")
                         st.cache_data.clear()
@@ -239,7 +248,7 @@ with tab_rel:
             if 'Vendedor' in df_rel.columns:
                 df_rel['Vendedor'] = df_rel['Vendedor'].astype(str).str.replace(' - COLÉGIO', '', case=False).str.strip().str.upper()
             
-            col_data = "Data da Matrícula"
+            col_data = "Data da Matrícula" # Atualizado para o novo mapeamento
             if col_data in df_rel.columns:
                 df_rel[col_data] = pd.to_datetime(df_rel[col_data], dayfirst=True, errors='coerce')
                 intervalo = st.date_input("Filtro", value=(date.today()-timedelta(days=7), date.today()), format="DD/MM/YYYY")
@@ -248,9 +257,15 @@ with tab_rel:
                     df_f = df_rel.loc[(df_rel[col_data].dt.date >= intervalo[0]) & (df_rel[col_data].dt.date <= intervalo[1])].copy()
                     
                     df_f['Valor_Recebido'] = df_f['Forma de Pagamento'].apply(extrair_valor_recebido) if 'Forma de Pagamento' in df_f.columns else 0
-                    total_rec = df_f['Valor_Recebido'].sum() if isinstance(df_f['Valor_Recebido'], pd.Series) else 0
+                    total_rec = df_f['Valor_Recebido'].sum()
                     
                     c1, c2, c3, c4, c5, c6 = st.columns(6)
                     with c1: st.markdown(f'<div class="card-hud neon-pink"><small>Mats</small><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
-                    # Os demais cards e gráficos foram mantidos conforme a estrutura original do seu código.
+                    with c2: 
+                        atv = len(df_f[df_f['STATUS'].str.upper() == 'ATIVO']) if 'STATUS' in df_f.columns else 0
+                        st.markdown(f'<div class="card-hud neon-green"><small>Ativos</small><h2>{atv}</h2></div>', unsafe_allow_html=True)
+                    with c3:
+                        cnc = len(df_f[df_f['STATUS'].str.upper() == 'CANCELADO']) if 'STATUS' in df_f.columns else 0
+                        st.markdown(f'<div class="card-hud neon-red"><small>Cancelados</small><h2>{cnc}</h2></div>', unsafe_allow_html=True)
+                    with c4: st.markdown(f'<div class="card-hud neon-blue"><small>Recebido</small><h2 style="font-size:18px">R${total_rec:,.2f}</h2></div>', unsafe_allow_html=True)
     except Exception as e: st.error(f"Erro nos relatórios: {e}")
