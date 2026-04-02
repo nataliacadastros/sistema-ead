@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import re
+import plotly.express as px
+import plotly.graph_objects as go
 from datetime import date, timedelta
 from streamlit_gsheets import GSheetsConnection
 import gspread
@@ -16,7 +18,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS ESTÉTICA HUD NEON & GERENCIAMENTO PROFISSIONAL ---
+# --- CSS ESTÉTICA HUD NEON & GERENCIAMENTO ---
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e1e; color: #e0e0e0; }
@@ -32,30 +34,34 @@ st.markdown("""
     }
     .main .block-container { padding-top: 45px !important; max-width: 100% !important; margin: 0 auto !important; }
     
-    /* ESTILOS DE CADASTRO ORIGINAIS */
+    /* CADASTRO */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 5px !important; display: flex; align-items: center; }
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 14px !important; padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end; }
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 25px !important; border-radius: 5px !important; }
-    
-    /* BADGES DE STATUS GERENCIAMENTO */
-    .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: bold; text-transform: uppercase; }
+    .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
+
+    /* GERENCIAMENTO PROFISSIONAL */
+    .status-badge { padding: 2px 8px; border-radius: 12px; font-size: 9px; font-weight: bold; text-transform: uppercase; display: inline-block; }
     .status-ativo { background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
     .status-cancelado { background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
-    .status-pendente { background-color: rgba(241, 196, 15, 0.2); color: #f1c40f; border: 1px solid #f1c40f; }
-
-    /* TABELA CUSTOMIZADA */
-    .custom-table { width: 100%; border-collapse: collapse; background-color: #121629; border-radius: 10px; overflow: hidden; margin-top: 20px; }
-    .custom-table th { background-color: #1f295a; color: #00f2ff; text-align: left; padding: 12px; font-size: 12px; border-bottom: 2px solid #0b0e1e; }
-    .custom-table td { padding: 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; }
+    
+    .custom-table-container { overflow-x: auto; }
+    .custom-table { width: 100%; border-collapse: collapse; background-color: #121629; border-radius: 8px; margin-top: 10px; }
+    .custom-table th { background-color: #1f295a; color: #00f2ff; text-align: left; padding: 8px; font-size: 10px; text-transform: uppercase; white-space: nowrap; }
+    .custom-table td { padding: 8px; border-bottom: 1px solid #1f295a; font-size: 10px; color: #e0e0e0; white-space: nowrap; }
     .custom-table tr:hover { background-color: rgba(0, 242, 255, 0.05); }
 
-    /* CARDS RELATÓRIO HUD */
+    /* RELATÓRIO HUD */
     .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 100px; display: flex; flex-direction: column; justify-content: center; }
     .neon-pink { color: #ff007a; border-top: 2px solid #ff007a; }
     .neon-green { color: #2ecc71; border-top: 2px solid #2ecc71; }
     .neon-blue { color: #00f2ff; border-top: 2px solid #00f2ff; }
     .neon-purple { color: #bc13fe; border-top: 2px solid #bc13fe; }
     .neon-red { color: #ff4b4b; border-top: 2px solid #ff4b4b; }
+    .hud-bar-container { background: rgba(31, 41, 90, 0.3); height: 14px; border-radius: 20px; width: 100%; position: relative; margin: 50px 0 40px 0; border: 1px solid #1f295a; }
+    .hud-segment { height: 100%; float: left; position: relative; }
+    .hud-label { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); background: #121629; border: 1px solid currentColor; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+    .hud-city-name { position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
 
     .stButton > button { background-color: #00f2ff !important; color: #0b0e1e !important; font-weight: bold !important; border: none !important; border-radius: 5px !important; width: 100%; height: 35px !important; }
     header {visibility: hidden;} footer {visibility: hidden;}
@@ -68,7 +74,7 @@ if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
 if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
 
-# --- FUNÇÕES DE CONTROLE (CADASTRO) ---
+# --- FUNÇÕES DE CONTROLE ---
 def atualizar_pagamento():
     suffix_aluno = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"
     key_pagto = f"f_pagto_{suffix_aluno}"
@@ -91,9 +97,9 @@ def transformar_curso(chave):
             st.session_state[chave] = (f"{base} + {nome}" if base and nome.upper() not in base.upper() else (base if base else nome)).upper()
     else: st.session_state[chave] = entrada.upper()
 
-# --- ABA 3: FUNÇÕES DE RELATÓRIO ---
 def extrair_valor_recebido(texto):
-    match = re.search(r'PAG[OA]S?\s*(?:R\$)?\s*([\d\.,]+)', str(texto).upper())
+    texto = str(texto).upper()
+    match = re.search(r'PAG[OA]S?\s*(?:R\$)?\s*([\d\.,]+)', texto)
     if match:
         try: return float(match.group(1).replace('.', '').replace(',', '.'))
         except: return 0.0
@@ -108,7 +114,7 @@ def extrair_valor_geral(texto):
 # --- NAVEGAÇÃO ---
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
-# --- ABA 1: CADASTRO (IMPECÁVEL - NÃO ALTERADA) ---
+# --- ABA 1: CADASTRO ---
 with tab_cad:
     _, centro, _ = st.columns([0.5, 5, 0.5])
     with centro:
@@ -166,98 +172,87 @@ with tab_cad:
         
         if st.session_state.lista_previa: st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
-# --- ABA 2: GERENCIAMENTO (NOVA INTERFACE PROFISSIONAL) ---
+# --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
-    # Barra de Filtros Estilo Painel
-    col_f1, col_f2, col_f3, col_f4, col_f5 = st.columns([2, 1.2, 1.2, 1.2, 0.8])
-    with col_f1: busca = st.text_input("🔍 Buscar aluno...", placeholder="Nome ou ID", label_visibility="collapsed")
-    with col_f2: filtro_curso = st.selectbox("Curso", ["Todos"] + list(DIC_CURSOS.values()), label_visibility="collapsed")
-    with col_f3: filtro_status = st.selectbox("Status", ["Todos", "ATIVO", "CANCELADO", "PENDENTE"], label_visibility="collapsed")
-    with col_f4: filtro_unidade = st.selectbox("Unidade", ["Todos", "MGA"], label_visibility="collapsed")
-    with col_f5: 
-        if st.button("🔄 REFRESH"): st.cache_data.clear(); st.rerun()
+    col_f1, col_f2, col_f3, col_f4 = st.columns([2.5, 1.5, 1.5, 0.5])
+    with col_f1: busca = st.text_input("🔍 Buscar...", placeholder="Nome ou ID", label_visibility="collapsed")
+    with col_f2: filtro_status = st.selectbox("Status", ["Todos", "ATIVO", "CANCELADO"], label_visibility="collapsed")
+    with col_f3: filtro_unidade = st.selectbox("Unidade", ["Todos", "MGA"], label_visibility="collapsed")
+    with col_f4: 
+        if st.button("🔄"): st.cache_data.clear(); st.rerun()
 
     try:
-        # Leitura e Mapeamento
         df_ger = conn.read(ttl="0s").fillna("")
-        col_names = ['STATUS', 'UNIDADE', 'TURMA', '10_CURSOS', 'INGLES', 'DATA_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALUNO', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VENDEDOR', 'DATA_MAT']
-        df_ger.columns = col_names[:len(df_ger.columns)]
+        headers = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
+        df_ger.columns = headers[:len(df_ger.columns)]
 
-        # Aplicação de Filtros
         if busca: df_ger = df_ger[df_ger['ALUNO'].str.contains(busca, case=False) | df_ger['ID'].str.contains(busca, case=False)]
-        if filtro_curso != "Todos": df_ger = df_ger[df_ger['CURSO'].str.contains(filtro_curso, case=False)]
         if filtro_status != "Todos": df_ger = df_ger[df_ger['STATUS'] == filtro_status]
-        if filtro_unidade != "Todos": df_ger = df_ger[df_ger['UNIDADE'] == filtro_unidade]
+        if filtro_unidade != "Todos": df_ger = df_ger[df_ger['UNID.'] == filtro_unidade]
 
-        # Construção da Tabela Profissional em HTML
-        html_tabela = """<table class="custom-table">
-            <thead>
-                <tr>
-                    <th>NOME DO ALUNO</th>
-                    <th>ID</th>
-                    <th>TELEFONE</th>
-                    <th>CURSO</th>
-                    <th>STATUS</th>
-                    <th>DATA CADASTRO</th>
-                    <th>VENDEDOR</th>
-                </tr>
-            </thead>
-            <tbody>"""
+        rows_html = ""
+        for _, row in df_ger.iloc[::-1].iterrows():
+            st_cls = "status-ativo" if row['STATUS'] == "ATIVO" else "status-cancelado"
+            rows_html += f"""<tr>
+                <td><span class="status-badge {st_cls}">{row['STATUS']}</span></td>
+                <td>{row['UNID.']}</td><td>{row['TURMA']}</td><td>{row['10C']}</td><td>{row['ING']}</td><td>{row['DT_CAD']}</td>
+                <td style="color:#00f2ff; font-weight:bold;">{row['ID']}</td>
+                <td style="color:#00f2ff; font-weight:bold;">{row['ALUNO']}</td>
+                <td>{row['TEL_RESP']}</td><td>{row['TEL_ALU']}</td><td>{row['CPF']}</td><td>{row['CIDADE']}</td>
+                <td>{row['CURSO']}</td><td>{row['PAGTO']}</td><td>{row['VEND.']}</td><td>{row['DT_MAT']}</td>
+            </tr>"""
         
-        for _, row in df_ger.iloc[::-1].head(30).iterrows():
-            status_class = "status-ativo" if row['STATUS'] == "ATIVO" else "status-cancelado" if row['STATUS'] == "CANCELADO" else "status-pendente"
-            html_tabela += f"""
-                <tr>
-                    <td style="font-weight: bold; color: #00f2ff;">{row['ALUNO']}</td>
-                    <td>{row['ID']}</td>
-                    <td>{row['TEL_ALUNO']}</td>
-                    <td>{row['CURSO']}</td>
-                    <td><span class="status-badge {status_class}">{row['STATUS']}</span></td>
-                    <td>{row['DATA_CAD']}</td>
-                    <td style="text-transform: uppercase;">{row['VENDEDOR']}</td>
-                </tr>"""
-        
-        html_tabela += "</tbody></table>"
-        st.markdown(html_tabela, unsafe_allow_html=True)
-        st.caption(f"Exibindo {len(df_ger)} registros encontrados.")
+        st.markdown(f"""<div class="custom-table-container"><table class="custom-table">
+            <thead><tr>{" ".join([f"<th>{h}</th>" for h in headers])}</tr></thead>
+            <tbody>{rows_html}</tbody></table></div>""", unsafe_allow_html=True)
+    except Exception as e: st.error(f"Erro no Gerenciamento: {e}")
 
-    except Exception as e: st.error(f"Erro ao carregar painel: {e}")
-
-# --- ABA 3: RELATÓRIOS (IMPECÁVEL - NÃO ALTERADA) ---
+# --- ABA 3: RELATÓRIOS ---
 with tab_rel:
     try:
         df_rel = conn.read(ttl="0s").dropna(how='all')
         if not df_rel.empty:
-            df_rel.columns = ['STATUS', 'UNIDADE', 'TURMA', '10_CURSOS', 'INGLES', 'DATA_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALUNO', 'CPF', 'CIDADE', 'CURSO', 'PAGAMENTO', 'VENDEDOR', 'DATA_MAT'][:len(df_rel.columns)]
-            df_rel['DATA_MAT'] = pd.to_datetime(df_rel['DATA_MAT'], dayfirst=True, errors='coerce')
+            df_rel.columns = [c.strip() for c in df_rel.columns]
+            if 'Vendedor' in df_rel.columns:
+                df_rel['Vendedor'] = df_rel['Vendedor'].astype(str).str.replace(' - COLÉGIO', '', case=False).str.strip().str.upper()
+            
+            col_data = "Data Matrícula"
+            df_rel[col_data] = pd.to_datetime(df_rel[col_data], dayfirst=True, errors='coerce')
             intervalo = st.date_input("Filtro", value=(date.today()-timedelta(days=7), date.today()), format="DD/MM/YYYY")
+            
             if len(intervalo) == 2:
-                df_f = df_rel.loc[(df_rel['DATA_MAT'].dt.date >= intervalo[0]) & (df_rel['DATA_MAT'].dt.date <= intervalo[1])].copy()
-                df_f['Val_Rec'] = df_f['PAGAMENTO'].apply(extrair_valor_recebido)
-                df_f['Val_Tick'] = df_f['PAGAMENTO'].apply(extrair_valor_geral)
+                df_f = df_rel.loc[(df_rel[col_data].dt.date >= intervalo[0]) & (df_rel[col_data].dt.date <= intervalo[1])].copy()
+                df_f['Valor_Recebido'] = df_f['Pagamento'].apply(extrair_valor_recebido)
+                total_rec = df_f['Valor_Recebido'].sum()
+                df_f['Valor_Ticket'] = df_f['Pagamento'].apply(extrair_valor_geral)
+                df_bol = df_f[df_f['Pagamento'].str.contains('BOLETO', na=False, case=False)]
+                df_car = df_f[df_f['Pagamento'].str.contains('CARTÃO|LINK|CREDITO|DEBITO', na=False, case=False)]
+                tm_bol = df_bol['Valor_Ticket'].mean() if not df_bol.empty else 0.0
+                tm_car = df_car['Valor_Ticket'].mean() if not df_car.empty else 0.0
+
                 c1, c2, c3, c4, c5, c6 = st.columns(6)
                 with c1: st.markdown(f'<div class="card-hud neon-pink"><small>Mats</small><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
-                with c2: st.markdown(f'<div class="card-hud neon-green"><small>Ativos</small><h2>{len(df_f[df_f["STATUS"]=="ATIVO"])}</h2></div>', unsafe_allow_html=True)
-                with c3: st.markdown(f'<div class="card-hud neon-red"><small>Canc.</small><h2>{len(df_f[df_f["STATUS"]=="CANCELADO"])}</h2></div>', unsafe_allow_html=True)
-                with c4: st.markdown(f'<div class="card-hud neon-blue"><small>Recebido</small><h2 style="font-size:18px">R${df_f["Val_Rec"].sum():,.2f}</h2></div>', unsafe_allow_html=True)
-                with c5:
-                    tm_b = df_f[df_f['PAGAMENTO'].str.contains('BOLETO', na=False, case=False)]['Val_Tick'].mean() or 0.0
-                    st.markdown(f'<div class="card-hud neon-purple"><small>T. Médio</small><div style="font-size:10px">Bol: R${tm_b:.0f}</div></div>', unsafe_allow_html=True)
-                with c6: st.markdown(f'<div class="card-hud neon-blue"><small>Top</small><h2 style="font-size:14px">{df_f["VENDEDOR"].value_counts().idxmax() if not df_f.empty else "N/A"}</h2></div>', unsafe_allow_html=True)
-                
+                with c2: st.markdown(f'<div class="card-hud neon-green"><small>Ativos</small><h2>{len(df_f[df_f["STATUS"].str.upper()=="ATIVO"])}</h2></div>', unsafe_allow_html=True)
+                with c3: st.markdown(f'<div class="card-hud neon-red"><small>Cancelados</small><h2>{len(df_f[df_f["STATUS"].str.upper()=="CANCELADO"])}</h2></div>', unsafe_allow_html=True)
+                with c4: st.markdown(f'<div class="card-hud neon-blue"><small>Recebido</small><h2 style="font-size:18px">R${total_rec:,.2f}</h2></div>', unsafe_allow_html=True)
+                with c5: st.markdown(f'<div class="card-hud neon-purple"><small>Ticket Médio</small><div style="font-size:11px; margin-top:5px">🎫 Bol: <b>R${tm_bol:.2f}</b><br>💳 Car: <b>R${tm_car:.2f}</b></div></div>', unsafe_allow_html=True)
+                with c6: st.markdown(f'<div class="card-hud neon-blue"><small>Top Captador</small><h2 style="font-size:14px">{df_f["Vendedor"].value_counts().idxmax() if not df_f.empty else "N/A"}</h2></div>', unsafe_allow_html=True)
+
                 st.write("---")
-                df_cid_v = df_f['CIDADE'].value_counts().head(4)
+                df_cid_v = df_f['Cidade'].value_counts().head(4)
                 if not df_cid_v.empty:
+                    st.markdown("<small style='color:#00f2ff'>▸ GEOLOCATION ANALYTICS</small>", unsafe_allow_html=True)
                     total_c = df_cid_v.sum(); cores = ["#ff007a", "#2ecc71", "#00f2ff", "#bc13fe"]
                     seg_html = "".join([f'<div class="hud-segment" style="width:{(q/total_c)*100}%; background:{cores[i%4]};"><div class="hud-label" style="color:{cores[i%4]};">{q}</div><div class="hud-city-name" style="color:{cores[i%4]};">{n}</div></div>' for i, (n, q) in enumerate(df_cid_v.items())])
                     st.markdown(f'<div class="hud-bar-container">{seg_html}</div>', unsafe_allow_html=True)
 
                 col_g1, col_g2 = st.columns(2)
                 with col_g1:
-                    fig_p = go.Figure(data=[go.Pie(labels=df_f['STATUS'].value_counts().index, values=df_f['STATUS'].value_counts().values, hole=0.5, marker=dict(colors=['#2ecc71', '#ff4b4b']))])
-                    fig_p.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', showlegend=False, height=350); st.plotly_chart(fig_p, use_container_width=True)
+                    counts = df_f['STATUS'].str.upper().value_counts()
+                    fig_p = go.Figure(data=[go.Pie(labels=counts.index, values=counts.values, hole=0.5, marker=dict(colors=['#2ecc71', '#ff4b4b']), textinfo='label+value')])
+                    fig_p.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', showlegend=False, height=400); st.plotly_chart(fig_p, use_container_width=True)
                 with col_g2:
-                    df_v = df_f['VENDEDOR'].value_counts().reset_index().head(5)
-                    fig_v = px.line(df_v, x='VENDEDOR', y='count', markers=True); fig_v.update_traces(line_color='#00f2ff')
-                    fig_v.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=350); st.plotly_chart(fig_v, use_container_width=True)
-    except Exception as e: st.error(f"Erro: {e}")
+                    df_v = df_f['Vendedor'].value_counts().reset_index().head(5)
+                    fig_v = px.line(df_v, x='Vendedor', y='count', markers=True, text='Vendedor')
+                    fig_v.update_traces(line_color='#00f2ff', marker=dict(size=10, color='#ff007a')); fig_v.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=400); st.plotly_chart(fig_v, use_container_width=True)
+    except Exception as e: st.error(f"Erro nos relatórios: {e}")
