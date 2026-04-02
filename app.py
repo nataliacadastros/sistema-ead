@@ -179,25 +179,46 @@ with tab_cad:
 
         st.write("---") 
         qtd = len(st.session_state.lista_previa)
-        st.markdown(f'<div class="contador-estilo">ALUNOS SALVOS NA FILA: {qtd}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="contador-estilo">FILA DE ENVIO: {qtd} ALUNO(S)</div>', unsafe_allow_html=True)
         df_previa = pd.DataFrame(st.session_state.lista_previa) if st.session_state.lista_previa else pd.DataFrame(columns=["ID", "Aluno", "Cidade", "Curso", "Pagamento", "Vendedor", "Data"])
         st.dataframe(df_previa, use_container_width=True, hide_index=True)
 
 with tab_ger:
-    st.markdown("<h3 style='text-align: center; color: #2ecc71;'>🖥️ BASE DE DADOS</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center; color: #2ecc71;'>🖥️ GERENCIAMENTO DE REGISTROS</h3>", unsafe_allow_html=True)
+    
+    # Botão de emergência para limpar cache
+    c1, c2 = st.columns([1, 4])
+    with c1:
+        if st.button("🔄 LIMPAR CACHE"):
+            st.cache_data.clear()
+            st.rerun()
+
     try:
-        with st.spinner("🔄 Carregando dados da planilha..."):
-            dados = conn.read(ttl="0s").fillna("")
-            if not dados.empty:
+        with st.spinner("Conectando ao banco de dados..."):
+            # Lendo com TTL=0 para garantir dados frescos
+            dados = conn.read(ttl="0s")
+            
+            if dados is not None and not dados.empty:
+                # Limpeza básica
+                dados = dados.dropna(how='all').fillna("")
+                
+                # Formatar ID para tirar o .0
                 if "ID" in dados.columns:
                     dados["ID"] = dados["ID"].astype(str).str.replace(r'\.0$', '', regex=True)
-                st.dataframe(dados.iloc[::-1], use_container_width=True, hide_index=True, height=500)
-                if st.button("🔄 ATUALIZAR DADOS"): st.rerun()
+                
+                # Exibição
+                st.dataframe(
+                    dados.iloc[::-1], 
+                    use_container_width=True, 
+                    hide_index=True, 
+                    height=600
+                )
             else:
-                st.warning("Planilha vazia.")
-    except:
-        st.error("Erro ao conectar com o Google Sheets.")
+                st.info("Aguardando sincronização inicial ou planilha vazia.")
+    except Exception as e:
+        st.error("Erro ao carregar os dados.")
+        st.info("Certifique-se de que a planilha está compartilhada como 'Qualquer pessoa com o link'.")
 
 with tab_rel:
     st.markdown("<h3 style='text-align: center; color: #2ecc71;'>📊 RELATÓRIOS</h3>", unsafe_allow_html=True)
-    st.info("Espaço reservado para métricas e gráficos futuros.")
+    st.info("Módulo de estatísticas em desenvolvimento.")
