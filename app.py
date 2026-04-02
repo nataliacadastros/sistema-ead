@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import re
 from datetime import date
 from streamlit_gsheets import GSheetsConnection
 
@@ -36,38 +37,38 @@ if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "val_curso" not in st.session_state: st.session_state.val_curso = ""
 if "val_pagto" not in st.session_state: st.session_state.val_pagto = ""
 
-# --- LÓGICA DO CAMPO CURSO (SUBSTITUIÇÃO CORRIGIDA) ---
+# --- LÓGICA DO CAMPO CURSO (SUBSTITUIÇÃO INTELIGENTE COM REGEX) ---
 def transformar_curso():
-    # Pega o conteúdo atual do widget
-    conteudo_input = st.session_state.input_curso_key.strip()
+    entrada = st.session_state.input_curso_key.strip()
     
-    if conteudo_input:
-        # 1. Tenta quebrar por "+" para ver se o usuário digitou um novo código após um curso já existente
-        partes = [p.strip() for p in conteudo_input.split('+')]
+    if entrada:
+        # 1. Encontra o último padrão numérico no final da string (ex: "Jovem Bancário 2")
+        match = re.search(r'(\d+)$', entrada)
         
-        # 2. O que nos interessa é o que foi digitado por último
-        ultimo_termo = partes[-1].upper()
-        
-        # 3. Verifica se esse último termo é um código numérico do dicionário
-        if ultimo_termo in DIC_CURSOS:
-            nome_curso = DIC_CURSOS[ultimo_termo]
-            
-            # Substitui o código pelo nome
-            partes[-1] = nome_curso
-            
-            # Remove duplicatas mantendo a ordem
-            resultado = []
-            for item in partes:
-                if item.upper() not in [r.upper() for r in resultado]:
-                    resultado.append(item.upper())
-            
-            # Reconstrói a string com o " + " e o espaço no final
-            st.session_state.val_curso = " + ".join(resultado) + " "
+        if match:
+            codigo = match.group(1)
+            if codigo in DIC_CURSOS:
+                nome_curso = DIC_CURSOS[codigo]
+                # Remove o código do final e limpa a string
+                texto_base = entrada[:match.start()].strip()
+                # Remove qualquer "+" sobrando no final da base
+                texto_base = texto_base.rstrip('+').strip()
+                
+                if texto_base:
+                    # Verifica se o curso já não está na lista para evitar duplicatas
+                    if nome_curso.upper() not in texto_base.upper():
+                        st.session_state.val_curso = f"{texto_base} + {nome_curso}"
+                    else:
+                        st.session_state.val_curso = texto_base
+                else:
+                    st.session_state.val_curso = nome_curso
+            else:
+                st.session_state.val_curso = entrada.upper()
         else:
-            # Se o usuário digitou algo que não é código, apenas padroniza
-            st.session_state.val_curso = conteudo_input.upper() + " "
+            st.session_state.val_curso = entrada.upper()
     
-    # Sincroniza o widget com o valor processado
+    # Formatação final: Maiúsculo, limpa "+" duplicados e garante espaço no final
+    st.session_state.val_curso = st.session_state.val_curso.upper().replace("++", "+").strip() + " "
     st.session_state.input_curso_key = st.session_state.val_curso
 
 # --- LÓGICA DO PAGAMENTO ---
