@@ -14,7 +14,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS PARA CENTRALIZAÇÃO ABSOLUTA E SIMETRIA ---
+# --- CSS CONSOLIDADO (CENTRALIZAÇÃO, TOPO E MEDIDAS EXATAS) ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
@@ -40,11 +40,11 @@ st.markdown("""
     /* CONTEÚDO COLADO NO TOPO */
     .main .block-container { 
         padding-top: 38px !important; 
-        max-width: 900px !important; /* Limita a largura para facilitar a centralização visual */
+        max-width: 1100px !important;
         margin: 0 auto !important;
     }
 
-    /* --- CONFIGURAÇÕES DOS CAMPOS --- */
+    /* CONFIGURAÇÃO DOS CAMPOS (SUAS MEDIDAS) */
     div[data-testid="stHorizontalBlock"] { 
         margin-bottom: 3px !important;
         display: flex;
@@ -55,7 +55,7 @@ st.markdown("""
     div[data-testid="stTextInput"] > div { 
         min-height: 25px !important; 
         height: 25px !important;
-        width: 100% !important; /* Ocupa a largura da coluna definida no Streamlit */
+        width: 100% !important;
     }
 
     label { 
@@ -66,7 +66,7 @@ st.markdown("""
         height: 25px !important;
         display: flex; 
         align-items: center; 
-        justify-content: flex-end; /* Alinha o texto da label para a direita, encostando no input */
+        justify-content: flex-end;
     }
 
     .stTextInput input { 
@@ -78,7 +78,7 @@ st.markdown("""
         border-radius: 5px !important;
     }
 
-    /* Checkboxes e Botões - Centralização Real */
+    /* Checkboxes e Botões */
     .stCheckbox { display: flex; justify-content: center; margin-top: 8px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
     
@@ -92,7 +92,7 @@ st.markdown("""
     /* Lista e Contador */
     hr { margin-top: 20px !important; margin-bottom: 5px !important; }
     .contador-estilo {
-        text-align: center; /* Centraliza o contador também */
+        text-align: center;
         color: #2ecc71;
         font-weight: bold;
         font-size: 14px;
@@ -137,11 +137,9 @@ def processar_pagto():
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
 with tab_cad:
-    # Usamos uma coluna central larga com bordas iguais para centralização absoluta
     _, centro, _ = st.columns([0.5, 5, 0.5])
     
     with centro:
-        # Formulário: Labels e Inputs perfeitamente alinhados
         campos = [
             ("ID:", "f_id", None), ("ALUNO:", "f_nome", None), ("CIDADE:", "f_cid", None),
             ("CURSO:", "input_curso_key", transformar_curso), ("PAGAMENTO:", "input_pagto_key", None),
@@ -149,7 +147,6 @@ with tab_cad:
         ]
         
         for label, key, func in campos:
-            # Colunas internas para garantir que label e input fiquem juntos e centralizados
             c_lab, c_inp = st.columns([1.5, 3.5]) 
             c_lab.markdown(f"<label>{label}</label>", unsafe_allow_html=True)
             if key == "input_curso_key":
@@ -161,14 +158,12 @@ with tab_cad:
             else:
                 c_inp.text_input(label, key=key, label_visibility="collapsed")
 
-        # Checkboxes - Alinhamento equilibrado abaixo dos inputs
         st.write("")
         _, c_c1, c_c2, c_c3, _ = st.columns([0.8, 1.2, 1.2, 1.2, 0.8])
         with c_c1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
         with c_c2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
         with c_c3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
 
-        # Botões - Centralizados em relação ao bloco superior
         st.write("")
         _, b_left, b_right, _ = st.columns([0.5, 2, 2, 0.5])
         with b_left:
@@ -182,16 +177,27 @@ with tab_cad:
                 if st.session_state.lista_previa:
                     df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa); conn.update(data=pd.concat([df_old, df_new], ignore_index=True)); st.session_state.lista_previa = []; st.success("Enviado!"); st.rerun()
 
-        # Lista de Prévia
         st.write("---") 
         qtd = len(st.session_state.lista_previa)
-        st.markdown(f'<div class="contador-estilo">ALUNOS SALVOS: {qtd}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="contador-estilo">ALUNOS SALVOS NA FILA: {qtd}</div>', unsafe_allow_html=True)
         df_previa = pd.DataFrame(st.session_state.lista_previa) if st.session_state.lista_previa else pd.DataFrame(columns=["ID", "Aluno", "Cidade", "Curso", "Pagamento", "Vendedor", "Data"])
         st.dataframe(df_previa, use_container_width=True, hide_index=True)
 
 with tab_ger:
+    st.markdown("<h3 style='text-align: center; color: #2ecc71;'>🖥️ BASE DE DADOS</h3>", unsafe_allow_html=True)
     try:
-        dados = conn.read(ttl="0s").fillna("")
-        if "ID" in dados.columns: dados["ID"] = dados["ID"].astype(str).str.replace(r'\.0$', '', regex=True)
-        st.dataframe(dados.iloc[::-1], use_container_width=True, hide_index=True, height=600)
-    except: st.error("Erro ao carregar banco de dados.")
+        with st.spinner("🔄 Carregando dados da planilha..."):
+            dados = conn.read(ttl="0s").fillna("")
+            if not dados.empty:
+                if "ID" in dados.columns:
+                    dados["ID"] = dados["ID"].astype(str).str.replace(r'\.0$', '', regex=True)
+                st.dataframe(dados.iloc[::-1], use_container_width=True, hide_index=True, height=500)
+                if st.button("🔄 ATUALIZAR DADOS"): st.rerun()
+            else:
+                st.warning("Planilha vazia.")
+    except:
+        st.error("Erro ao conectar com o Google Sheets.")
+
+with tab_rel:
+    st.markdown("<h3 style='text-align: center; color: #2ecc71;'>📊 RELATÓRIOS</h3>", unsafe_allow_html=True)
+    st.info("Espaço reservado para métricas e gráficos futuros.")
