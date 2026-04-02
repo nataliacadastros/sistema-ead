@@ -62,13 +62,14 @@ st.markdown("""
         white-space: nowrap !important; font-size: 13px !important; padding: 0px 20px !important;
     }
 
-    /* Contador lateral direito */
+    /* Contador lateral direito - Ajustado para não sobrepor */
     .contador-estilo {
         text-align: right;
         color: #2ecc71;
         font-weight: bold;
         font-size: 14px;
-        margin-bottom: -10px;
+        margin-bottom: 5px; /* Espaço positivo para empurrar a lista para baixo */
+        padding-right: 5px;
     }
 
     header {visibility: hidden;} footer {visibility: hidden;}
@@ -146,7 +147,7 @@ with tab_cad:
                 if st.button("💾 SALVAR ALUNO"):
                     if st.session_state.f_nome:
                         aluno = {"ID": st.session_state.f_id.upper(), "Aluno": st.session_state.f_nome.upper(), "Cidade": st.session_state.f_cid.upper(), "Curso": st.session_state.input_curso_key.strip(), "Pagamento": st.session_state.input_pagto_key.upper(), "Vendedor": st.session_state.f_vend.upper(), "Data": st.session_state.f_data}
-                        st.session_state.lista_previa.insert(0, aluno)
+                        st.session_state.lista_previa.append(aluno) # Agora usa append para ficar no final
                         st.rerun()
             with b2:
                 if st.button("📤 ENVIAR PLANILHA"):
@@ -156,11 +157,11 @@ with tab_cad:
         # --- LISTA DE PRÉ-VISUALIZAÇÃO PERMANENTE ---
         st.write("---")
         
-        # Contador no canto direito
+        # Contador acima da lista
         qtd = len(st.session_state.lista_previa)
         st.markdown(f'<div class="contador-estilo">Alunos Salvos: {qtd}</div>', unsafe_allow_html=True)
         
-        # Tabela (se vazia, exibe colunas vazias)
+        # Tabela (Ordem: mais antigo em cima, mais recente embaixo)
         df_previa = pd.DataFrame(st.session_state.lista_previa) if st.session_state.lista_previa else pd.DataFrame(columns=["ID", "Aluno", "Cidade", "Curso", "Pagamento", "Vendedor", "Data"])
         st.dataframe(df_previa, use_container_width=True, hide_index=True)
 
