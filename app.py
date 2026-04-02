@@ -34,7 +34,6 @@ st.markdown("""
     }
     .main .block-container { padding-top: 45px !important; max-width: 100% !important; margin: 0 auto !important; }
     
-    /* ESTILO CADASTRO */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 0px !important; display: flex; align-items: center; }
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end; }
     
@@ -50,7 +49,6 @@ st.markdown("""
     
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
 
-    /* GERENCIAMENTO - TABELA HUD */
     .custom-table-wrapper {
         width: 100%; max-height: 600px; overflow: auto !important;
         background-color: #121629; border: 2px solid #1f295a; border-radius: 10px; margin-top: 15px;
@@ -63,13 +61,12 @@ st.markdown("""
     .status-ativo { background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
     .status-cancelado { background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
 
-    /* RELATÓRIO HUD TECH */
     .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 100px; display: flex; flex-direction: column; justify-content: center; }
-    .neon-pink { color: #ff007a; border-top: 2px solid #ff007a; box-shadow: 0px 0px 10px rgba(255, 0, 122, 0.2); }
-    .neon-green { color: #2ecc71; border-top: 2px solid #2ecc71; box-shadow: 0px 0px 10px rgba(46, 204, 113, 0.2); }
-    .neon-blue { color: #00f2ff; border-top: 2px solid #00f2ff; box-shadow: 0px 0px 10px rgba(0, 242, 255, 0.2); }
-    .neon-purple { color: #bc13fe; border-top: 2px solid #bc13fe; box-shadow: 0px 0px 10px rgba(188, 19, 254, 0.2); }
-    .neon-red { color: #ff4b4b; border-top: 2px solid #ff4b4b; box-shadow: 0px 0px 10px rgba(255, 75, 75, 0.2); }
+    .neon-pink { color: #ff007a; border-top: 2px solid #ff007a; }
+    .neon-green { color: #2ecc71; border-top: 2px solid #2ecc71; }
+    .neon-blue { color: #00f2ff; border-top: 2px solid #00f2ff; }
+    .neon-purple { color: #bc13fe; border-top: 2px solid #bc13fe; }
+    .neon-red { color: #ff4b4b; border-top: 2px solid #ff4b4b; }
     
     .hud-bar-container { background: rgba(31, 41, 90, 0.3); height: 14px; border-radius: 20px; width: 100%; position: relative; margin: 50px 0 40px 0; border: 1px solid #1f295a; }
     .hud-segment { height: 100%; float: left; position: relative; }
@@ -78,9 +75,7 @@ st.markdown("""
 
     .stButton > button { background-color: #00f2ff !important; color: #0b0e1e !important; font-weight: bold !important; border: none !important; border-radius: 5px !important; width: 100%; height: 35px !important; }
     
-    /* LÁPIS MINIMALISTA */
-    .edit-pencil { text-decoration: none; color: #00f2ff !important; font-size: 12px; margin-right: 8px; opacity: 0.6; transition: 0.3s; }
-    .edit-pencil:hover { opacity: 1; color: #ff007a !important; }
+    .edit-pencil { text-decoration: none; color: #00f2ff !important; font-size: 13px; margin-right: 8px; }
 
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
@@ -124,11 +119,15 @@ def extrair_valor_geral(texto):
         return float(v[0]) if v else 0.0
     except: return 0.0
 
-# --- NAVEGAÇÃO ---
-tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
+# --- NAVEGAÇÃO COM PERSISTÊNCIA ---
+# Captura o parâmetro 'edit' da URL para saber que deve abrir a aba de gerenciamento
+query_params = st.query_params
+aba_ativa = 1 if "edit" in query_params or st.session_state.id_para_editar else 0
+
+tabs = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
 # --- ABA 1: CADASTRO ---
-with tab_cad:
+with tabs[0]:
     _, centro, _ = st.columns([0.5, 5, 0.5])
     with centro:
         s_al = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"; s_ge = f"g_{st.session_state.reset_geral}"
@@ -166,10 +165,11 @@ with tab_cad:
         if st.session_state.lista_previa: st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
 # --- ABA 2: GERENCIAMENTO ---
-with tab_ger:
-    # Verificação de edição via Query Params
-    qp = st.query_params
-    if "edit" in qp: st.session_state.id_para_editar = qp["edit"]
+with tabs[1]:
+    # Lógica de Edição: Se houver 'edit' no link, salvamos no estado e limpamos a URL para não bugar
+    if "edit" in query_params:
+        st.session_state.id_para_editar = query_params["edit"]
+        st.query_params.clear() # Limpa o "?edit=..." da URL para evitar recarregamento infinito
 
     cf1, cf2, cf3, cf4 = st.columns([2.5, 1.5, 1.5, 0.5])
     with cf1: bu = st.text_input("🔍 Buscar...", key="busca_ger", placeholder="Nome ou ID", label_visibility="collapsed")
@@ -196,23 +196,23 @@ with tab_ger:
         
         st.markdown(f'<div class="custom-table-wrapper"><table class="custom-table"><thead><tr>{" ".join([f"<th>{h}</th>" for h in hd])}</tr></thead><tbody>{rows}</tbody></table></div>', unsafe_allow_html=True)
 
-        # --- FRAME DE EDIÇÃO PROFISSIONAL ---
+        # --- FRAME DE EDIÇÃO ---
         if st.session_state.id_para_editar:
             st.write("---")
-            st.markdown(f"### 🛠️ EDITAR: `{st.session_state.id_para_editar}`")
-            al_data = df_g[df_g['ID'] == st.session_state.id_para_editar]
-            if not al_data.empty:
-                al = al_data.iloc[0]
-                with st.form("form_edit_full"):
-                    r1c1, r1c2, r1c3, r1c4 = st.columns(4)
-                    e_status = r1c1.selectbox("STATUS", ["ATIVO", "CANCELADO"], index=0 if al['STATUS']=="ATIVO" else 1)
-                    e_unid = r1c2.text_input("UNID.", value=al['UNID.'])
-                    e_turma = r1c3.text_input("TURMA", value=al['TURMA'])
-                    e_dt_cad = r1c4.text_input("DT_CAD", value=al['DT_CAD'])
+            st.markdown(f"### 🛠️ EDITAR ALUNO: `{st.session_state.id_para_editar}`")
+            al_row = df_g[df_g['ID'] == st.session_state.id_para_editar]
+            if not al_row.empty:
+                al = al_row.iloc[0]
+                with st.form("form_edicao"):
+                    c1, c2, c3, c4 = st.columns(4)
+                    e_status = c1.selectbox("STATUS", ["ATIVO", "CANCELADO"], index=0 if al['STATUS']=="ATIVO" else 1)
+                    e_unid = c2.text_input("UNID.", value=al['UNID.'])
+                    e_turma = c3.text_input("TURMA", value=al['TURMA'])
+                    e_dt_cad = c4.text_input("DT_CAD", value=al['DT_CAD'])
                     
-                    r2c1, r2c2 = st.columns([3, 1])
-                    e_nome = r2c1.text_input("ALUNO", value=al['ALUNO'])
-                    e_cpf = r2c2.text_input("CPF", value=al['CPF'])
+                    c5, c6 = st.columns([3, 1])
+                    e_nome = c5.text_input("ALUNO", value=al['ALUNO'])
+                    e_cpf = c6.text_input("CPF", value=al['CPF'])
                     
                     e_curso = st.text_input("CURSO", value=al['CURSO'])
                     e_pagto = st.text_area("PAGAMENTO", value=al['PAGTO'])
@@ -233,14 +233,16 @@ with tab_ger:
                                 ws.update_cell(cell.row, 11, e_cpf)
                                 ws.update_cell(cell.row, 13, e_curso.upper())
                                 ws.update_cell(cell.row, 14, e_pagto.upper())
-                                st.success("Sucesso!"); st.query_params.clear(); st.session_state.id_para_editar = None; st.cache_data.clear(); st.rerun()
+                                st.success("Atualizado!"); st.session_state.id_para_editar = None; st.cache_data.clear(); st.rerun()
                         except Exception as e: st.error(f"Erro: {e}")
+                    
                     if b_cancelar.form_submit_button("❌ CANCELAR"):
-                        st.query_params.clear(); st.session_state.id_para_editar = None; st.rerun()
+                        st.session_state.id_para_editar = None; st.rerun()
+
     except Exception as e: st.error(f"Erro: {e}")
 
 # --- ABA 3: RELATÓRIOS ---
-with tab_rel:
+with tabs[2]:
     try:
         df_r = conn.read(ttl="0s").dropna(how='all')
         if not df_r.empty:
