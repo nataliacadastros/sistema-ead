@@ -40,49 +40,55 @@ st.markdown("""
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 25px !important; border-radius: 5px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
 
-    /* GERENCIAMENTO - FORÇANDO BARRAS DE ROLAGEM */
+    /* GERENCIAMENTO - BOX COM SCROLL FORÇADO */
     .custom-table-wrapper {
         width: 100%;
+        max-height: 600px; /* Altura fixa para forçar scroll vertical */
         overflow-x: auto !important; /* Força scroll horizontal */
-        overflow-y: auto !important; /* Força scroll vertical se necessário */
+        overflow-y: auto !important;
         background-color: #121629;
-        border: 1px solid #1f295a;
-        border-radius: 8px;
+        border: 2px solid #1f295a;
+        border-radius: 10px;
         margin-top: 15px;
-        display: block;
     }
     
     .custom-table { 
         width: 100%; 
         border-collapse: collapse; 
-        min-width: 2200px !important; /* Força a tabela a ser larga para ativar o scroll */
+        min-width: 2500px !important; /* Largura extrema para garantir o scroll horizontal */
     }
     
     .custom-table th { 
         background-color: #1f295a; 
         color: #00f2ff; 
         text-align: left; 
-        padding: 12px; 
+        padding: 15px; 
         font-size: 11px; 
         text-transform: uppercase; 
         position: sticky; 
         top: 0; 
-        z-index: 10;
+        z-index: 99;
     }
     
     .custom-table td { 
-        padding: 10px 12px; 
+        padding: 12px; 
         border-bottom: 1px solid #1f295a; 
         font-size: 11px; 
         color: #e0e0e0; 
-        white-space: nowrap; /* Impede que o texto quebre linha e force o scroll */
+        white-space: nowrap; 
     }
     
-    .custom-table tr:hover { background-color: rgba(0, 242, 255, 0.05); }
+    .custom-table tr:hover { background-color: rgba(0, 242, 255, 0.1); }
 
-    .status-badge { padding: 3px 10px; border-radius: 12px; font-size: 9px; font-weight: bold; text-transform: uppercase; }
+    .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }
     .status-ativo { background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
     .status-cancelado { background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
+
+    /* ESTILIZAÇÃO DAS BARRAS DE ROLAGEM (PARA FICAREM VISÍVEIS) */
+    .custom-table-wrapper::-webkit-scrollbar { height: 12px; width: 12px; }
+    .custom-table-wrapper::-webkit-scrollbar-track { background: #0b0e1e; border-radius: 10px; }
+    .custom-table-wrapper::-webkit-scrollbar-thumb { background: #00f2ff; border-radius: 10px; border: 3px solid #0b0e1e; }
+    .custom-table-wrapper::-webkit-scrollbar-thumb:hover { background: #ff007a; }
 
     /* RELATÓRIO HUD */
     .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 100px; display: flex; flex-direction: column; justify-content: center; }
@@ -98,12 +104,6 @@ st.markdown("""
 
     .stButton > button { background-color: #00f2ff !important; color: #0b0e1e !important; font-weight: bold !important; border: none !important; border-radius: 5px !important; width: 100%; height: 35px !important; }
     header {visibility: hidden;} footer {visibility: hidden;}
-    
-    /* Scrollbar Estilizada */
-    .custom-table-wrapper::-webkit-scrollbar { height: 10px; width: 8px; }
-    .custom-table-wrapper::-webkit-scrollbar-track { background: #0b0e1e; }
-    .custom-table-wrapper::-webkit-scrollbar-thumb { background: #1f295a; border-radius: 10px; border: 2px solid #0b0e1e; }
-    .custom-table-wrapper::-webkit-scrollbar-thumb:hover { background: #00f2ff; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -207,7 +207,7 @@ with tab_ger:
             sc = "status-ativo" if r['STATUS'] == "ATIVO" else "status-cancelado"
             rows += f"<tr><td><span class='status-badge {sc}'>{r['STATUS']}</span></td><td>{r['UNID.']}</td><td>{r['TURMA']}</td><td>{r['10C']}</td><td>{r['ING']}</td><td>{r['DT_CAD']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ID']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ALUNO']}</td><td>{r['TEL_RESP']}</td><td>{r['TEL_ALU']}</td><td>{r['CPF']}</td><td>{r['CIDADE']}</td><td>{r['CURSO']}</td><td>{r['PAGTO']}</td><td>{r['VEND.']}</td><td>{r['DT_MAT']}</td></tr>"
         
-        # Estrutura com Wrapper para forçar Scroll
+        # HTML COM CLASSES PARA SCROLL
         st.markdown(f"""
             <div class="custom-table-wrapper">
                 <table class="custom-table">
