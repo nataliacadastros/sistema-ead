@@ -6,7 +6,22 @@ from streamlit_gsheets import GSheetsConnection
 # --- CONFIGURAÇÕES DA PÁGINA ---
 st.set_page_config(page_title="SISTEMA ADM | PROFISSIONALIZA", layout="wide", initial_sidebar_state="collapsed")
 
-# --- CSS DEFINITIVO (MANTIDO) ---
+# --- DICIONÁRIO DE CURSOS ---
+DIC_CURSOS = {
+    "00": "COLÉGIO COMBO",
+    "1": "PREPARATÓRIO JOVEM BANCÁRIO",
+    "2": "10 CURSOS PROFISSIONALIZANTES",
+    "3": "PREPARATÓRIO AGRO",
+    "4": "INGLÊS",
+    "5": "JOVEM NO DIREITO",
+    "6": "PRÉ MILITAR",
+    "7": "PREPARATÓRIO ENCCEJA",
+    "8": "JOVEM NA AVIAÇÃO",
+    "9": "INFORMÁTICA",
+    "10": "ADMINISTRAÇÃO"
+}
+
+# --- CSS DEFINITIVO ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
@@ -29,43 +44,71 @@ st.markdown("""
 # --- CONEXÃO ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# Inicialização de variáveis de estado
+# --- INICIALIZAÇÃO DE ESTADOS ---
 if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
+if "curso_display" not in st.session_state: st.session_state.curso_display = ""
 
-def campo_horizontal(label, key, value=""):
-    c1, c2 = st.columns([1.2, 4]) 
-    with c1: st.markdown(f"<label>{label}</label>", unsafe_allow_html=True)
-    with c2: return st.text_input(label, label_visibility="collapsed", key=key, value=value)
+# --- FUNÇÕES DE LÓGICA ---
+
+def processar_curso():
+    """Captura o código digitado, converte via dicionário e concatena."""
+    entrada = st.session_state.curso_field.strip()
+    
+    if entrada:
+        # Pega a última parte digitada (caso o usuário tenha digitado algo após o último +)
+        partes = entrada.split('+')
+        ultimo_termo = partes[-1].strip()
+        
+        # Se o último termo for um código no dicionário, converte
+        if ultimo_termo in DIC_CURSOS:
+            nome_curso = DIC_CURSOS[ultimo_termo]
+            
+            # Reconstrói a string
+            if st.session_state.curso_display:
+                # Se o curso já não estiver na lista, adiciona
+                if nome_curso not in st.session_state.curso_display:
+                    st.session_state.curso_display += f" + {nome_curso}"
+            else:
+                st.session_state.curso_display = nome_curso
+        else:
+            # Se não for código, mantém o que foi digitado em maiúsculo
+            st.session_state.curso_display = entrada.upper()
+    
+    # Regra: Sempre manter um espaço no final e converter para UPPER
+    st.session_state.curso_display = st.session_state.curso_display.upper().strip() + " "
+    # Limpa o campo de input temporário (o Streamlit atualizará o valor pelo session_state)
 
 def atualizar_pagto():
-    # Verifica se a chave existe antes de tentar acessar
-    if "pagto_input" in st.session_state:
-        texto_atual = st.session_state.pagto_input
-        base = texto_atual.split(" | ")[0].strip().upper()
-        if st.session_state.check_lib: base += " | APÓS PAGAMENTO LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO IN-GLÊS"
-        if st.session_state.check_bonus: base += " | CASO PAGUE VIA LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO CURSO BÔNUS A ESCOLHA"
-        if st.session_state.check_conf: base += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
-        st.session_state.pagto_input = base
+    base = st.session_state.pagto_input.split(" | ")[0].strip().upper()
+    if st.session_state.check_lib: base += " | APÓS PAGAMENTO LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO IN-GLÊS"
+    if st.session_state.check_bonus: base += " | CASO PAGUE VIA LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO CURSO BÔNUS A ESCOLHA"
+    if st.session_state.check_conf: base += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
+    st.session_state.pagto_input = base
+
+def campo_horizontal(label, key, value="", on_change=None):
+    c1, c2 = st.columns([1.2, 4]) 
+    with c1: st.markdown(f"<label>{label}</label>", unsafe_allow_html=True)
+    with c2: return st.text_input(label, label_visibility="collapsed", key=key, value=value, on_change=on_change)
 
 # --- ABAS ---
 abas = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
-# ================= ABA 1: CADASTRO =================
 with abas[0]:
     _, col_central, _ = st.columns([0.5, 3, 0.5])
     with col_central:
         st.write("")
-        # Campos de entrada
-        id_alu = campo_horizontal("ID:", "id_alu")
-        nome_alu = campo_horizontal("ALUNO:", "nome_alu")
-        t_resp = campo_horizontal("TEL. RESP:", "t_resp")
-        t_alu = campo_horizontal("TEL. ALUNO:", "t_alu")
-        cid_f = campo_horizontal("CIDADE:", "cid_f")
-        # CORREÇÃO AQUI: Campo Curso agora usa a chave 'curso_field' de forma direta
-        curso_f = campo_horizontal("CURSO:", "curso_field")
-        pagto_f = campo_horizontal("PAGAMENTO:", "pagto_input")
-        vend_f = campo_horizontal("VENDEDOR:", "vend_f")
-        data_f = campo_horizontal("DATA:", "data_input", value=date.today().strftime("%d/%m/%Y"))
+        campo_horizontal("ID:", "id_alu")
+        campo_horizontal("ALUNO:", "nome_alu")
+        campo_horizontal("TEL. RESP:", "t_resp")
+        campo_horizontal("TEL. ALUNO:", "t_alu")
+        campo_horizontal("CIDADE:", "cid_f")
+        
+        # CAMPO CURSO COM LÓGICA DE CONVERSÃO
+        campo_horizontal("CURSO:", "curso_field", value=st.session_state.curso_display, on_change=processar_curso)
+        
+        campo_horizontal("PAGAMENTO:", "pagto_input")
+        campo_horizontal("VENDEDOR:", "vend_f")
+        campo_horizontal("DATA:", "data_input", value=date.today().strftime("%d/%m/%Y"))
 
         st.write("")
         sel1, sel2, sel3 = st.columns(3)
@@ -81,39 +124,38 @@ with abas[0]:
                         "ID": st.session_state.id_alu.upper(),
                         "Aluno": st.session_state.nome_alu.upper(),
                         "Cidade": st.session_state.cid_f.upper(),
-                        "Curso": st.session_state.curso_field.upper(), # Captura o valor digitado
+                        "Curso": st.session_state.curso_display.strip().upper(),
                         "Pagamento": st.session_state.pagto_input.upper(),
                         "Vendedor": st.session_state.vend_f.upper(),
                         "Data": st.session_state.data_input
                     }
                     st.session_state.lista_previa.append(aluno)
-                    # Limpa campos específicos para agilizar próximo cadastro
-                    st.session_state.id_alu = ""
+                    # Reset dos campos para novo cadastro
+                    st.session_state.curso_display = ""
                     st.session_state.nome_alu = ""
-                    st.session_state.curso_field = ""
+                    st.session_state.id_alu = ""
                     st.rerun()
+
         with btn2:
             if st.button("📤 FINALIZAR E ENVIAR"):
                 if st.session_state.lista_previa:
-                    with st.spinner("Enviando dados..."):
-                        df_sheets = conn.read(ttl="0s").fillna("")
-                        df_novos = pd.DataFrame(st.session_state.lista_previa)
-                        df_final = pd.concat([df_sheets, df_novos], ignore_index=True)
-                        conn.update(data=df_final)
-                        st.session_state.lista_previa = []
-                        st.success("Enviado com sucesso!")
-                        st.rerun()
+                    df_sheets = conn.read(ttl="0s").fillna("")
+                    df_novos = pd.DataFrame(st.session_state.lista_previa)
+                    df_final = pd.concat([df_sheets, df_novos], ignore_index=True)
+                    conn.update(data=df_final)
+                    st.session_state.lista_previa = []
+                    st.success("Enviado com sucesso!")
+                    st.rerun()
 
     st.write("")
     df_vis = pd.DataFrame(st.session_state.lista_previa) if st.session_state.lista_previa else pd.DataFrame(columns=["ID", "Aluno", "Cidade", "Curso", "Pagamento", "Vendedor", "Data"])
     st.dataframe(df_vis, use_container_width=True, hide_index=True, height=180)
 
-# ================= ABA 2: GERENCIAMENTO =================
 with abas[1]:
     st.write("")
     t1, t2 = st.columns([3, 1])
     with t1:
-        busca = st.text_input("Filtro CRM", placeholder="🔍 Pesquisar...", label_visibility="collapsed").upper()
+        busca = st.text_input("Filtro CRM", placeholder="🔍 Pesquise...", label_visibility="collapsed").upper()
     with t2: 
         if st.button("🔄 Sincronizar Base"):
             st.cache_data.clear()
@@ -124,7 +166,7 @@ with abas[1]:
         if "ID" in dados.columns:
             dados["ID"] = dados["ID"].astype(str).str.replace(r'\.0$', '', regex=True)
 
-        dados_exibicao = dados.iloc[::-1] # Recentes no topo
+        dados_exibicao = dados.iloc[::-1]
 
         if busca:
             mask = dados_exibicao.astype(str).apply(lambda x: x.str.contains(busca, case=False)).any(axis=1)
@@ -146,9 +188,4 @@ with abas[1]:
             }
         )
     except Exception as e:
-        st.error(f"Erro ao carregar dados: {e}")
-
-# ================= ABA 3: RELATÓRIOS =================
-with abas[2]:
-    st.write("### 📊 Relatórios ADM")
-    st.info("Módulo em desenvolvimento.")
+        st.error(f"Erro: {e}")
