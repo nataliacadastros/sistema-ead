@@ -47,7 +47,7 @@ if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "val_curso" not in st.session_state: st.session_state.val_curso = ""
 if "val_pagto" not in st.session_state: st.session_state.val_pagto = ""
 
-# --- FUNÇÕES DE LÓGICA ---
+# --- FUNÇÕES DE LÓGICA (CURSO E PAGAMENTO) ---
 def transformar_curso():
     entrada = st.session_state.input_curso_key.strip()
     if not entrada:
@@ -92,6 +92,7 @@ with tab_cad:
         st.write("")
         
         # --- BOTÕES SELECIONÁVEIS ALINHADOS AO FRAME ---
+        # Usamos uma coluna de 1.2 (vazia) para pular o espaço das labels e centralizar os botões nos 4 de largura
         recuo, area_botoes = st.columns([1.2, 4])
         with area_botoes:
             s1, s2, s3 = st.columns(3)
