@@ -32,9 +32,9 @@ st.markdown("""
         color: #00f2ff !important; border-bottom: 2px solid #00f2ff !important;
         background-color: rgba(0, 242, 255, 0.05) !important;
     }
-    .main .block-container { padding-top: 45px !important; max-width: 1200px !important; margin: 0 auto !important; }
+    .main .block-container { padding-top: 45px !important; max-width: 1250px !important; margin: 0 auto !important; }
 
-    /* ESTILO CADASTRO (CAMPOS 25PX) */
+    /* ESTILO CADASTRO */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 3px !important; display: flex; align-items: center; justify-content: center; }
     div[data-testid="stTextInput"] > div { min-height: 25px !important; height: 25px !important; }
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 14px !important; padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end; }
@@ -42,11 +42,12 @@ st.markdown("""
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
 
     /* CARDS RELATÓRIO HUD */
-    .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; }
+    .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 100px; display: flex; flex-direction: column; justify-content: center; }
     .neon-pink { color: #ff007a; text-shadow: 0 0 10px rgba(255, 0, 122, 0.5); border-top: 2px solid #ff007a; }
     .neon-green { color: #2ecc71; text-shadow: 0 0 10px rgba(46, 204, 113, 0.5); border-top: 2px solid #2ecc71; }
     .neon-blue { color: #00f2ff; text-shadow: 0 0 10px rgba(0, 242, 255, 0.5); border-top: 2px solid #00f2ff; }
     .neon-purple { color: #bc13fe; text-shadow: 0 0 10px rgba(188, 19, 254, 0.5); border-top: 2px solid #bc13fe; }
+    .neon-red { color: #ff4b4b; text-shadow: 0 0 10px rgba(255, 75, 75, 0.5); border-top: 2px solid #ff4b4b; }
 
     /* BARRA DE CIDADES HUD */
     .hud-bar-container { background: rgba(31, 41, 90, 0.3); height: 14px; border-radius: 20px; width: 100%; position: relative; margin: 50px 0 40px 0; border: 1px solid #1f295a; }
@@ -184,20 +185,24 @@ with tab_rel:
                 tm_bol = df_bol['Valor_Ticket'].mean() if not df_bol.empty else 0.0
                 tm_car = df_car['Valor_Ticket'].mean() if not df_car.empty else 0.0
 
-                # CARDS KPI
+                # --- CARDS KPI (6 COLUNAS AGORA COM CANCELADOS) ---
                 st.write("")
-                c1, c2, c3, c4, c5 = st.columns([1, 1, 1.2, 1.8, 1.2])
+                c1, c2, c3, c4, c5, c6 = st.columns(6)
                 with c1: st.markdown(f'<div class="card-hud neon-pink"><small>Mats</small><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
                 with c2: 
                     atv = len(df_f[df_f['STATUS'].str.upper() == 'ATIVO']) if 'STATUS' in df_f.columns else 0
                     st.markdown(f'<div class="card-hud neon-green"><small>Ativos</small><h2>{atv}</h2></div>', unsafe_allow_html=True)
-                with c3: st.markdown(f'<div class="card-hud neon-blue"><small>Recebido</small><h2 style="font-size:18px">R${total_rec:,.2f}</h2></div>', unsafe_allow_html=True)
-                with c4: st.markdown(f'<div class="card-hud neon-purple"><small>Ticket Médio</small><div style="font-size:12px; margin-top:5px">🎫 Boleto: <b>R${tm_bol:.2f}</b><br>💳 Cartão: <b>R${tm_car:.2f}</b></div></div>', unsafe_allow_html=True)
-                with c5:
+                with c3:
+                    cnc = len(df_f[df_f['STATUS'].str.upper() == 'CANCELADO']) if 'STATUS' in df_f.columns else 0
+                    st.markdown(f'<div class="card-hud neon-red"><small>Cancelados</small><h2>{cnc}</h2></div>', unsafe_allow_html=True)
+                with c4: st.markdown(f'<div class="card-hud neon-blue"><small>Recebido</small><h2 style="font-size:18px">R${total_rec:,.2f}</h2></div>', unsafe_allow_html=True)
+                with c5: st.markdown(f'<div class="card-hud neon-purple"><small>Ticket Médio</small><div style="font-size:11px; margin-top:5px">🎫 Bol: <b>R${tm_bol:.2f}</b><br>💳 Car: <b>R${tm_car:.2f}</b></div></div>', unsafe_allow_html=True)
+                with c6:
                     top_v = df_f['Vendedor'].value_counts().idxmax() if not df_f.empty else "N/A"
                     st.markdown(f'<div class="card-hud neon-blue"><small>Top Captador</small><h2 style="font-size:14px">{top_v}</h2></div>', unsafe_allow_html=True)
 
                 st.write("---")
+                
                 # GEOLOCATION ANALYTICS
                 df_cid_v = df_f['Cidade'].value_counts().head(4)
                 if not df_cid_v.empty:
@@ -206,40 +211,27 @@ with tab_rel:
                     seg_html = ""
                     for i, (nome, qtd) in enumerate(df_cid_v.items()):
                         percent = (qtd / total_c) * 100; cor = cores[i % 4]
-                        seg_html += f'<div class="hud-segment" style="width: {percent}%; background: {cor}; box-shadow: 0 0 10px {cor}80;"><div class="hud-label" style="color: {cor};">{qtd}</div><div class="hud-city-name" style="color: {cor};">{nome}</div></div>'
+                        seg_html += f'''
+                        <div class="hud-segment" style="width: {percent}%; background: {cor}; box-shadow: 0 0 10px {cor}80;">
+                            <div class="hud-label" style="color: {cor};">{qtd}</div>
+                            <div class="hud-city-name" style="color: {cor};">{nome}</div>
+                        </div>'''
                     st.markdown(f'<div class="hud-bar-container">{seg_html}</div>', unsafe_allow_html=True)
                 
                 col_g1, col_g2 = st.columns(2)
                 with col_g1:
                     st.markdown("<small style='color:#64748b'>QUANTIDADE POR STATUS</small>", unsafe_allow_html=True)
-                    # Forçamos a contagem e garantimos que Ativos e Cancelados existam no index
-                    status_counts = df_f['STATUS'].str.upper().value_counts()
-                    
-                    # Gráfico de Pizza Tech - Agora forçando a exibição do Valor
-                    fig_p = go.Figure(data=[go.Pie(
-                        labels=status_counts.index, 
-                        values=status_counts.values, 
-                        hole=0.5, 
-                        marker=dict(colors=['#2ecc71', '#ff007a', '#00f2ff'], line=dict(color='#0b0e1e', width=3)),
-                        textinfo='label+value', # FORÇA EXIBIR O NOME E O NÚMERO
-                        textfont=dict(size=14, color="white"),
-                        insidetextorientation='horizontal'
-                    )])
-                    fig_p.update_layout(
-                        template="plotly_dark", 
-                        paper_bgcolor='rgba(0,0,0,0)', 
-                        showlegend=True, # Legenda ajuda se a fatia for muito pequena
-                        legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
-                        height=400,
-                        margin=dict(t=30, b=100, l=10, r=10)
-                    )
+                    counts = df_f['STATUS'].str.upper().value_counts()
+                    fig_p = go.Figure(data=[go.Pie(labels=counts.index, values=counts.values, hole=0.5, 
+                        marker=dict(colors=['#2ecc71', '#ff4b4b', '#00f2ff'], line=dict(color='#0b0e1e', width=3)),
+                        textinfo='label+value', textfont=dict(size=14, color="white"))])
+                    fig_p.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', showlegend=False, height=350)
                     st.plotly_chart(fig_p, use_container_width=True)
                     
                 with col_g2:
                     st.markdown("<small style='color:#64748b'>PERFORMANCE POR DIVULGADOR</small>", unsafe_allow_html=True)
                     df_v = df_f['Vendedor'].value_counts().reset_index()
                     df_v.columns = ['Vendedor', 'Quantidade']
-                    
                     fig_v = px.line(df_v.head(5), x='Vendedor', y='Quantidade', markers=True)
                     fig_v.update_traces(line_color='#00f2ff', marker=dict(size=10, color='#ff007a', line=dict(width=2, color='white')))
                     fig_v.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=350)
