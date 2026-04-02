@@ -14,7 +14,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS PARA COLAR NO MENU SEM SUMIR ---
+# --- CSS COM PADDING DE 30PX ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
@@ -31,13 +31,13 @@ st.markdown("""
         justify-content: center;
     }
 
-    /* AJUSTE FINO: 60px é a altura do menu. Isso faz o conteúdo encostar na linha azul */
+    /* ALTERAÇÃO: 30px de distância do topo */
     .main .block-container { 
-        padding-top: 60px !important; 
+        padding-top: 30px !important; 
         padding-bottom: 0px !important;
     }
 
-    /* Remove espaços extras entre widgets que o Streamlit cria */
+    /* Remove espaços extras entre widgets */
     [data-testid="stVerticalBlock"] > div {
         gap: 0rem !important;
     }
@@ -164,6 +164,7 @@ with tab_cad:
         st.write("---") 
         qtd = len(st.session_state.lista_previa)
         st.markdown(f'<div class="contador-estilo">Alunos Salvos: {qtd}</div>', unsafe_allow_html=True)
+        
         df_previa = pd.DataFrame(st.session_state.lista_previa) if st.session_state.lista_previa else pd.DataFrame(columns=["ID", "Aluno", "Cidade", "Curso", "Pagamento", "Vendedor", "Data"])
         st.dataframe(df_previa, use_container_width=True, hide_index=True)
 
