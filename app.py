@@ -36,47 +36,42 @@ if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "val_curso" not in st.session_state: st.session_state.val_curso = ""
 if "val_pagto" not in st.session_state: st.session_state.val_pagto = ""
 
-# --- LÓGICA DO CAMPO CURSO (SUBSTITUIÇÃO REAL) ---
+# --- LÓGICA DO CAMPO CURSO (SUBSTITUIÇÃO CORRIGIDA) ---
 def transformar_curso():
-    # Pega o que o usuário digitou no widget
-    entrada = st.session_state.input_curso_key.strip()
+    # Pega o conteúdo atual do widget
+    conteudo_input = st.session_state.input_curso_key.strip()
     
-    if entrada:
-        # Divide por "+" para analisar os itens
-        # Se o usuário digitou apenas o número (ex: "4"), partes será ["4"]
-        # Se digitou "INGLES + 4", partes será ["INGLES", "4"]
-        partes = [p.strip() for p in entrada.split('+') if p.strip()]
+    if conteudo_input:
+        # 1. Tenta quebrar por "+" para ver se o usuário digitou um novo código após um curso já existente
+        partes = [p.strip() for p in conteudo_input.split('+')]
         
-        if not partes:
-            return
-
-        # O código que queremos converter é sempre o ÚLTIMO digitado
-        ultimo_item = partes[-1]
+        # 2. O que nos interessa é o que foi digitado por último
+        ultimo_termo = partes[-1].upper()
         
-        if ultimo_item in DIC_CURSOS:
-            # Substitui o código pelo nome do curso
-            nome_curso = DIC_CURSOS[ultimo_item]
+        # 3. Verifica se esse último termo é um código numérico do dicionário
+        if ultimo_termo in DIC_CURSOS:
+            nome_curso = DIC_CURSOS[ultimo_termo]
+            
+            # Substitui o código pelo nome
             partes[-1] = nome_curso
             
-            # Reconstrói a frase evitando duplicados (caso o usuário digite o mesmo código 2x)
-            lista_final = []
+            # Remove duplicatas mantendo a ordem
+            resultado = []
             for item in partes:
-                item_up = item.upper()
-                if item_up not in lista_final:
-                    lista_final.append(item_up)
+                if item.upper() not in [r.upper() for r in resultado]:
+                    resultado.append(item.upper())
             
-            # Atualiza o estado com o separador e o espaço obrigatório no final
-            st.session_state.val_curso = " + ".join(lista_final) + " "
+            # Reconstrói a string com o " + " e o espaço no final
+            st.session_state.val_curso = " + ".join(resultado) + " "
         else:
-            # Se não for código, apenas mantém o texto em maiúsculo
-            st.session_state.val_curso = entrada.upper() + " "
-            
-    # Força a atualização do widget de texto
+            # Se o usuário digitou algo que não é código, apenas padroniza
+            st.session_state.val_curso = conteudo_input.upper() + " "
+    
+    # Sincroniza o widget com o valor processado
     st.session_state.input_curso_key = st.session_state.val_curso
 
 # --- LÓGICA DO PAGAMENTO ---
 def processar_pagto():
-    # Pega a parte inicial do pagamento (antes de qualquer observação automática)
     base = st.session_state.input_pagto_key.split(" | ")[0].strip().upper()
     obs = []
     if st.session_state.chk_1: obs.append("APÓS PAGAMENTO LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO IN-GLÊS")
@@ -84,8 +79,7 @@ def processar_pagto():
     if st.session_state.chk_3: obs.append("AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA")
     
     final = base
-    if obs:
-        final += " | " + " | ".join(obs)
+    if obs: final += " | " + " | ".join(obs)
     
     st.session_state.val_pagto = final
     st.session_state.input_pagto_key = final
@@ -97,12 +91,11 @@ with tab_cad:
     _, col, _ = st.columns([0.5, 3, 0.5])
     with col:
         st.write("")
-        # Formulário
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>ID:</label>", unsafe_allow_html=True); f_id = c2.text_input("ID", key="f_id", label_visibility="collapsed")
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>ALUNO:</label>", unsafe_allow_html=True); f_nome = c2.text_input("ALUNO", key="f_nome", label_visibility="collapsed")
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>CIDADE:</label>", unsafe_allow_html=True); f_cid = c2.text_input("CIDADE", key="f_cid", label_visibility="collapsed")
         
-        # Campo CURSO (Onde o ENTER funciona)
+        # Campo CURSO
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>CURSO:</label>", unsafe_allow_html=True)
         c2.text_input("CURSO", key="input_curso_key", value=st.session_state.val_curso, on_change=transformar_curso, label_visibility="collapsed")
         
@@ -113,33 +106,25 @@ with tab_cad:
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>VENDEDOR:</label>", unsafe_allow_html=True); f_vend = c2.text_input("VENDEDOR", key="f_vend", label_visibility="collapsed")
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>DATA:</label>", unsafe_allow_html=True); f_data = c2.text_input("DATA", key="f_data", value=date.today().strftime("%d/%m/%Y"), label_visibility="collapsed")
 
-        # Checkboxes (Botões Selecionáveis)
         st.write("")
         s1, s2, s3 = st.columns(3)
         with s1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
         with s2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
         with s3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
 
-        # Ações
         b1, b2 = st.columns(2)
         with b1:
             if st.button("💾 SALVAR ALUNO"):
                 if st.session_state.f_nome:
                     aluno = {
-                        "ID": st.session_state.f_id.upper(), 
-                        "Aluno": st.session_state.f_nome.upper(),
-                        "Cidade": st.session_state.f_cid.upper(), 
-                        "Curso": st.session_state.input_curso_key.strip(),
-                        "Pagamento": st.session_state.input_pagto_key.upper(), 
-                        "Vendedor": st.session_state.f_vend.upper(),
+                        "ID": st.session_state.f_id.upper(), "Aluno": st.session_state.f_nome.upper(),
+                        "Cidade": st.session_state.f_cid.upper(), "Curso": st.session_state.input_curso_key.strip(),
+                        "Pagamento": st.session_state.input_pagto_key.upper(), "Vendedor": st.session_state.f_vend.upper(),
                         "Data": st.session_state.f_data
                     }
                     st.session_state.lista_previa.append(aluno)
-                    # Reseta os estados visuais
-                    st.session_state.val_curso = ""
-                    st.session_state.val_pagto = ""
-                    st.session_state.f_nome = ""
-                    st.session_state.f_id = ""
+                    st.session_state.val_curso = ""; st.session_state.val_pagto = ""
+                    st.session_state.f_nome = ""; st.session_state.f_id = ""
                     st.rerun()
         with b2:
             if st.button("📤 ENVIAR PARA PLANILHA"):
@@ -151,7 +136,6 @@ with tab_cad:
                     st.success("Enviado com sucesso!")
                     st.rerun()
 
-    # Tabela de Prévia
     st.write("---")
     if st.session_state.lista_previa:
         st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
