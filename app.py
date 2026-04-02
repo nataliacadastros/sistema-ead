@@ -1,8 +1,6 @@
 import streamlit as st
 import pandas as pd
 import re
-import plotly.express as px
-import plotly.graph_objects as go
 from datetime import date, timedelta
 from streamlit_gsheets import GSheetsConnection
 import gspread
@@ -46,32 +44,52 @@ st.markdown("""
 # --- CONEXÃO E ESTADOS ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
-if "val_curso" not in st.session_state: st.session_state.val_curso = ""
 if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
 if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
 
-# --- FUNÇÕES AUXILIARES ---
-def extrair_valor_recebido(texto):
-    texto = str(texto).upper()
-    match = re.search(r'PAG[OA]S?\s*(?:R\$)?\s*([\d\.,]+)', texto)
-    if match:
-        valor_str = match.group(1).replace('.', '').replace(',', '.')
-        try: return float(valor_str)
-        except: return 0.0
-    return 0.0
+# --- FUNÇÕES DE CONTROLE ---
+
+def atualizar_pagamento():
+    # Chaves dinâmicas
+    suffix_aluno = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"
+    key_pagto = f"f_pagto_{suffix_aluno}"
+    key_v_ing = f"chk_1_{suffix_aluno}"
+    key_v_bon = f"chk_2_{suffix_aluno}"
+    key_v_con = f"chk_3_{suffix_aluno}"
+
+    # 1. Pegar valor atual do campo
+    texto_atual = st.session_state.get(key_pagto, "")
+    
+    # 2. Separar o texto base (antes do primeiro "|")
+    base = texto_atual.split('|')[0].strip()
+    
+    # 3. Criar nova string começando pela base
+    novo_texto = base
+    
+    # 4. Verificar TODOS os checkboxes e adicionar as frases exatas
+    if st.session_state.get(key_v_ing):
+        novo_texto += " | Após pagamento link cartão, avisar Natália para liberação In-glês"
+    
+    if st.session_state.get(key_v_bon):
+        novo_texto += " | Caso pague via link cartão, avisar Natália para liberação curso bônus a escolha"
+        
+    if st.session_state.get(key_v_con):
+        novo_texto += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
+        
+    # 5. Atualizar o campo no session_state
+    st.session_state[key_pagto] = novo_texto.upper()
 
 def transformar_curso(chave):
     entrada = st.session_state[chave].strip()
-    if not entrada: st.session_state.val_curso = ""; return
+    if not entrada: return
     match = re.search(r'(\d+)$', entrada)
     if match:
         codigo = match.group(1); nome = DIC_CURSOS.get(codigo)
         if nome:
             base = entrada[:match.start()].strip().rstrip('+').strip()
-            st.session_state.val_curso = f"{base} + {nome}" if base and nome.upper() not in base.upper() else (base if base else nome)
-        else: st.session_state.val_curso = entrada.upper()
-    else: st.session_state.val_curso = entrada.upper()
-    st.session_state[chave] = st.session_state.val_curso.upper().strip()
+            st.session_state[chave] = (f"{base} + {nome}" if base and nome.upper() not in base.upper() else (base if base else nome)).upper()
+        else: st.session_state[chave] = entrada.upper()
+    else: st.session_state[chave] = entrada.upper()
 
 # --- ABAS ---
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
@@ -121,14 +139,13 @@ with tab_cad:
 
         c_dat_lab, c_dat_inp = st.columns([1.5, 3.5])
         c_dat_lab.markdown("<label>DATA DA MATRÍCULA:</label>", unsafe_allow_html=True)
-        # Removido o valor padrão para permitir digitação manual
         f_data = c_dat_inp.text_input("DATA", key=f"f_data_{suffix_geral}", label_visibility="collapsed")
 
         st.write("")
         _, c_c1, c_c2, c_c3, _ = st.columns([1.5, 1.1, 1.2, 1.2, 0.1])
-        chk_1 = c_c1.checkbox("LIB. IN-GLÊS", key=f"chk_1_{suffix_aluno}")
-        chk_2 = c_c2.checkbox("CURSO BÔNUS", key=f"chk_2_{suffix_aluno}")
-        chk_3 = c_c3.checkbox("CONFIRMAÇÃO", key=f"chk_3_{suffix_aluno}")
+        c_c1.checkbox("LIB. IN-GLÊS", key=f"chk_1_{suffix_aluno}", on_change=atualizar_pagamento)
+        c_c2.checkbox("CURSO BÔNUS", key=f"chk_2_{suffix_aluno}", on_change=atualizar_pagamento)
+        c_c3.checkbox("CONFIRMAÇÃO", key=f"chk_3_{suffix_aluno}", on_change=atualizar_pagamento)
 
         st.write("")
         _, b_col1, b_col2, _ = st.columns([1.5, 1.75, 1.75, 0.1])
@@ -136,17 +153,10 @@ with tab_cad:
         with b_col1:
             if st.button("💾 SALVAR ALUNO"):
                 if f_nome:
-                    # Lógica dos botões s1, s2 e s3 integrada aqui
-                    obs = []
-                    if chk_1: obs.append("LIBERAÇÃO IN-GLÊS")
-                    if chk_2: obs.append("CURSO BÔNUS")
-                    if chk_3: obs.append("CONFIRMAÇÃO MATRÍCULA")
-                    pag_final = f"{f_pagto} | {' | '.join(obs)}" if obs else f_pagto
-
                     aluno = {
                         "ID": f_id.upper(), "Aluno": f_nome.upper(), "Tel_Resp": f_tel_resp,
                         "Tel_Aluno": f_tel_aluno, "CPF": f_cpf, "Cidade": f_cid.upper(),
-                        "Curso": f_curso.upper(), "Pagto": pag_final.upper(),
+                        "Curso": f_curso.upper(), "Pagto": f_pagto.upper(),
                         "Vendedor": f_vend.upper(), "Data_Mat": f_data
                     }
                     st.session_state.lista_previa.append(aluno)
@@ -194,7 +204,3 @@ with tab_ger:
         dados_raw = conn.read(ttl="0s").fillna("")
         st.dataframe(dados_raw.iloc[::-1], use_container_width=True, hide_index=True, height=500)
     except: st.error("Erro na conexão.")
-
-# --- ABA 3: RELATÓRIOS ---
-with tab_rel:
-    st.info("Relatórios baseados na base de dados conectada.")
