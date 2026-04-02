@@ -5,6 +5,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import date, timedelta
 from streamlit_gsheets import GSheetsConnection
+import gspread
+from google.oauth2.service_account import Credentials
 
 # --- CONFIGURAÇÕES DA PÁGINA ---
 st.set_page_config(page_title="SISTEMA ADM | PROFISSIONALIZA", layout="wide", initial_sidebar_state="collapsed")
@@ -16,54 +18,53 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
+# --- INICIALIZAÇÃO DE ESTADOS ---
+campos_padrao = {
+    "lista_previa": [], "f_id": "", "f_nome": "", "f_cid": "", 
+    "f_curso": "", "f_pagto": "", "f_vend": "", 
+    "f_data": date.today().strftime("%d/%m/%Y"),
+    "chk_1": False, "chk_2": False, "chk_3": False,
+    "val_curso": "", "val_pagto": ""
+}
+
+for chave, valor in campos_padrao.items():
+    if chave not in st.session_state:
+        st.session_state[chave] = valor
+
 # --- CSS ESTÉTICA HUD NEON ---
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e1e; color: #e0e0e0; }
-    
     .stTabs [data-baseweb="tab-list"] { 
         background-color: #121629; border-bottom: 1px solid #1f295a;
         position: fixed; top: 0; left: 0 !important; width: 100vw !important;
         z-index: 999; justify-content: center; height: 35px !important;
     }
     .stTabs [data-baseweb="tab"] { color: #64748b !important; font-size: 11px !important; padding: 0 30px !important; }
-    .stTabs [aria-selected="true"] { 
-        color: #00f2ff !important; border-bottom: 2px solid #00f2ff !important;
-        background-color: rgba(0, 242, 255, 0.05) !important;
-    }
+    .stTabs [aria-selected="true"] { color: #00f2ff !important; border-bottom: 2px solid #00f2ff !important; }
     .main .block-container { padding-top: 45px !important; max-width: 1200px !important; margin: 0 auto !important; }
-
-    /* ESTILO CADASTRO */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 5px !important; display: flex; align-items: center; }
     div[data-testid="stTextInput"] > div { min-height: 25px !important; height: 25px !important; }
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 14px !important; padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end; }
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 25px !important; border-radius: 5px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
-
-    /* CARDS RELATÓRIO HUD */
     .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 100px; display: flex; flex-direction: column; justify-content: center; }
     .neon-pink { color: #ff007a; text-shadow: 0 0 10px rgba(255, 0, 122, 0.5); border-top: 2px solid #ff007a; }
     .neon-green { color: #2ecc71; text-shadow: 0 0 10px rgba(46, 204, 113, 0.5); border-top: 2px solid #2ecc71; }
     .neon-blue { color: #00f2ff; text-shadow: 0 0 10px rgba(0, 242, 255, 0.5); border-top: 2px solid #00f2ff; }
     .neon-purple { color: #bc13fe; text-shadow: 0 0 10px rgba(188, 19, 254, 0.5); border-top: 2px solid #bc13fe; }
     .neon-red { color: #ff4b4b; text-shadow: 0 0 10px rgba(255, 75, 75, 0.5); border-top: 2px solid #ff4b4b; }
-
-    /* BARRA DE CIDADES HUD */
+    .stButton > button { background-color: #00f2ff !important; color: #0b0e1e !important; font-weight: bold !important; border: none !important; border-radius: 5px !important; width: 100%; height: 35px !important; }
     .hud-bar-container { background: rgba(31, 41, 90, 0.3); height: 14px; border-radius: 20px; width: 100%; position: relative; margin: 50px 0 40px 0; border: 1px solid #1f295a; }
     .hud-segment { height: 100%; float: left; position: relative; }
     .hud-label { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); background: #121629; border: 1px solid currentColor; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
     .hud-city-name { position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
-
-    .stButton > button { background-color: #00f2ff !important; color: #0b0e1e !important; font-weight: bold !important; border: none !important; border-radius: 5px !important; width: 100%; height: 35px !important; }
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
 # --- CONEXÃO ---
 conn = st.connection("gsheets", type=GSheetsConnection)
-if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
-if "val_curso" not in st.session_state: st.session_state.val_curso = ""
-if "val_pagto" not in st.session_state: st.session_state.val_pagto = ""
 
 # --- FUNÇÕES AUXILIARES ---
 def extrair_valor_recebido(texto):
@@ -82,27 +83,24 @@ def extrair_valor_geral(texto):
     except: return 0.0
 
 def transformar_curso():
-    entrada = st.session_state.input_curso_key.strip()
-    if not entrada: st.session_state.val_curso = ""; return
+    entrada = st.session_state.f_curso_input.strip()
+    if not entrada: return
     match = re.search(r'(\d+)$', entrada)
     if match:
         codigo = match.group(1); nome = DIC_CURSOS.get(codigo)
         if nome:
             base = entrada[:match.start()].strip().rstrip('+').strip()
-            st.session_state.val_curso = f"{base} + {nome}" if base and nome.upper() not in base.upper() else (base if base else nome)
-        else: st.session_state.val_curso = entrada.upper()
-    else: st.session_state.val_curso = entrada.upper()
-    st.session_state.val_curso = st.session_state.val_curso.upper().strip() + " "
-    st.session_state.input_curso_key = st.session_state.val_curso
+            st.session_state.f_curso = f"{base} + {nome}".upper() if base and nome.upper() not in base.upper() else nome.upper()
+        else: st.session_state.f_curso = entrada.upper()
+    else: st.session_state.f_curso = entrada.upper()
 
 def processar_pagto():
-    base = st.session_state.input_pagto_key.split(" | ")[0].strip().upper()
+    base = st.session_state.f_pagto_input.split(" | ")[0].strip().upper()
     obs = []
     if st.session_state.chk_1: obs.append("LIBERAÇÃO IN-GLÊS")
     if st.session_state.chk_2: obs.append("CURSO BÔNUS")
     if st.session_state.chk_3: obs.append("CONFIRMAÇÃO MATRÍCULA")
-    st.session_state.val_pagto = f"{base} | {' | '.join(obs)}" if obs else base
-    st.session_state.input_pagto_key = st.session_state.val_pagto
+    st.session_state.f_pagto = f"{base} | {' | '.join(obs)}" if obs else base
 
 # --- ABAS DO SISTEMA ---
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
@@ -111,16 +109,33 @@ tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "
 with tab_cad:
     _, centro, _ = st.columns([0.5, 5, 0.5])
     with centro:
-        campos = [("ID:", "f_id"), ("ALUNO:", "f_nome"), ("CIDADE:", "f_cid"), 
-                  ("CURSO:", "input_curso_key"), ("PAGAMENTO:", "input_pagto_key"), 
-                  ("VENDEDOR:", "f_vend"), ("DATA MATRÍCULA:", "f_data")]
-        for label, key in campos:
-            c_lab, c_inp = st.columns([1.5, 3.5]) 
-            c_lab.markdown(f"<label>{label}</label>", unsafe_allow_html=True)
-            if key == "input_curso_key": c_inp.text_input(label, key=key, value=st.session_state.val_curso, on_change=transformar_curso, label_visibility="collapsed")
-            elif key == "input_pagto_key": c_inp.text_input(label, key=key, value=st.session_state.val_pagto, label_visibility="collapsed")
-            elif key == "f_data": c_inp.text_input(label, key=key, value=date.today().strftime("%d/%m/%Y"), label_visibility="collapsed")
-            else: c_inp.text_input(label, key=key, label_visibility="collapsed")
+        c_lab, c_inp = st.columns([1.5, 3.5]) 
+        c_lab.markdown("<label>ID:</label>", unsafe_allow_html=True)
+        st.session_state.f_id = c_inp.text_input("ID", value=st.session_state.f_id, key="f_id_input", label_visibility="collapsed")
+
+        c_lab, c_inp = st.columns([1.5, 3.5]) 
+        c_lab.markdown("<label>ALUNO:</label>", unsafe_allow_html=True)
+        st.session_state.f_nome = c_inp.text_input("ALUNO", value=st.session_state.f_nome, key="f_nome_input", label_visibility="collapsed")
+
+        c_lab, c_inp = st.columns([1.5, 3.5]) 
+        c_lab.markdown("<label>CIDADE:</label>", unsafe_allow_html=True)
+        st.session_state.f_cid = c_inp.text_input("CIDADE", value=st.session_state.f_cid, key="f_cid_input", label_visibility="collapsed")
+
+        c_lab, c_inp = st.columns([1.5, 3.5]) 
+        c_lab.markdown("<label>CURSO:</label>", unsafe_allow_html=True)
+        st.session_state.f_curso = c_inp.text_input("CURSO", value=st.session_state.f_curso, key="f_curso_input", on_change=transformar_curso, label_visibility="collapsed")
+
+        c_lab, c_inp = st.columns([1.5, 3.5]) 
+        c_lab.markdown("<label>PAGAMENTO:</label>", unsafe_allow_html=True)
+        st.session_state.f_pagto = c_inp.text_input("PAGAMENTO", value=st.session_state.f_pagto, key="f_pagto_input", on_change=processar_pagto, label_visibility="collapsed")
+
+        c_lab, c_inp = st.columns([1.5, 3.5]) 
+        c_lab.markdown("<label>VENDEDOR:</label>", unsafe_allow_html=True)
+        st.session_state.f_vend = c_inp.text_input("VENDEDOR", value=st.session_state.f_vend, key="f_vend_input", label_visibility="collapsed")
+
+        c_lab, c_inp = st.columns([1.5, 3.5]) 
+        c_lab.markdown("<label>DATA MATRÍCULA:</label>", unsafe_allow_html=True)
+        st.session_state.f_data = c_inp.text_input("DATA", value=st.session_state.f_data, key="f_data_input", label_visibility="collapsed")
         
         st.write("")
         _, c_c1, c_c2, c_c3, _ = st.columns([1.5, 1.1, 1.2, 1.2, 0.1])
@@ -134,31 +149,44 @@ with tab_cad:
             if st.button("💾 SALVAR ALUNO"):
                 if st.session_state.f_nome:
                     aluno = {"ID": st.session_state.f_id.upper(), "Aluno": st.session_state.f_nome.upper(), 
-                             "Cidade": st.session_state.f_cid.upper(), "Curso": st.session_state.input_curso_key.strip(), 
-                             "Pagamento": st.session_state.input_pagto_key.upper(), "Vendedor": st.session_state.f_vend.upper(), 
+                             "Cidade": st.session_state.f_cid.upper(), "Curso": st.session_state.f_curso.upper(), 
+                             "Pagamento": st.session_state.f_pagto.upper(), "Vendedor": st.session_state.f_vend.upper(), 
                              "Data Matrícula": st.session_state.f_data, "STATUS": "ATIVO"}
                     st.session_state.lista_previa.append(aluno)
+                    # Limpeza seletiva
+                    st.session_state.f_id = ""
+                    st.session_state.f_nome = ""
+                    st.session_state.f_curso = ""
+                    st.session_state.f_pagto = ""
                     st.rerun()
         with b_col2:
             if st.button("📤 ENVIAR PLANILHA"):
                 if st.session_state.lista_previa:
                     try:
-                        # ACESSO DIRETO VIA GSPREAD PARA EVITAR ERRO DE ATUALIZAÇÃO
-                        sh = conn._instance.client.open_by_url(st.secrets["connections"]["gsheets"]["spreadsheet"])
+                        # CORREÇÃO DO ERRO DE ATRIBUTO: Inicializando cliente gspread manualmente com os secrets
+                        creds_info = st.secrets["connections"]["gsheets"]
+                        scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+                        credentials = Credentials.from_service_account_info(creds_info, scopes=scopes)
+                        client = gspread.authorize(credentials)
+                        
+                        sh = client.open_by_url(creds_info["spreadsheet"])
                         worksheet = sh.get_worksheet(0)
                         
                         df_new = pd.DataFrame(st.session_state.lista_previa)
                         novos_dados = df_new.values.tolist()
                         
-                        # Localiza última linha preenchida na Coluna A
                         col_a_values = worksheet.col_values(1)
                         ultima_linha_real = len(col_a_values)
                         
-                        # Regra: Localizar última > Pular uma > Adicionar
                         linha_inicio = ultima_linha_real + 2 if ultima_linha_real > 0 else 2
                         
                         worksheet.insert_rows(novos_dados, row=linha_inicio)
+                        
+                        # Limpeza total
+                        for k in campos_padrao:
+                            if k != "lista_previa": st.session_state[k] = campos_padrao[k]
                         st.session_state.lista_previa = []
+                        
                         st.success(f"Dados inseridos com sucesso a partir da linha {linha_inicio}!")
                         st.cache_data.clear()
                         st.rerun()
@@ -169,8 +197,6 @@ with tab_cad:
         st.markdown("<p style='color:#00f2ff; font-weight:bold; text-align:center;'>LISTA DE PRÉ-VISUALIZAÇÃO</p>", unsafe_allow_html=True)
         if st.session_state.lista_previa:
             st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
-        else:
-            st.info("Nenhum aluno na lista de espera.")
 
 # --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
