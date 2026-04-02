@@ -34,10 +34,11 @@ st.markdown("""
     }
     .main .block-container { padding-top: 45px !important; max-width: 100% !important; margin: 0 auto !important; }
     
-    /* ESTILO CADASTRO */
+    /* ESTILO CADASTRO - ATUALIZADO CONFORME SOLICITAÇÃO */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 0px !important; display: flex; align-items: center; }
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end; }
     
+    /* LARGURA E ALTURA DOS CAMPOS DE TEXTO */
     div[data-testid="stTextInput"] { width: 55% !important; }
     .stTextInput input { 
         background-color: white !important; 
@@ -50,7 +51,7 @@ st.markdown("""
     
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
 
-    /* GERENCIAMENTO - BOX COM SCROLL */
+    /* GERENCIAMENTO - BOX COM SCROLL FORÇADO */
     .custom-table-wrapper {
         width: 100%;
         max-height: 600px; 
@@ -62,20 +63,61 @@ st.markdown("""
         margin-top: 15px;
     }
     
-    .custom-table { width: 100%; border-collapse: collapse; min-width: 2500px !important; }
-    .custom-table th { background-color: #1f295a; color: #00f2ff; text-align: left; padding: 15px; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; z-index: 99; }
-    .custom-table td { padding: 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: nowrap; }
+    .custom-table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        min-width: 2500px !important; 
+    }
+    
+    .custom-table th { 
+        background-color: #1f295a; 
+        color: #00f2ff; 
+        text-align: left; 
+        padding: 15px; 
+        font-size: 11px; 
+        text-transform: uppercase; 
+        position: sticky; 
+        top: 0; 
+        z-index: 99;
+    }
+    
+    .custom-table td { 
+        padding: 12px; 
+        border-bottom: 1px solid #1f295a; 
+        font-size: 11px; 
+        color: #e0e0e0; 
+        white-space: nowrap; 
+    }
+    
     .custom-table tr:hover { background-color: rgba(0, 242, 255, 0.1); }
 
     .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }
     .status-ativo { background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
     .status-cancelado { background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
 
-    /* LÁPIS DE EDIÇÃO */
-    .edit-btn { background: none; border: none; color: #00f2ff; cursor: pointer; font-size: 14px; transition: 0.3s; }
-    .edit-btn:hover { color: #ff007a; transform: scale(1.2); }
+    /* ESTILIZAÇÃO DAS BARRAS DE ROLAGEM */
+    .custom-table-wrapper::-webkit-scrollbar { height: 12px; width: 12px; }
+    .custom-table-wrapper::-webkit-scrollbar-track { background: #0b0e1e; border-radius: 10px; }
+    .custom-table-wrapper::-webkit-scrollbar-thumb { background: #00f2ff; border-radius: 10px; border: 3px solid #0b0e1e; }
+    .custom-table-wrapper::-webkit-scrollbar-thumb:hover { background: #ff007a; }
+
+    /* RELATÓRIO HUD */
+    .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 100px; display: flex; flex-direction: column; justify-content: center; }
+    .neon-pink { color: #ff007a; border-top: 2px solid #ff007a; }
+    .neon-green { color: #2ecc71; border-top: 2px solid #2ecc71; }
+    .neon-blue { color: #00f2ff; border-top: 2px solid #00f2ff; }
+    .neon-purple { color: #bc13fe; border-top: 2px solid #bc13fe; }
+    .neon-red { color: #ff4b4b; border-top: 2px solid #ff4b4b; }
+    .hud-bar-container { background: rgba(31, 41, 90, 0.3); height: 14px; border-radius: 20px; width: 100%; position: relative; margin: 50px 0 40px 0; border: 1px solid #1f295a; }
+    .hud-segment { height: 100%; float: left; position: relative; }
+    .hud-label { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); background: #121629; border: 1px solid currentColor; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+    .hud-city-name { position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
 
     .stButton > button { background-color: #00f2ff !important; color: #0b0e1e !important; font-weight: bold !important; border: none !important; border-radius: 5px !important; width: 100%; height: 35px !important; }
+    
+    /* LINK DO LÁPIS */
+    .edit-pencil { text-decoration: none; color: #00f2ff !important; font-size: 13px; margin-right: 5px; }
+    
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
@@ -85,7 +127,7 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
 if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
-if "id_editando" not in st.session_state: st.session_state.id_editando = None
+if "id_edit" not in st.session_state: st.session_state.id_edit = None
 
 # --- FUNÇÕES DE CONTROLE ---
 def atualizar_pagamento():
@@ -161,6 +203,11 @@ with tab_cad:
 
 # --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
+    # Verificação de clique no lápis via query params para evitar reset de aba
+    params = st.query_params
+    if "edit" in params:
+        st.session_state.id_edit = params["edit"]
+
     cf1, cf2, cf3, cf4 = st.columns([2.5, 1.5, 1.5, 0.5])
     with cf1: bu = st.text_input("🔍 Buscar...", key="busca_ger", placeholder="Nome ou ID", label_visibility="collapsed")
     with cf2: fs = st.selectbox("Status", ["Todos", "ATIVO", "CANCELADO"], key="filtro_status", label_visibility="collapsed")
@@ -173,30 +220,17 @@ with tab_ger:
         hd = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
         df_g.columns = hd[:len(df_g.columns)]
         
-        # Filtragem
         df_f = df_g.copy()
         if bu: df_f = df_f[df_f['ALUNO'].str.contains(bu, case=False) | df_f['ID'].str.contains(bu, case=False)]
         if fs != "Todos": df_f = df_f[df_f['STATUS'] == fs]
         if fu != "Todos": df_f = df_f[df_f['UNID.'] == fu]
 
-        # Tabela Customizada com Lápis de Edição
         rows = ""
         for _, r in df_f.iloc[::-1].iterrows():
             sc = "status-ativo" if r['STATUS'] == "ATIVO" else "status-cancelado"
-            # Link HTML minimalista para disparar a edição via ID no session_state
-            # Nota: Usamos um botão invisível do Streamlit ou query_params para algo "profissional" sem recarregar a aba errada.
-            # Aqui, para manter sua estrutura HTML, usamos um marcador que o Streamlit capturará.
-            rows += f"""<tr>
-                <td>
-                    <a href="?edit={r['ID']}" target="_self" class="edit-btn">✏️</a> 
-                    <span class='status-badge {sc}'>{r['STATUS']}</span>
-                </td>
-                <td>{r['UNID.']}</td><td>{r['TURMA']}</td><td>{r['10C']}</td><td>{r['ING']}</td><td>{r['DT_CAD']}</td>
-                <td style='color:#00f2ff;font-weight:bold'>{r['ID']}</td>
-                <td style='color:#00f2ff;font-weight:bold'>{r['ALUNO']}</td>
-                <td>{r['TEL_RESP']}</td><td>{r['TEL_ALU']}</td><td>{r['CPF']}</td><td>{r['CIDADE']}</td>
-                <td>{r['CURSO']}</td><td>{r['PAGTO']}</td><td>{r['VEND.']}</td><td>{r['DT_MAT']}</td>
-            </tr>"""
+            # Injeção do lápis minimalista antes do status
+            pencil = f'<a href="?edit={r["ID"]}" target="_self" class="edit-pencil">✏️</a>'
+            rows += f"<tr><td>{pencil}<span class='status-badge {sc}'>{r['STATUS']}</span></td><td>{r['UNID.']}</td><td>{r['TURMA']}</td><td>{r['10C']}</td><td>{r['ING']}</td><td>{r['DT_CAD']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ID']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ALUNO']}</td><td>{r['TEL_RESP']}</td><td>{r['TEL_ALU']}</td><td>{r['CPF']}</td><td>{r['CIDADE']}</td><td>{r['CURSO']}</td><td>{r['PAGTO']}</td><td>{r['VEND.']}</td><td>{r['DT_MAT']}</td></tr>"
         
         st.markdown(f"""
             <div class="custom-table-wrapper">
@@ -209,28 +243,27 @@ with tab_ger:
             </div>
         """, unsafe_allow_html=True)
 
-        # Captura do clique no lápis via Query Params
-        query = st.query_params
-        if "edit" in query:
-            st.session_state.id_editando = query["edit"]
-
-        # FRAME DE EDIÇÃO (Aparece logo abaixo da tabela)
-        if st.session_state.id_editando:
+        # --- FRAME DE EDIÇÃO ---
+        if st.session_state.id_edit:
             st.write("---")
-            st.subheader(f"🛠️ EDITAR ALUNO: {st.session_state.id_editando}")
+            st.markdown(f"### 🛠️ EDITANDO ALUNO: `{st.session_state.id_edit}`")
+            aluno_edit = df_g[df_g['ID'] == st.session_state.id_edit]
             
-            aluno_data = df_g[df_g['ID'] == st.session_state.id_editando]
-            if not aluno_data.empty:
-                al = aluno_data.iloc[0]
+            if not aluno_edit.empty:
+                al = aluno_edit.iloc[0]
                 with st.form("form_edicao"):
-                    col1, col2, col3 = st.columns(3)
-                    new_status = col1.selectbox("STATUS", ["ATIVO", "CANCELADO"], index=0 if al['STATUS'] == "ATIVO" else 1)
-                    new_unid = col2.text_input("UNIDADE", value=al['UNID.'])
-                    new_turma = col3.text_input("TURMA", value=al['TURMA'])
+                    c1, c2, c3, c4 = st.columns(4)
+                    ed_status = c1.selectbox("STATUS", ["ATIVO", "CANCELADO"], index=0 if al['STATUS']=="ATIVO" else 1)
+                    ed_unid = c2.text_input("UNID.", value=al['UNID.'])
+                    ed_turma = c3.text_input("TURMA", value=al['TURMA'])
+                    ed_data_cad = c4.text_input("DT_CAD", value=al['DT_CAD'])
                     
-                    new_nome = st.text_input("NOME ALUNO", value=al['ALUNO'])
-                    new_curso = st.text_input("CURSO", value=al['CURSO'])
-                    new_pagto = st.text_area("PAGAMENTO", value=al['PAGTO'])
+                    c5, c6 = st.columns([3, 1])
+                    ed_nome = c5.text_input("ALUNO", value=al['ALUNO'])
+                    ed_cpf = c6.text_input("CPF", value=al['CPF'])
+                    
+                    ed_curso = st.text_input("CURSO", value=al['CURSO'])
+                    ed_pagto = st.text_area("PAGAMENTO", value=al['PAGTO'])
                     
                     b_salvar, b_cancelar = st.columns(2)
                     if b_salvar.form_submit_button("✅ SALVAR ALTERAÇÕES"):
@@ -238,29 +271,21 @@ with tab_ger:
                             creds = st.secrets["connections"]["gsheets"]
                             client = gspread.authorize(Credentials.from_service_account_info(creds, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
                             ws = client.open_by_url(creds["spreadsheet"]).get_worksheet(0)
-                            
-                            # Localiza a linha pelo ID (Coluna G = índice 7)
-                            cell = ws.find(st.session_state.id_editando, in_col=7)
+                            cell = ws.find(st.session_state.id_edit, in_col=7)
                             if cell:
-                                # Atualiza as colunas específicas (A, B, C, H, M, N...)
-                                ws.update_cell(cell.row, 1, new_status)
-                                ws.update_cell(cell.row, 2, new_unid.upper())
-                                ws.update_cell(cell.row, 3, new_turma.upper())
-                                ws.update_cell(cell.row, 8, new_nome.upper())
-                                ws.update_cell(cell.row, 13, new_curso.upper())
-                                ws.update_cell(cell.row, 14, new_pagto.upper())
-                                
-                                st.success("Atualizado com sucesso!")
-                                st.query_params.clear() # Limpa o ID da URL
-                                st.session_state.id_editando = None
-                                st.cache_data.clear()
-                                st.rerun()
-                        except Exception as e: st.error(f"Erro ao salvar: {e}")
+                                ws.update_cell(cell.row, 1, ed_status)
+                                ws.update_cell(cell.row, 2, ed_unid.upper())
+                                ws.update_cell(cell.row, 3, ed_turma.upper())
+                                ws.update_cell(cell.row, 6, ed_data_cad)
+                                ws.update_cell(cell.row, 8, ed_nome.upper())
+                                ws.update_cell(cell.row, 11, ed_cpf)
+                                ws.update_cell(cell.row, 13, ed_curso.upper())
+                                ws.update_cell(cell.row, 14, ed_pagto.upper())
+                                st.success("Atualizado!"); st.query_params.clear(); st.session_state.id_edit = None; st.cache_data.clear(); st.rerun()
+                        except Exception as e: st.error(f"Erro: {e}")
                     
                     if b_cancelar.form_submit_button("❌ CANCELAR"):
-                        st.query_params.clear()
-                        st.session_state.id_editando = None
-                        st.rerun()
+                        st.query_params.clear(); st.session_state.id_edit = None; st.rerun()
 
     except Exception as e: st.error(f"Erro: {e}")
 
