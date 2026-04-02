@@ -34,28 +34,21 @@ st.markdown("""
     }
     .main .block-container { padding-top: 45px !important; max-width: 100% !important; margin: 0 auto !important; }
     
-    /* ESTILO CADASTRO */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 0px !important; display: flex; align-items: center; }
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end; }
+    
     div[data-testid="stTextInput"] { width: 55% !important; }
     .stTextInput input { 
-        background-color: white !important; color: black !important; text-transform: uppercase !important; 
-        font-size: 12px !important; height: 18px !important; border-radius: 5px !important; 
+        background-color: white !important; 
+        color: black !important; 
+        text-transform: uppercase !important; 
+        font-size: 12px !important; 
+        height: 18px !important; 
+        border-radius: 5px !important; 
     }
+    
+    .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
 
-    /* ESTILO DO BOTÃO DE ID (PARA PARECER TEXTO) */
-    button[key^="btn_edit_"] {
-        background: none !important;
-        border: none !important;
-        padding: 0 !important;
-        color: #00f2ff !important;
-        font-weight: bold !important;
-        text-align: left !important;
-        font-size: 11px !important;
-        cursor: pointer !important;
-    }
-
-    /* GERENCIAMENTO - CONTAINER */
     .custom-table-wrapper {
         width: 100%;
         max-height: 600px; 
@@ -65,10 +58,29 @@ st.markdown("""
         border: 2px solid #1f295a;
         border-radius: 10px;
         margin-top: 15px;
-        padding: 10px;
     }
+    
+    .custom-table { width: 100%; border-collapse: collapse; min-width: 2500px !important; }
+    .custom-table th { background-color: #1f295a; color: #00f2ff; text-align: left; padding: 15px; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; z-index: 99; }
+    .custom-table td { padding: 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: nowrap; }
+    .custom-table tr:hover { background-color: rgba(0, 242, 255, 0.1); }
 
-    .stButton > button { background-color: #00f2ff; color: #0b0e1e; font-weight: bold; }
+    /* Estilo do ID Clicável */
+    .id-link { color: #00f2ff !important; font-weight: bold; text-decoration: none; cursor: pointer; border: 1px solid #00f2ff; padding: 2px 5px; border-radius: 4px; }
+    .id-link:hover { background-color: #00f2ff; color: #0b0e1e !important; }
+
+    .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }
+    .status-ativo { background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
+    .status-cancelado { background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
+
+    .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 100px; display: flex; flex-direction: column; justify-content: center; }
+    .neon-pink { color: #ff007a; border-top: 2px solid #ff007a; }
+    .neon-green { color: #2ecc71; border-top: 2px solid #2ecc71; }
+    .neon-blue { color: #00f2ff; border-top: 2px solid #00f2ff; }
+    .neon-purple { color: #bc13fe; border-top: 2px solid #bc13fe; }
+    .neon-red { color: #ff4b4b; border-top: 2px solid #ff4b4b; }
+
+    .stButton > button { background-color: #00f2ff !important; color: #0b0e1e !important; font-weight: bold !important; border: none !important; border-radius: 5px !important; width: 100%; height: 35px !important; }
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
@@ -78,34 +90,8 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
 if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
-
-# --- FUNÇÃO DE EDIÇÃO (FRAME) ---
-@st.dialog("📋 ALTERAR DADOS DO ALUNO")
-def abrir_frame_edicao(dados_aluno):
-    st.write(f"Editando Registro de: **{dados_aluno['ALUNO']}**")
-    col_a, col_b = st.columns(2)
-    novos_dados = {}
-    campos = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
-    
-    for i, campo in enumerate(campos):
-        with col_a if i % 2 == 0 else col_b:
-            novos_dados[campo] = st.text_input(campo, value=str(dados_aluno.get(campo, "")))
-    
-    st.write("---")
-    if st.button("✅ SALVAR ALTERAÇÕES"):
-        try:
-            creds = st.secrets["connections"]["gsheets"]
-            client = gspread.authorize(Credentials.from_service_account_info(creds, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
-            ws = client.open_by_url(creds["spreadsheet"]).get_worksheet(0)
-            cell = ws.find(str(dados_aluno['ID']), in_column=7)
-            if cell:
-                linha_atualizada = [novos_dados[c] for c in campos]
-                ws.update(range_name=f"A{cell.row}:P{cell.row}", values=[linha_atualizada])
-                st.success("Alterado com sucesso!")
-                st.cache_data.clear()
-                st.rerun()
-        except Exception as e:
-            st.error(f"Erro ao salvar: {e}")
+if "id_selecionado" not in st.session_state: st.session_state.id_selecionado = None
+if "dados_originais_edicao" not in st.session_state: st.session_state.dados_originais_edicao = {}
 
 # --- FUNÇÕES DE CONTROLE ---
 def atualizar_pagamento():
@@ -127,6 +113,16 @@ def transformar_curso(chave):
             base = entrada[:match.start()].strip().rstrip('+').strip()
             st.session_state[chave] = (f"{base} + {nome}" if base and nome.upper() not in base.upper() else (base if base else nome)).upper()
     else: st.session_state[chave] = entrada.upper()
+
+def extrair_valor_recebido(texto):
+    match = re.search(r'PAG[OA]S?\s*(?:R\$)?\s*([\d\.,]+)', str(texto).upper())
+    return float(match.group(1).replace('.', '').replace(',', '.')) if match else 0.0
+
+def extrair_valor_geral(texto):
+    try:
+        v = re.findall(r'\d+(?:\.\d+)?(?:,\d+)?', str(texto).replace('.', '').replace(',', '.'))
+        return float(v[0]) if v else 0.0
+    except: return 0.0
 
 # --- NAVEGAÇÃO ---
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
@@ -167,68 +163,167 @@ with tab_cad:
                         ws.insert_rows(d_f, row=len(ws.col_values(1)) + 2 if ws.col_values(1) else 2)
                         st.session_state.lista_previa = []; st.session_state.reset_geral += 1; st.success("Enviado!"); st.cache_data.clear(); st.rerun()
                     except Exception as e: st.error(f"Erro: {e}")
+        if st.session_state.lista_previa: st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
 # --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
-    cf1, cf2, cf3, cf4 = st.columns([2.5, 1.5, 1.5, 0.5])
-    with cf1: bu = st.text_input("🔍 Buscar...", key="busca_ger", placeholder="Nome ou ID", label_visibility="collapsed")
-    with cf2: fs = st.selectbox("Status", ["Todos", "ATIVO", "CANCELADO"], key="filtro_status", label_visibility="collapsed")
-    with cf3: fu = st.selectbox("Unidade", ["Todos", "MGA"], key="filtro_unid", label_visibility="collapsed")
-    with cf4: 
-        if st.button("🔄", key="btn_refresh"): st.cache_data.clear(); st.rerun()
+    # Verificação de Parâmetros de URL para clique no ID
+    query_params = st.query_params
+    if "edit_id" in query_params:
+        st.session_state.id_selecionado = query_params["edit_id"]
 
+    if st.session_state.id_selecionado:
+        # --- TELA DE EDIÇÃO ---
+        st.markdown(f"### 📝 EDITANDO ALUNO ID: {st.session_state.id_selecionado}")
+        try:
+            df_edit = conn.read(ttl="0s").fillna("")
+            hd_edit = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
+            df_edit.columns = hd_edit[:len(df_edit.columns)]
+            
+            aluno_idx = df_edit.index[df_edit['ID'] == st.session_state.id_selecionado].tolist()
+            
+            if aluno_idx:
+                idx = aluno_idx[0]
+                aluno_data = df_edit.iloc[idx].to_dict()
+
+                # Guardar originais para o "Desfazer"
+                if not st.session_state.dados_originais_edicao or st.session_state.dados_originais_edicao.get('ID') != st.session_state.id_selecionado:
+                    st.session_state.dados_originais_edicao = aluno_data.copy()
+
+                # Formulário de Edição
+                with st.container():
+                    # Botão Desfazer (Seta)
+                    col_undo, col_spacer = st.columns([0.1, 0.9])
+                    if col_undo.button("↩️", help="Desfazer alterações e voltar ao original"):
+                        for k, v in st.session_state.dados_originais_edicao.items():
+                            st.session_state[f"edit_{k}"] = v
+                        st.rerun()
+
+                    edit_vals = {}
+                    cols_ed = st.columns(2)
+                    for i, (campo, valor) in enumerate(aluno_data.items()):
+                        target_col = cols_ed[i % 2]
+                        key_ed = f"edit_{campo}"
+                        # Se o valor não estiver no state, carrega o atual
+                        if key_ed not in st.session_state:
+                            st.session_state[key_ed] = str(valor)
+                        
+                        edit_vals[campo] = target_col.text_input(campo, value=st.session_state[key_ed], key=key_ed)
+
+                st.write("")
+                b_ed1, b_ed2 = st.columns(2)
+                if b_ed1.button("💾 SALVAR ALTERAÇÕES"):
+                    try:
+                        creds = st.secrets["connections"]["gsheets"]
+                        client = gspread.authorize(Credentials.from_service_account_info(creds, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
+                        ws = client.open_by_url(creds["spreadsheet"]).get_worksheet(0)
+                        
+                        # Atualiza a linha (considerando cabeçalho e index 1)
+                        row_to_update = idx + 2 
+                        novos_dados = [edit_vals[h] for h in hd_edit]
+                        ws.update(f'A{row_to_update}:P{row_to_update}', [novos_dados])
+                        
+                        st.success("Dados atualizados com sucesso!")
+                        st.session_state.id_selecionado = None
+                        st.session_state.dados_originais_edicao = {}
+                        st.query_params.clear()
+                        st.cache_data.clear()
+                        st.rerun()
+                    except Exception as e: st.error(f"Erro ao salvar: {e}")
+                
+                if b_ed2.button("❌ CANCELAR"):
+                    st.session_state.id_selecionado = None
+                    st.session_state.dados_originais_edicao = {}
+                    st.query_params.clear()
+                    st.rerun()
+            else:
+                st.error("Aluno não encontrado.")
+                if st.button("Voltar"):
+                    st.session_state.id_selecionado = None
+                    st.query_params.clear()
+                    st.rerun()
+        except Exception as e: st.error(f"Erro na edição: {e}")
+
+    else:
+        # --- TELA NORMAL DE GERENCIAMENTO ---
+        cf1, cf2, cf3, cf4 = st.columns([2.5, 1.5, 1.5, 0.5])
+        with cf1: bu = st.text_input("🔍 Buscar...", key="busca_ger", placeholder="Nome ou ID", label_visibility="collapsed")
+        with cf2: fs = st.selectbox("Status", ["Todos", "ATIVO", "CANCELADO"], key="filtro_status", label_visibility="collapsed")
+        with cf3: fu = st.selectbox("Unidade", ["Todos", "MGA"], key="filtro_unid", label_visibility="collapsed")
+        with cf4: 
+            if st.button("🔄", key="btn_refresh"): st.cache_data.clear(); st.rerun()
+
+        try:
+            df_g = conn.read(ttl="0s").fillna("")
+            hd = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
+            df_g.columns = hd[:len(df_g.columns)]
+            if bu: df_g = df_g[df_g['ALUNO'].astype(str).str.contains(bu, case=False) | df_g['ID'].astype(str).str.contains(bu, case=False)]
+            if fs != "Todos": df_g = df_g[df_g['STATUS'] == fs]
+            if fu != "Todos": df_g = df_g[df_g['UNID.'] == fu]
+
+            rows = ""
+            for _, r in df_g.iloc[::-1].iterrows():
+                sc = "status-ativo" if r['STATUS'] == "ATIVO" else "status-cancelado"
+                # ID Clicável usando link de parâmetro
+                id_html = f"<a href='?edit_id={r['ID']}' target='_self' class='id-link'>{r['ID']}</a>"
+                
+                rows += f"""<tr>
+                    <td><span class='status-badge {sc}'>{r['STATUS']}</span></td>
+                    <td>{r['UNID.']}</td><td>{r['TURMA']}</td><td>{r['10C']}</td><td>{r['ING']}</td><td>{r['DT_CAD']}</td>
+                    <td>{id_html}</td>
+                    <td style='color:#00f2ff;font-weight:bold'>{r['ALUNO']}</td>
+                    <td>{r['TEL_RESP']}</td><td>{r['TEL_ALU']}</td><td>{r['CPF']}</td><td>{r['CIDADE']}</td><td>{r['CURSO']}</td><td>{r['PAGTO']}</td><td>{r['VEND.']}</td><td>{r['DT_MAT']}</td>
+                </tr>"""
+            
+            st.markdown(f"""
+                <div class="custom-table-wrapper">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>{''.join([f'<th>{h}</th>' for h in hd])}</tr>
+                        </thead>
+                        <tbody>
+                            {rows}
+                        </tbody>
+                    </table>
+                </div>
+            """, unsafe_allow_html=True)
+        except Exception as e: st.error(f"Erro ao carregar dados: {e}")
+
+# --- ABA 3: RELATÓRIOS ---
+with tab_rel:
     try:
-        df_g = conn.read(ttl="0s").fillna("")
-        hd = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
-        df_g.columns = hd[:len(df_g.columns)]
-        if bu: df_g = df_g[df_g['ALUNO'].astype(str).str.contains(bu, case=False) | df_g['ID'].astype(str).str.contains(bu, case=False)]
-        if fs != "Todos": df_g = df_g[df_g['STATUS'] == fs]
-        if fu != "Todos": df_g = df_g[df_g['UNID.'] == fu]
-
-        # Cabeçalho Fixo
-        st.markdown(f"""
-            <div style="background-color: #1f295a; padding: 10px; border-radius: 5px; margin-bottom: 5px;">
-                <table style="width: 2500px; border-collapse: collapse; table-layout: fixed;">
-                    <tr style="color: #00f2ff; font-size: 11px; text-transform: uppercase; font-weight: bold;">
-                        <td style="width: 120px;">STATUS</td><td style="width: 100px;">UNID.</td><td style="width: 120px;">TURMA</td>
-                        <td style="width: 80px;">10C</td><td style="width: 80px;">ING</td><td style="width: 120px;">DT_CAD</td>
-                        <td style="width: 100px;">ID</td><td style="width: 250px;">ALUNO</td><td style="width: 150px;">TEL_RESP</td>
-                        <td style="width: 150px;">TEL_ALU</td><td style="width: 150px;">CPF</td><td style="width: 150px;">CIDADE</td>
-                        <td style="width: 250px;">CURSO</td><td style="width: 300px;">PAGTO</td><td style="width: 150px;">VEND.</td>
-                        <td style="width: 120px;">DT_MAT</td>
-                    </tr>
-                </table>
-            </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown('<div class="custom-table-wrapper">', unsafe_allow_html=True)
-        for idx, r in df_g.iloc[::-1].iterrows():
-            sc = "status-badge status-ativo" if r['STATUS'] == "ATIVO" else "status-badge status-cancelado"
-            
-            # Linha de dados usando colunas Streamlit para garantir o clique
-            c = st.columns([120, 100, 120, 80, 80, 120, 100, 250, 150, 150, 150, 150, 250, 300, 150, 120])
-            
-            with c[0]: st.markdown(f'<span class="{sc}">{r["STATUS"]}</span>', unsafe_allow_html=True)
-            with c[1]: st.write(f"<small>{r['UNID.']}</small>", unsafe_allow_html=True)
-            with c[2]: st.write(f"<small>{r['TURMA']}</small>", unsafe_allow_html=True)
-            with c[3]: st.write(f"<small>{r['10C']}</small>", unsafe_allow_html=True)
-            with c[4]: st.write(f"<small>{r['ING']}</small>", unsafe_allow_html=True)
-            with c[5]: st.write(f"<small>{r['DT_CAD']}</small>", unsafe_allow_html=True)
-            with c[6]: 
-                if st.button(str(r['ID']), key=f"btn_edit_{r['ID']}_{idx}"):
-                    abrir_frame_edicao(r.to_dict())
-            with c[7]: st.markdown(f"<small><b>{r['ALUNO']}</b></small>", unsafe_allow_html=True)
-            with c[8]: st.write(f"<small>{r['TEL_RESP']}</small>", unsafe_allow_html=True)
-            with c[9]: st.write(f"<small>{r['TEL_ALU']}</small>", unsafe_allow_html=True)
-            with c[10]: st.write(f"<small>{r['CPF']}</small>", unsafe_allow_html=True)
-            with c[11]: st.write(f"<small>{r['CIDADE']}</small>", unsafe_allow_html=True)
-            with c[12]: st.write(f"<small>{r['CURSO']}</small>", unsafe_allow_html=True)
-            with c[13]: st.write(f"<small>{r['PAGTO']}</small>", unsafe_allow_html=True)
-            with c[14]: st.write(f"<small>{r['VEND.']}</small>", unsafe_allow_html=True)
-            with c[15]: st.write(f"<small>{r['DT_MAT']}</small>", unsafe_allow_html=True)
-            st.markdown("<hr style='margin: 5px 0; border-color: #1f295a;'>", unsafe_allow_html=True)
-
-        st.markdown('</div>', unsafe_allow_html=True)
-    except Exception as e: st.error(f"Erro: {e}")
-
-# Aba Relatórios omitida para brevidade (mantida igual ao seu original)
+        df_r = conn.read(ttl="0s").dropna(how='all')
+        if not df_r.empty:
+            df_r.columns = [c.strip() for c in df_r.columns]; v_col = "Vendedor"
+            if v_col in df_r.columns: df_r[v_col] = df_r[v_col].astype(str).str.replace(' - COLÉGIO', '', case=False).str.strip().str.upper()
+            dt_col = "Data Matrícula"; df_r[dt_col] = pd.to_datetime(df_r[dt_col], dayfirst=True, errors='coerce')
+            iv = st.date_input("Filtro", value=(date.today()-timedelta(days=7), date.today()), format="DD/MM/YYYY")
+            if len(iv) == 2:
+                df_f = df_r.loc[(df_r[dt_col].dt.date >= iv[0]) & (df_r[dt_col].dt.date <= iv[1])].copy()
+                df_f['v_rec'] = df_f['Pagamento'].apply(extrair_valor_recebido); df_f['v_tic'] = df_f['Pagamento'].apply(extrair_valor_geral)
+                c1, c2, c3, c4, c5, c6 = st.columns(6)
+                with c1: st.markdown(f'<div class="card-hud neon-pink"><small>Mats</small><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
+                with c2: st.markdown(f'<div class="card-hud neon-green"><small>Ativos</small><h2>{len(df_f[df_f["STATUS"].str.upper()=="ATIVO"])}</h2></div>', unsafe_allow_html=True)
+                with c3: st.markdown(f'<div class="card-hud neon-red"><small>Cancelados</small><h2>{len(df_f[df_f["STATUS"].str.upper()=="CANCELADO"])}</h2></div>', unsafe_allow_html=True)
+                with c4: st.markdown(f'<div class="card-hud neon-blue"><small>Recebido</small><h2 style="font-size:18px">R${df_f["v_rec"].sum():,.2f}</h2></div>', unsafe_allow_html=True)
+                with c5:
+                    tm_b = df_f[df_f['Pagamento'].str.contains('BOLETO', na=False, case=False)]['v_tic'].mean() or 0.0
+                    tm_c = df_f[df_f['Pagamento'].str.contains('CARTÃO|LINK', na=False, case=False)]['v_tic'].mean() or 0.0
+                    st.markdown(f'<div class="card-hud neon-purple"><small>Ticket Médio</small><div style="font-size:10px">Bol: R${tm_b:.0f} | Car: R${tm_c:.0f}</div></div>', unsafe_allow_html=True)
+                with c6: st.markdown(f'<div class="card-hud neon-blue"><small>Top</small><h2 style="font-size:14px">{df_f[v_col].value_counts().idxmax() if not df_f.empty else "N/A"}</h2></div>', unsafe_allow_html=True)
+                st.write("---")
+                df_cv = df_f['Cidade'].value_counts().head(4)
+                if not df_cv.empty:
+                    st.markdown("<small style='color:#00f2ff'>▸ GEOLOCATION ANALYTICS</small>", unsafe_allow_html=True)
+                    t_c = df_cv.sum(); cores = ["#ff007a", "#2ecc71", "#00f2ff", "#bc13fe"]
+                    s_html = "".join([f'<div class="hud-segment" style="width:{(q/t_c)*100}%; background:{cores[i%4]};"><div class="hud-label" style="color:{cores[i%4]};">{q}</div><div class="hud-city-name" style="color:{cores[i%4]};">{n}</div></div>' for i, (n, q) in enumerate(df_cv.items())])
+                    st.markdown(f'<div class="hud-bar-container">{s_html}</div>', unsafe_allow_html=True)
+                colg1, colg2 = st.columns(2)
+                with colg1:
+                    figp = go.Figure(data=[go.Pie(labels=df_f['STATUS'].value_counts().index, values=df_f['STATUS'].value_counts().values, hole=0.5, marker=dict(colors=['#2ecc71', '#ff4b4b']))])
+                    figp.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', showlegend=False, height=400); st.plotly_chart(figp, use_container_width=True)
+                with colg2:
+                    dfv = df_f[v_col].value_counts().reset_index().head(5)
+                    figv = px.line(dfv, x=v_col, y='count', markers=True, text='count')
+                    figv.update_traces(line_color='#00f2ff'); figv.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=400); st.plotly_chart(figv, use_container_width=True)
+    except Exception as e: st.error(f"Erro nos relatórios: {e}")
