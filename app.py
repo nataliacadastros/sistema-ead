@@ -30,16 +30,15 @@ st.markdown("""
     .stTabs [data-baseweb="tab"] { color: #ffffff !important; font-weight: 600; padding: 0px 30px !important; height: 32px !important; line-height: 32px !important; font-size: 13px !important; }
     .stTabs [aria-selected="true"] { border-bottom: 3px solid #2ecc71 !important; }
     
-    /* CONTEÚDO GERAL */
     .main .block-container { padding-top: 38px !important; max-width: 1100px !important; margin: 0 auto !important; }
 
-    /* CAMPOS DE CADASTRO (25PX) */
+    /* CAMPOS DE CADASTRO */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 3px !important; display: flex; align-items: center; justify-content: center; }
     div[data-testid="stTextInput"] > div { min-height: 25px !important; height: 25px !important; width: 100% !important; }
     label { color: #2ecc71 !important; font-weight: bold !important; font-size: 15px !important; padding-right: 15px !important; height: 25px !important; display: flex; align-items: center; justify-content: flex-end; }
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 25px !important; border-radius: 5px !important; }
 
-    /* ESTILO DOS CARDS TECH (RELATÓRIO) */
+    /* CARDS TECH */
     .card-tech {
         background-color: #1a3a5a; 
         padding: 15px; 
@@ -51,11 +50,7 @@ st.markdown("""
     .card-tech small { color: #bdc3c7; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; }
     .card-tech h2 { margin: 5px 0 0 0; color: white; font-size: 28px; }
 
-    /* BOTÕES */
     .stButton > button { background-color: #2ecc71 !important; color: white !important; font-weight: bold !important; border-radius: 5px !important; }
-    div[data-testid="column"] .stButton > button { height: 40px !important; width: 90% !important; }
-    
-    /* ESCONDER INTERFACE DO STREAMLIT */
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
@@ -66,7 +61,6 @@ if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "val_curso" not in st.session_state: st.session_state.val_curso = ""
 if "val_pagto" not in st.session_state: st.session_state.val_pagto = ""
 
-# --- FUNÇÕES ---
 def transformar_curso():
     entrada = st.session_state.input_curso_key.strip()
     if not entrada: st.session_state.val_curso = ""; st.session_state.input_curso_key = ""; return
@@ -90,7 +84,6 @@ def processar_pagto():
     st.session_state.val_pagto = f"{base} | {' | '.join(obs)}" if obs else base
     st.session_state.input_pagto_key = st.session_state.val_pagto
 
-# --- UI ---
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
 with tab_cad:
@@ -147,8 +140,7 @@ with tab_rel:
             df_rel[col_data] = pd.to_datetime(df_rel[col_data], dayfirst=True, errors='coerce')
             df_rel = df_rel.dropna(subset=[col_data])
             
-            # --- FILTRO PORTUGUÊS ---
-            st.markdown("<p style='color: #2ecc71; font-weight: bold; margin-bottom: -10px;'>Selecione o período:</p>", unsafe_allow_html=True)
+            st.markdown("<p style='color: #2ecc71; font-weight: bold; margin-bottom: -5px;'>Selecione o período:</p>", unsafe_allow_html=True)
             intervalo = st.date_input("Filtro", value=(date.today()-timedelta(days=7), date.today()), format="DD/MM/YYYY", label_visibility="collapsed")
             
             if isinstance(intervalo, (list, tuple)) and len(intervalo) == 2:
@@ -157,31 +149,38 @@ with tab_rel:
                 
                 if not df_f.empty:
                     st.write("---")
-                    # --- CARDS TECH ---
                     c1, c2, c3 = st.columns(3)
                     with c1: st.markdown(f'<div class="card-tech"><small>Matrículas</small><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
                     with c2: 
                         v_top = df_f['Vendedor'].value_counts().idxmax() if 'Vendedor' in df_f.columns else "N/A"
                         st.markdown(f'<div class="card-tech" style="border-color: #f1c40f;"><small>Top Vendedor</small><h2 style="font-size: 20px;">{v_top}</h2></div>', unsafe_allow_html=True)
                     with c3:
-                        atv = len(df_f[df_f['Status'].str.upper() == 'ATIVO']) if 'Status' in df_f.columns else 0
+                        # AJUSTADO PARA 'STATUS' EM MAIÚSCULO
+                        col_status = 'STATUS' if 'STATUS' in df_f.columns else 'Status'
+                        atv = len(df_f[df_f[col_status].str.upper() == 'ATIVO']) if col_status in df_f.columns else 0
                         st.markdown(f'<div class="card-tech" style="border-color: #3498db;"><small>Ativos</small><h2>{atv}</h2></div>', unsafe_allow_html=True)
 
                     st.write("")
-                    # --- GRÁFICOS TECH (PLOTLY NEON) ---
                     g1, g2 = st.columns(2)
                     with g1:
-                        st.markdown("<p style='text-align:center; color:#2ecc71; font-size:12px;'>RANKING POR CIDADE</p>", unsafe_allow_html=True)
-                        fig_c = px.bar(df_f['Cidade'].value_counts().reset_index(), x='count', y='Cidade', orientation='h', color='count', color_continuous_scale='Viridis')
-                        fig_c.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=350, margin=dict(t=20, b=20, l=20, r=20), showlegend=False)
-                        st.plotly_chart(fig_c, use_container_width=True)
+                        if 'Cidade' in df_f.columns:
+                            st.markdown("<p style='text-align:center; color:#2ecc71; font-size:12px;'>RANKING POR CIDADE</p>", unsafe_allow_html=True)
+                            df_c = df_f['Cidade'].value_counts().reset_index()
+                            # Renomeia colunas para o gráfico
+                            df_c.columns = ['Cidade', 'Qtd']
+                            fig_c = px.bar(df_c, x='Qtd', y='Cidade', orientation='h', color='Qtd', color_continuous_scale='Viridis')
+                            fig_c.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=350, margin=dict(t=20, b=20, l=20, r=20), showlegend=False)
+                            st.plotly_chart(fig_c, use_container_width=True)
                     
                     with g2:
-                        st.markdown("<p style='text-align:center; color:#2ecc71; font-size:12px;'>STATUS GERAL</p>", unsafe_allow_html=True)
-                        fig_p = px.pie(df_f, names='Status', hole=0.7, color_discrete_sequence=['#2ecc71', '#e74c3c', '#f1c40f'])
-                        fig_p.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=350, margin=dict(t=20, b=20, l=20, r=20))
-                        fig_p.update_traces(textinfo='percent+label', marker=dict(line=dict(color='#1a2436', width=2)))
-                        st.plotly_chart(fig_p, use_container_width=True)
+                        col_status = 'STATUS' if 'STATUS' in df_f.columns else 'Status'
+                        if col_status in df_f.columns:
+                            st.markdown("<p style='text-align:center; color:#2ecc71; font-size:12px;'>STATUS GERAL</p>", unsafe_allow_html=True)
+                            # AJUSTADO 'names' PARA O NOME CORRETO DA COLUNA (STATUS)
+                            fig_p = px.pie(df_f, names=col_status, hole=0.7, color_discrete_sequence=['#2ecc71', '#e74c3c', '#f1c40f'])
+                            fig_p.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=350, margin=dict(t=20, b=20, l=20, r=20))
+                            fig_p.update_traces(textinfo='percent+label', marker=dict(line=dict(color='#1a2436', width=2)))
+                            st.plotly_chart(fig_p, use_container_width=True)
                 else:
                     st.warning("Nenhum dado no período.")
     except Exception as e: st.error(f"Erro: {e}")
