@@ -34,45 +34,84 @@ st.markdown("""
     }
     .main .block-container { padding-top: 45px !important; max-width: 100% !important; margin: 0 auto !important; }
     
-    /* ESTILO CADASTRO */
+    /* ESTILO CADASTRO - ATUALIZADO CONFORME SOLICITAÇÃO */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 0px !important; display: flex; align-items: center; }
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end; }
+    
+    /* LARGURA E ALTURA DOS CAMPOS DE TEXTO */
     div[data-testid="stTextInput"] { width: 55% !important; }
     .stTextInput input { 
-        background-color: white !important; color: black !important; text-transform: uppercase !important; 
-        font-size: 12px !important; height: 18px !important; border-radius: 5px !important; 
+        background-color: white !important; 
+        color: black !important; 
+        text-transform: uppercase !important; 
+        font-size: 12px !important; 
+        height: 18px !important; 
+        border-radius: 5px !important; 
     }
+    
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
 
-    /* GERENCIAMENTO - BOX COM SCROLL */
+    /* GERENCIAMENTO - BOX COM SCROLL FORÇADO */
     .custom-table-wrapper {
-        width: 100%; max-height: 600px; 
-        overflow-x: auto !important; overflow-y: auto !important;
-        background-color: #121629; border: 2px solid #1f295a; border-radius: 10px; margin-top: 15px;
+        width: 100%;
+        max-height: 600px; 
+        overflow-x: auto !important; 
+        overflow-y: auto !important;
+        background-color: #121629;
+        border: 2px solid #1f295a;
+        border-radius: 10px;
+        margin-top: 15px;
     }
-    .custom-table { width: 100%; border-collapse: collapse; min-width: 2500px !important; }
+    
+    .custom-table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        min-width: 2500px !important; 
+    }
+    
     .custom-table th { 
-        background-color: #1f295a; color: #00f2ff; text-align: left; 
-        padding: 15px; font-size: 11px; text-transform: uppercase; 
-        position: sticky; top: 0; z-index: 99;
+        background-color: #1f295a; 
+        color: #00f2ff; 
+        text-align: left; 
+        padding: 15px; 
+        font-size: 11px; 
+        text-transform: uppercase; 
+        position: sticky; 
+        top: 0; 
+        z-index: 99;
     }
-    .custom-table td { padding: 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: nowrap; }
+    
+    .custom-table td { 
+        padding: 12px; 
+        border-bottom: 1px solid #1f295a; 
+        font-size: 11px; 
+        color: #e0e0e0; 
+        white-space: nowrap; 
+    }
+    
+    .custom-table tr:hover { background-color: rgba(0, 242, 255, 0.1); }
+
     .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }
     .status-ativo { background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
     .status-cancelado { background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
 
-    /* TRUQUE PARA O ID PARECER TEXTO MAS SER CLICÁVEL */
-    .stButton > button[key^="edit_"] {
-        background: none !important;
-        border: none !important;
-        padding: 0 !important;
-        color: #00f2ff !important;
-        font-weight: bold !important;
-        text-decoration: none !important;
-        text-align: left !important;
-        font-size: 11px !important;
-    }
-    .stButton > button[key^="edit_"]:hover { color: #ff007a !important; }
+    /* ESTILIZAÇÃO DAS BARRAS DE ROLAGEM */
+    .custom-table-wrapper::-webkit-scrollbar { height: 12px; width: 12px; }
+    .custom-table-wrapper::-webkit-scrollbar-track { background: #0b0e1e; border-radius: 10px; }
+    .custom-table-wrapper::-webkit-scrollbar-thumb { background: #00f2ff; border-radius: 10px; border: 3px solid #0b0e1e; }
+    .custom-table-wrapper::-webkit-scrollbar-thumb:hover { background: #ff007a; }
+
+    /* RELATÓRIO HUD */
+    .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 100px; display: flex; flex-direction: column; justify-content: center; }
+    .neon-pink { color: #ff007a; border-top: 2px solid #ff007a; }
+    .neon-green { color: #2ecc71; border-top: 2px solid #2ecc71; }
+    .neon-blue { color: #00f2ff; border-top: 2px solid #00f2ff; }
+    .neon-purple { color: #bc13fe; border-top: 2px solid #bc13fe; }
+    .neon-red { color: #ff4b4b; border-top: 2px solid #ff4b4b; }
+    .hud-bar-container { background: rgba(31, 41, 90, 0.3); height: 14px; border-radius: 20px; width: 100%; position: relative; margin: 50px 0 40px 0; border: 1px solid #1f295a; }
+    .hud-segment { height: 100%; float: left; position: relative; }
+    .hud-label { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); background: #121629; border: 1px solid currentColor; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+    .hud-city-name { position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
 
     .stButton > button { background-color: #00f2ff !important; color: #0b0e1e !important; font-weight: bold !important; border: none !important; border-radius: 5px !important; width: 100%; height: 35px !important; }
     header {visibility: hidden;} footer {visibility: hidden;}
@@ -85,35 +124,7 @@ if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
 if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
 
-# --- FUNÇÃO DE ALTERAÇÃO (DIALOG) ---
-@st.dialog("✏️ ALTERAR DADOS")
-def frame_alteracao(dados_aluno):
-    st.write(f"Editando Aluno: **{dados_aluno['ALUNO']}**")
-    novos_valores = {}
-    ordem_cols = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
-    
-    col1, col2 = st.columns(2)
-    for i, campo in enumerate(ordem_cols):
-        with col1 if i % 2 == 0 else col2:
-            novos_valores[campo] = st.text_input(campo, value=str(dados_aluno.get(campo, "")))
-
-    if st.button("SALVAR ALTERAÇÕES"):
-        try:
-            creds = st.secrets["connections"]["gsheets"]
-            client = gspread.authorize(Credentials.from_service_account_info(creds, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
-            ws = client.open_by_url(creds["spreadsheet"]).get_worksheet(0)
-            
-            # Localiza pela coluna G (ID)
-            cell = ws.find(str(dados_aluno['ID']), in_column=7)
-            if cell:
-                ws.update(range_name=f"A{cell.row}:P{cell.row}", values=[[novos_valores[c] for c in ordem_cols]])
-                st.success("Atualizado!")
-                st.cache_data.clear()
-                st.rerun()
-        except Exception as e:
-            st.error(f"Erro: {e}")
-
-# --- FUNÇÕES DE CONTROLE (CADASTRO) ---
+# --- FUNÇÕES DE CONTROLE ---
 def atualizar_pagamento():
     suffix = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"
     base = st.session_state.get(f"f_pagto_{suffix}", "").split('|')[0].strip()
@@ -183,6 +194,7 @@ with tab_cad:
                         ws.insert_rows(d_f, row=len(ws.col_values(1)) + 2 if ws.col_values(1) else 2)
                         st.session_state.lista_previa = []; st.session_state.reset_geral += 1; st.success("Enviado!"); st.cache_data.clear(); st.rerun()
                     except Exception as e: st.error(f"Erro: {e}")
+        if st.session_state.lista_previa: st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
 # --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
@@ -197,42 +209,27 @@ with tab_ger:
         df_g = conn.read(ttl="0s").fillna("")
         hd = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
         df_g.columns = hd[:len(df_g.columns)]
-        if bu: df_g = df_g[df_g['ALUNO'].str.contains(bu, case=False) | df_g['ID'].astype(str).str.contains(bu, case=False)]
+        if bu: df_g = df_g[df_g['ALUNO'].str.contains(bu, case=False) | df_g['ID'].str.contains(bu, case=False)]
         if fs != "Todos": df_g = df_g[df_g['STATUS'] == fs]
         if fu != "Todos": df_g = df_g[df_g['UNID.'] == fu]
 
-        # Início da Tabela
-        st.markdown('<div class="custom-table-wrapper"><table class="custom-table"><thead><tr><th>STATUS</th><th>UNID.</th><th>TURMA</th><th>10C</th><th>ING</th><th>DT_CAD</th><th>ID</th><th>ALUNO</th><th>TEL_RESP</th><th>TEL_ALU</th><th>CPF</th><th>CIDADE</th><th>CURSO</th><th>PAGTO</th><th>VEND.</th><th>DT_MAT</th></tr></thead><tbody>', unsafe_allow_html=True)
+        rows = ""
+        for _, r in df_g.iloc[::-1].iterrows():
+            sc = "status-ativo" if r['STATUS'] == "ATIVO" else "status-cancelado"
+            rows += f"<tr><td><span class='status-badge {sc}'>{r['STATUS']}</span></td><td>{r['UNID.']}</td><td>{r['TURMA']}</td><td>{r['10C']}</td><td>{r['ING']}</td><td>{r['DT_CAD']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ID']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ALUNO']}</td><td>{r['TEL_RESP']}</td><td>{r['TEL_ALU']}</td><td>{r['CPF']}</td><td>{r['CIDADE']}</td><td>{r['CURSO']}</td><td>{r['PAGTO']}</td><td>{r['VEND.']}</td><td>{r['DT_MAT']}</td></tr>"
         
-        # Renderização das linhas
-        for idx, r in df_g.iloc[::-1].iterrows():
-            sc = "status-badge status-ativo" if r['STATUS'] == "ATIVO" else "status-badge status-cancelado"
-            
-            # Aqui fazemos a mágica: o Streamlit cuida das colunas mas mantemos o visual da tabela
-            cols = st.columns([1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 2, 2, 1, 1])
-            
-            with cols[0]: st.markdown(f'<span class="{sc}">{r["STATUS"]}</span>', unsafe_allow_html=True)
-            with cols[1]: st.write(r['UNID.'])
-            with cols[2]: st.write(r['TURMA'])
-            with cols[3]: st.write(r['10C'])
-            with cols[4]: st.write(r['ING'])
-            with cols[5]: st.write(r['DT_CAD'])
-            with cols[6]: 
-                # ID CLICÁVEL (Botão fantasma)
-                if st.button(str(r['ID']), key=f"edit_{r['ID']}_{idx}"):
-                    frame_alteracao(r.to_dict())
-            with cols[7]: st.write(r['ALUNO'])
-            with cols[8]: st.write(r['TEL_RESP'])
-            with cols[9]: st.write(r['TEL_ALU'])
-            with cols[10]: st.write(r['CPF'])
-            with cols[11]: st.write(r['CIDADE'])
-            with cols[12]: st.write(r['CURSO'])
-            with cols[13]: st.write(r['PAGTO'])
-            with cols[14]: st.write(r['VEND.'])
-            with cols[15]: st.write(r['DT_MAT'])
-            st.markdown("---")
-            
-        st.markdown('</tbody></table></div>', unsafe_allow_html=True)
+        st.markdown(f"""
+            <div class="custom-table-wrapper">
+                <table class="custom-table">
+                    <thead>
+                        <tr>{''.join([f'<th>{h}</th>' for h in hd])}</tr>
+                    </thead>
+                    <tbody>
+                        {rows}
+                    </tbody>
+                </table>
+            </div>
+        """, unsafe_allow_html=True)
     except Exception as e: st.error(f"Erro: {e}")
 
 # --- ABA 3: RELATÓRIOS ---
