@@ -28,22 +28,32 @@ st.markdown("""
     .stTabs [aria-selected="true"] { color: #00f2ff !important; border-bottom: 2px solid #00f2ff !important; }
     .main .block-container { padding-top: 45px !important; max-width: 100% !important; margin: 0 auto !important; }
     
-    /* ESTILO CADASTRO (FIXO CONFORME SUA ESCOLHA) */
+    /* ESTILO CADASTRO (FIXO) */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 0px !important; display: flex; align-items: center; }
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end; }
     div[data-testid="stTextInput"] { width: 55% !important; }
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 18px !important; border-radius: 5px !important; }
 
     /* GERENCIAMENTO */
-    .custom-table-wrapper { width: 100%; max-height: 600px; overflow: auto !important; background-color: #121629; border: 2px solid #1f295a; border-radius: 10px; }
-    .custom-table { width: 100%; border-collapse: collapse; min-width: 2500px !important; }
-    .custom-table th { background-color: #1f295a; color: #00f2ff; text-align: left; padding: 15px; font-size: 11px; position: sticky; top: 0; z-index: 99; }
-    .custom-table td { padding: 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: nowrap; }
-    .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }
+    .custom-table-wrapper { width: 100%; max-height: 650px; overflow: auto !important; background-color: #121629; border: 1px solid #1f295a; border-radius: 10px; padding: 10px; }
+    .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; text-transform: uppercase; }
     .status-ativo { background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
     .status-cancelado { background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
 
-    .stButton > button { background-color: #00f2ff !important; color: #0b0e1e !important; font-weight: bold !important; border-radius: 5px !important; }
+    /* BOTÃO ID ESTILIZADO */
+    .stButton > button[key^="id_btn_"] {
+        background-color: transparent !important;
+        color: #00f2ff !important;
+        border: 1px solid #1f295a !important;
+        font-weight: bold !important;
+        width: 100% !important;
+        text-decoration: underline;
+    }
+    .stButton > button[key^="id_btn_"]:hover {
+        background-color: rgba(0, 242, 255, 0.1) !important;
+        border-color: #00f2ff !important;
+    }
+
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
@@ -54,7 +64,7 @@ if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
 if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
 
-# --- FUNÇÕES AUXILIARES ---
+# --- FUNÇÕES ---
 def transformar_curso(chave):
     entrada = st.session_state[chave].strip()
     if not entrada: return
@@ -66,41 +76,35 @@ def transformar_curso(chave):
             st.session_state[chave] = (f"{base} + {nome}" if base and nome.upper() not in base.upper() else (base if base else nome)).upper()
     else: st.session_state[chave] = entrada.upper()
 
-# --- FUNÇÃO DE EDIÇÃO (DIALOG/FRAME) ---
 @st.dialog("📝 ALTERAR DADOS DO ALUNO")
 def editar_aluno_dialog(dados_atuais):
-    st.write(f"Editando ID: **{dados_atuais['ID']}**")
+    st.markdown(f"Alterando registro de: **{dados_atuais['ALUNO']}**")
     cols = st.columns(2)
-    
     novos_dados = {}
-    # Criar campos para todas as 16 colunas
     ordem_colunas = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
     
     for i, col in enumerate(ordem_colunas):
         with cols[i % 2]:
             novos_dados[col] = st.text_input(col, value=str(dados_atuais.get(col, "")))
 
-    if st.button("💾 CONFIRMAR ALTERAÇÃO"):
+    st.write("---")
+    if st.button("✅ SALVAR ALTERAÇÕES NA PLANILHA", use_container_width=True):
         try:
             creds = st.secrets["connections"]["gsheets"]
             client = gspread.authorize(Credentials.from_service_account_info(creds, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
             ws = client.open_by_url(creds["spreadsheet"]).get_worksheet(0)
             
-            # Localiza a linha pelo ID (Coluna G = índice 7)
             cell = ws.find(str(dados_atuais['ID']), in_column=7)
             if cell:
-                # Prepara a lista na ordem correta da planilha
                 lista_atualizada = [novos_dados[c] for c in ordem_colunas]
                 ws.update(range_name=f"A{cell.row}:P{cell.row}", values=[lista_atualizada])
-                st.success("Dados atualizados!")
+                st.success("Sincronizado com sucesso!")
                 st.cache_data.clear()
                 st.rerun()
-            else:
-                st.error("Erro: Linha não encontrada.")
-        except Exception as e:
-            st.error(f"Erro ao salvar: {e}")
+            else: st.error("ID não localizado na planilha.")
+        except Exception as e: st.error(f"Erro: {e}")
 
-# --- ABAS ---
+# --- NAVEGAÇÃO ---
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
 # --- ABA 1: CADASTRO ---
@@ -117,7 +121,6 @@ with tab_cad:
             cl.markdown(f"<label>{l}</label>", unsafe_allow_html=True)
             if "curso" in k: ci.text_input(l, key=k, on_change=transformar_curso, args=(k,), label_visibility="collapsed")
             else: ci.text_input(l, key=k, label_visibility="collapsed")
-        
         st.write("")
         _, b1, b2, _ = st.columns([1.5, 1.75, 1.75, 0.1])
         with b1:
@@ -136,8 +139,8 @@ with tab_cad:
 
 # --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
-    cf1, cf2, cf3 = st.columns([3, 2, 1])
-    with cf1: bu = st.text_input("🔍 Buscar Aluno...", placeholder="Nome ou ID", label_visibility="collapsed")
+    cf1, cf2, cf3 = st.columns([3, 1, 1])
+    with cf1: bu = st.text_input("🔍 Filtrar na Lista...", placeholder="Nome ou ID", label_visibility="collapsed")
     with cf3: 
         if st.button("🔄 ATUALIZAR"): st.cache_data.clear(); st.rerun()
 
@@ -145,35 +148,48 @@ with tab_ger:
         df_g = conn.read(ttl="0s").fillna("")
         hd = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
         df_g.columns = hd[:len(df_g.columns)]
-        
         if bu: df_g = df_g[df_g['ALUNO'].str.contains(bu, case=False) | df_g['ID'].astype(str).str.contains(bu)]
 
-        # --- TABELA DE EDIÇÃO ---
+        # Cabeçalho da Tabela
+        st.markdown(f"""
+            <table style='width:2500px; border-collapse:collapse; background:#1f295a; color:#00f2ff; font-size:11px;'>
+            <tr>
+                <th style='width:100px; padding:12px;'>STATUS</th>
+                <th style='width:120px;'>ID (CLIQUE)</th>
+                <th style='width:300px;'>ALUNO</th>
+                <th style='width:150px;'>TURMA</th>
+                <th style='width:250px;'>CURSO</th>
+                <th style='width:200px;'>PAGAMENTO</th>
+                <th style='width:150px;'>CIDADE</th>
+                <th style='width:150px;'>VENDEDOR</th>
+                <th style='width:120px;'>DATA MAT.</th>
+            </tr></table>
+        """, unsafe_allow_html=True)
+
         st.markdown("<div class='custom-table-wrapper'>", unsafe_allow_html=True)
-        # Usamos st.dataframe para seleção ou construímos botões dinâmicos
         for index, row in df_g.iloc[::-1].iterrows():
-            c_btn, c_data = st.columns([0.1, 0.9])
-            if c_btn.button("📝", key=f"edit_{row['ID']}_{index}"):
+            c_id, c_rest = st.columns([0.08, 0.92])
+            
+            # O ID agora é um botão que dispara o dialog
+            if c_id.button(str(row['ID']), key=f"id_btn_{row['ID']}_{index}"):
                 editar_aluno_dialog(row.to_dict())
             
             sc = "status-ativo" if row['STATUS'] == "ATIVO" else "status-cancelado"
-            st.markdown(f"""
-                <table style='width:2500px; border-collapse:collapse; background:#121629; margin-bottom:2px;'>
+            c_rest.markdown(f"""
+                <table style='width:2380px; border-collapse:collapse; background:#121629; font-size:11px;'>
                 <tr style='border-bottom:1px solid #1f295a;'>
                     <td style='width:100px; padding:10px;'><span class='status-badge {sc}'>{row['STATUS']}</span></td>
-                    <td style='width:100px; color:#00f2ff; font-weight:bold;'>{row['ID']}</td>
-                    <td style='width:300px; color:#00f2ff; font-weight:bold;'>{row['ALUNO']}</td>
-                    <td style='width:150px;'>{row['TEL_ALU']}</td>
-                    <td style='width:250px;'>{row['CURSO']}</td>
+                    <td style='width:300px; color:#e0e0e0; font-weight:bold;'>{row['ALUNO']}</td>
                     <td style='width:150px;'>{row['TURMA']}</td>
+                    <td style='width:250px;'>{row['CURSO']}</td>
                     <td style='width:200px;'>{row['PAGTO']}</td>
-                    <td style='width:150px;'>{row['VEND.']}</td>
-                    <td style='width:150px;'>{row['DT_MAT']}</td>
                     <td style='width:150px;'>{row['CIDADE']}</td>
+                    <td style='width:150px;'>{row['VEND.']}</td>
+                    <td style='width:120px;'>{row['DT_MAT']}</td>
                 </tr></table>
             """, unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
-    except Exception as e: st.error(f"Erro: {e}")
+    except Exception as e: st.error(f"Erro ao carregar dados: {e}")
 
 # --- ABA 3: RELATÓRIOS ---
 with tab_rel:
