@@ -38,12 +38,6 @@ st.markdown("""
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 14px !important; padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end; }
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 25px !important; border-radius: 5px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
-    .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 100px; display: flex; flex-direction: column; justify-content: center; }
-    .neon-pink { color: #ff007a; text-shadow: 0 0 10px rgba(255, 0, 122, 0.5); border-top: 2px solid #ff007a; }
-    .neon-green { color: #2ecc71; text-shadow: 0 0 10px rgba(46, 204, 113, 0.5); border-top: 2px solid #2ecc71; }
-    .neon-blue { color: #00f2ff; text-shadow: 0 0 10px rgba(0, 242, 255, 0.5); border-top: 2px solid #00f2ff; }
-    .neon-purple { color: #bc13fe; text-shadow: 0 0 10px rgba(188, 19, 254, 0.5); border-top: 2px solid #bc13fe; }
-    .neon-red { color: #ff4b4b; text-shadow: 0 0 10px rgba(255, 75, 75, 0.5); border-top: 2px solid #ff4b4b; }
     .stButton > button { background-color: #00f2ff !important; color: #0b0e1e !important; font-weight: bold !important; border: none !important; border-radius: 5px !important; width: 100%; height: 35px !important; }
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
@@ -53,7 +47,6 @@ st.markdown("""
 conn = st.connection("gsheets", type=GSheetsConnection)
 if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "val_curso" not in st.session_state: st.session_state.val_curso = ""
-# Contador para forçar o reset dos campos vinculados a chaves
 if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
 if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
 
@@ -73,9 +66,7 @@ def extrair_valor_geral(texto):
         return float(valores[0]) if valores else 0.0
     except: return 0.0
 
-def transformar_curso():
-    # Pega o valor atual do widget usando a chave dinâmica
-    chave = f"input_curso_key_{st.session_state.reset_geral}"
+def transformar_curso(chave):
     entrada = st.session_state[chave].strip()
     if not entrada: st.session_state.val_curso = ""; return
     match = re.search(r'(\d+)$', entrada)
@@ -86,9 +77,7 @@ def transformar_curso():
             st.session_state.val_curso = f"{base} + {nome}" if base and nome.upper() not in base.upper() else (base if base else nome)
         else: st.session_state.val_curso = entrada.upper()
     else: st.session_state.val_curso = entrada.upper()
-    st.session_state.val_curso = st.session_state.val_curso.upper().strip()
-    # Atualiza o widget com o nome transformado
-    st.session_state[chave] = st.session_state.val_curso
+    st.session_state[chave] = st.session_state.val_curso.upper().strip()
 
 # --- ABAS ---
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
@@ -96,10 +85,8 @@ tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "
 with tab_cad:
     _, centro, _ = st.columns([0.5, 5, 0.5])
     with centro:
-        # Geramos chaves dinâmicas baseadas nos contadores de reset
-        # Se reset_aluno ou reset_geral mudam, o Streamlit recria o widget vazio
-        suffix_aluno = f"{st.session_state.reset_aluno}_{st.session_state.reset_geral}"
-        suffix_geral = f"{st.session_state.reset_geral}"
+        suffix_aluno = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"
+        suffix_geral = f"g_{st.session_state.reset_geral}"
 
         c_id_lab, c_id_inp = st.columns([1.5, 3.5])
         c_id_lab.markdown("<label>ID:</label>", unsafe_allow_html=True)
@@ -125,9 +112,11 @@ with tab_cad:
         c_cid_lab.markdown("<label>CIDADE:</label>", unsafe_allow_html=True)
         f_cid = c_cid_inp.text_input("CIDADE", key=f"f_cid_{suffix_geral}", label_visibility="collapsed")
 
+        # CURSO AGORA LIMPA NO SALVAR (VINCULADO AO suffix_aluno)
         c_cur_lab, c_cur_inp = st.columns([1.5, 3.5])
         c_cur_lab.markdown("<label>CURSO CONTRATADO:</label>", unsafe_allow_html=True)
-        f_curso = c_cur_inp.text_input("CURSO", key=f"input_curso_key_{suffix_geral}", on_change=transformar_curso, label_visibility="collapsed")
+        key_curso = f"input_curso_key_{suffix_aluno}"
+        f_curso = c_cur_inp.text_input("CURSO", key=key_curso, on_change=transformar_curso, args=(key_curso,), label_visibility="collapsed")
 
         c_pag_lab, c_pag_inp = st.columns([1.5, 3.5])
         c_pag_lab.markdown("<label>FORMA DE PAGAMENTO:</label>", unsafe_allow_html=True)
@@ -154,7 +143,6 @@ with tab_cad:
         with b_col1:
             if st.button("💾 SALVAR ALUNO"):
                 if f_nome:
-                    # Lógica de observações para o pagamento
                     obs = []
                     if chk_1: obs.append("LIBERAÇÃO IN-GLÊS")
                     if chk_2: obs.append("CURSO BÔNUS")
@@ -168,7 +156,6 @@ with tab_cad:
                         "Vendedor": f_vend.upper(), "Data_Mat": f_data
                     }
                     st.session_state.lista_previa.append(aluno)
-                    # Incrementa apenas o reset do aluno: Limpa ID, Nome, Tel, CPF, Pagto e Checks
                     st.session_state.reset_aluno += 1
                     st.rerun()
 
@@ -197,14 +184,12 @@ with tab_cad:
                         worksheet.insert_rows(dados_finais, row=linha_ini)
                         
                         st.session_state.lista_previa = []
-                        # Incrementa o reset geral: Zera absolutamente tudo
                         st.session_state.reset_geral += 1
                         st.success("Enviado com sucesso!")
                         st.cache_data.clear(); st.rerun()
                     except Exception as e: st.error(f"Erro: {e}")
 
         st.write("---")
-        st.markdown("<p style='color:#00f2ff; font-weight:bold; text-align:center;'>LISTA DE PRÉ-VISUALIZAÇÃO</p>", unsafe_allow_html=True)
         if st.session_state.lista_previa:
             st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
@@ -214,7 +199,6 @@ with tab_ger:
     try:
         dados_raw = conn.read(ttl="0s").fillna("")
         st.dataframe(dados_raw.iloc[::-1], use_container_width=True, hide_index=True, height=500)
-        if st.button("🔄 REFRESH"): st.cache_data.clear(); st.rerun()
     except: st.error("Erro na conexão.")
 
 # --- ABA 3: RELATÓRIOS ---
@@ -226,22 +210,14 @@ with tab_rel:
             col_names = ['STATUS', 'UNIDADE', 'TURMA', '10_CURSOS', 'INGLES', 'DATA_CAD', 'ID', 'ALUNO', 'T1', 'T2', 'CPF', 'CIDADE', 'CURSO', 'PAGAMENTO', 'VENDEDOR', 'DATA_MATRICULA']
             df_rel.columns = col_names[:len(df_rel.columns)]
             df_rel['DATA_MATRICULA'] = pd.to_datetime(df_rel['DATA_MATRICULA'], dayfirst=True, errors='coerce')
-            intervalo = st.date_input("Filtro", value=(date.today()-timedelta(days=7), date.today()), format="DD/MM/YYYY")
             
-            if len(intervalo) == 2:
-                df_f = df_rel.loc[(df_rel['DATA_MATRICULA'].dt.date >= intervalo[0]) & (df_rel['DATA_MATRICULA'].dt.date <= intervalo[1])].copy()
-                df_f['Val_Rec'] = df_f['PAGAMENTO'].apply(extrair_valor_recebido)
-                df_f['Val_Tick'] = df_f['PAGAMENTO'].apply(extrair_valor_geral)
-                
-                c1, c2, c3, c4, c5, c6 = st.columns(6)
-                with c1: st.markdown(f'<div class="card-hud neon-pink"><small>Mats</small><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
-                with c2: st.markdown(f'<div class="card-hud neon-green"><small>Ativos</small><h2>{len(df_f[df_f["STATUS"]=="ATIVO"])}</h2></div>', unsafe_allow_html=True)
-                with c3: st.markdown(f'<div class="card-hud neon-red"><small>Canc.</small><h2>{len(df_f[df_f["STATUS"]=="CANCELADO"])}</h2></div>', unsafe_allow_html=True)
-                with c4: st.markdown(f'<div class="card-hud neon-blue"><small>Recebido</small><h2 style="font-size:16px">R${df_f["Val_Rec"].sum():,.2f}</h2></div>', unsafe_allow_html=True)
-                with c5:
-                    tm_b = df_f[df_f['PAGAMENTO'].str.contains('BOLETO', na=False, case=False)]['Val_Tick'].mean() or 0.0
-                    st.markdown(f'<div class="card-hud neon-purple"><small>T. Médio</small><div style="font-size:10px">Bol: R${tm_b:.0f}</div></div>', unsafe_allow_html=True)
-                with c6:
-                    top_v = df_f['VENDEDOR'].value_counts().idxmax() if not df_f.empty else "N/A"
-                    st.markdown(f'<div class="card-hud neon-blue"><small>Top</small><h2 style="font-size:14px">{top_v}</h2></div>', unsafe_allow_html=True)
-    except Exception as e: st.error(f"Erro: {e}")
+            c1, c2, c3, c4 = st.columns(4)
+            with c1: st.metric("Total Matrículas", len(df_rel))
+            with c2: st.metric("Ativos", len(df_rel[df_rel["STATUS"]=="ATIVO"]))
+            with c3: 
+                v_total = df_rel['PAGAMENTO'].apply(extrair_valor_recebido).sum()
+                st.metric("Total Recebido", f"R$ {v_total:,.2f}")
+            with c4:
+                top_v = df_rel['VENDEDOR'].value_counts().idxmax() if not df_rel.empty else "N/A"
+                st.metric("Top Vendedor", top_v)
+    except Exception as e: st.error(f"Erro nos relatórios.")
