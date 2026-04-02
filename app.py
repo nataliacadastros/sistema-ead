@@ -197,7 +197,7 @@ with tab_rel:
                 # Barra de Cidades HUD
                 df_cid = df_f['Cidade'].value_counts().head(4)
                 if not df_cid.empty:
-                    st.markdown("<small style='color:#00f2ff'>▸ GEOLOCATION ANALYTICS</small>", unsafe_allow_html=True)
+                    st.markdown("<small style='color:#00f2ff'>▸ Matrículas por Cidade</small>", unsafe_allow_html=True)
                     total_cid = df_cid.sum(); cores = ["#ff007a", "#39ff14", "#00f2ff", "#bc13fe"]
                     seg_html = ""
                     for i, (nome, qtd) in enumerate(df_cid.items()):
