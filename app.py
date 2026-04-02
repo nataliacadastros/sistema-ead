@@ -122,12 +122,10 @@ def extrair_valor_geral(texto):
         return float(v[0]) if v else 0.0
     except: return 0.0
 
-# Captura do ID via URL de forma segura
+# Captura do ID via URL
 id_via_url = st.query_params.get("edit_id", None)
 
 # --- NAVEGAÇÃO ---
-# Se houver ID na URL, forçamos a aba de Gerenciamento como ativa (index 1)
-default_tab = 1 if id_via_url else 0
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
 # --- ABA 1: CADASTRO ---
@@ -173,69 +171,84 @@ with tab_ger:
     if id_via_url:
         st.markdown(f"### 📝 EDITANDO ALUNO ID: {id_via_url}")
         try:
-            # Lemos a planilha e garantimos que a coluna ID seja comparável
-            df_edit = conn.read(ttl="0s").fillna("")
-            hd_edit = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
-            df_edit.columns = hd_edit[:len(df_edit.columns)]
+            # Lemos a planilha crua para evitar desalinhamento de colunas
+            df_full = conn.read(ttl="0s").fillna("")
             
-            # Limpeza rigorosa para busca: ID vira string sem espaços
-            df_edit['ID_BUSCA'] = df_edit['ID'].astype(str).str.strip()
-            aluno_idx = df_edit.index[df_edit['ID_BUSCA'] == str(id_via_url).strip()].tolist()
+            # Cabeçalhos fixos conforme sua estrutura
+            hd_fixo = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
             
-            if aluno_idx:
-                idx = aluno_idx[0]
-                aluno_data = df_edit.iloc[idx].drop('ID_BUSCA').to_dict()
+            # Garantimos que o DF use os cabeçalhos corretos (limitando ao tamanho dos dados)
+            df_full.columns = hd_fixo[:df_full.shape[1]]
+            
+            # Busca segura: remove espaços e converte para string
+            id_alvo = str(id_via_url).strip()
+            df_full['ID_TEMP'] = df_full['ID'].astype(str).str.strip()
+            
+            # Localiza o índice
+            resultado_busca = df_full[df_full['ID_TEMP'] == id_alvo]
+            
+            if not resultado_busca.empty:
+                idx = resultado_busca.index[0]
+                aluno_row = df_full.iloc[idx].drop('ID_TEMP').to_dict()
 
-                # Backup para Desfazer
-                if "backup_id" not in st.session_state or st.session_state.backup_id != id_via_url:
-                    st.session_state.dados_originais_edicao = aluno_data.copy()
-                    st.session_state.backup_id = id_via_url
+                # Backup original para "Desfazer"
+                if "edit_id_active" not in st.session_state or st.session_state.edit_id_active != id_alvo:
+                    st.session_state.dados_originais_edicao = aluno_row.copy()
+                    st.session_state.edit_id_active = id_alvo
 
+                # Container de Edição
                 with st.container():
                     col_undo, _ = st.columns([0.1, 0.9])
-                    if col_undo.button("↩️", help="Desfazer alterações"):
+                    if col_undo.button("↩️", help="Restaurar valores originais"):
                         for k, v in st.session_state.dados_originais_edicao.items():
-                            st.session_state[f"edit_{k}"] = str(v)
+                            st.session_state[f"inp_{k}"] = str(v)
                         st.rerun()
 
                     edit_vals = {}
-                    cols_ed = st.columns(2)
-                    for i, (campo, valor) in enumerate(aluno_data.items()):
-                        target_col = cols_ed[i % 2]
-                        key_ed = f"edit_{campo}"
-                        if key_ed not in st.session_state:
-                            st.session_state[key_ed] = str(valor)
-                        edit_vals[campo] = target_col.text_input(campo, key=key_ed)
+                    c_edit = st.columns(2)
+                    for i, (campo, valor) in enumerate(aluno_row.items()):
+                        col_target = c_edit[i % 2]
+                        key_inp = f"inp_{campo}"
+                        # Se não estiver no state, carrega o valor atual da planilha
+                        if key_inp not in st.session_state:
+                            st.session_state[key_inp] = str(valor)
+                        edit_vals[campo] = col_target.text_input(campo, key=key_inp)
 
                 st.write("")
-                b_ed1, b_ed2 = st.columns(2)
-                if b_ed1.button("💾 SALVAR ALTERAÇÕES"):
+                b_save, b_cancel = st.columns(2)
+                if b_save.button("💾 SALVAR ALTERAÇÕES"):
                     try:
                         creds = st.secrets["connections"]["gsheets"]
                         client = gspread.authorize(Credentials.from_service_account_info(creds, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
                         ws = client.open_by_url(creds["spreadsheet"]).get_worksheet(0)
                         
-                        row_to_update = idx + 2 
-                        novos_dados = [edit_vals[h] for h in hd_edit]
-                        ws.update(f'A{row_to_update}:P{row_to_update}', [novos_dados])
+                        # Linha na planilha: index + 2 (cabecalho)
+                        pos_planilha = int(idx) + 2 
+                        novos_dados = [edit_vals[h] for h in hd_fixo]
+                        ws.update(f'A{pos_planilha}:P{pos_planilha}', [novos_dados])
                         
-                        st.success("Atualizado!")
+                        st.success("Dados salvos!")
                         st.query_params.clear()
                         st.cache_data.clear()
                         st.rerun()
-                    except Exception as e: st.error(f"Erro ao salvar: {e}")
+                    except Exception as e: st.error(f"Erro ao salvar no Google Sheets: {e}")
                 
-                if b_ed2.button("❌ CANCELAR"):
+                if b_cancel.button("❌ CANCELAR"):
                     st.query_params.clear()
                     st.rerun()
             else:
-                st.error(f"Aluno com ID '{id_via_url}' não foi localizado na base.")
+                st.warning(f"ID {id_alvo} não encontrado. Verifique se ele existe na planilha.")
                 if st.button("Voltar para Lista"):
                     st.query_params.clear()
                     st.rerun()
-        except Exception as e: st.error(f"Erro na edição: {e}")
+
+        except Exception as e:
+            st.error(f"Erro na interface de edição: {e}")
+            if st.button("Resetar e Voltar"):
+                st.query_params.clear()
+                st.rerun()
     else:
-        # TELA NORMAL
+        # VISUALIZAÇÃO PADRÃO
         cf1, cf2, cf3, cf4 = st.columns([2.5, 1.5, 1.5, 0.5])
         with cf1: bu = st.text_input("🔍 Buscar...", key="busca_ger", placeholder="Nome ou ID", label_visibility="collapsed")
         with cf2: fs = st.selectbox("Status", ["Todos", "ATIVO", "CANCELADO"], key="filtro_status", label_visibility="collapsed")
@@ -247,6 +260,7 @@ with tab_ger:
             df_g = conn.read(ttl="0s").fillna("")
             hd = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
             df_g.columns = hd[:len(df_g.columns)]
+            
             if bu: df_g = df_g[df_g['ALUNO'].astype(str).str.contains(bu, case=False) | df_g['ID'].astype(str).str.contains(bu, case=False)]
             if fs != "Todos": df_g = df_g[df_g['STATUS'] == fs]
             if fu != "Todos": df_g = df_g[df_g['UNID.'] == fu]
@@ -254,7 +268,7 @@ with tab_ger:
             rows = ""
             for _, r in df_g.iloc[::-1].iterrows():
                 sc = "status-ativo" if r['STATUS'] == "ATIVO" else "status-cancelado"
-                # Link que passa o ID via URL
+                # Link seguro para o ID
                 id_html = f"<a href='?edit_id={r['ID']}' target='_self' class='id-link'>{r['ID']}</a>"
                 
                 rows += f"<tr><td><span class='status-badge {sc}'>{r['STATUS']}</span></td><td>{r['UNID.']}</td><td>{r['TURMA']}</td><td>{r['10C']}</td><td>{r['ING']}</td><td>{r['DT_CAD']}</td><td>{id_html}</td><td style='color:#00f2ff;font-weight:bold'>{r['ALUNO']}</td><td>{r['TEL_RESP']}</td><td>{r['TEL_ALU']}</td><td>{r['CPF']}</td><td>{r['CIDADE']}</td><td>{r['CURSO']}</td><td>{r['PAGTO']}</td><td>{r['VEND.']}</td><td>{r['DT_MAT']}</td></tr>"
@@ -267,7 +281,7 @@ with tab_ger:
                     </table>
                 </div>
             """, unsafe_allow_html=True)
-        except Exception as e: st.error(f"Erro: {e}")
+        except Exception as e: st.error(f"Erro ao carregar tabela: {e}")
 
 # --- ABA 3: RELATÓRIOS ---
 with tab_rel:
@@ -306,4 +320,4 @@ with tab_rel:
                     dfv = df_f[v_col].value_counts().reset_index().head(5)
                     figv = px.line(dfv, x=v_col, y='count', markers=True, text='count')
                     figv.update_traces(line_color='#00f2ff'); figv.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=400); st.plotly_chart(figv, use_container_width=True)
-    except Exception as e: st.error(f"Erro: {e}")
+    except Exception as e: st.error(f"Erro nos relatórios: {e}")
