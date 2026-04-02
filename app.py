@@ -30,14 +30,21 @@ st.markdown("""
         display: flex; align-items: center; justify-content: flex-end; padding-right: 15px; height: 25px;
     }
     
+    /* Checkboxes: Letras verdes, sem quebra e distância mínima */
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; white-space: nowrap; }
     
+    /* Botões de Ação: Texto em linha única (sem quebra) */
     div.stButton > button {
         background-color: #2ecc71 !important; color: white !important; font-weight: bold !important;
         height: 40px !important; border: none !important; border-radius: 5px !important;
         padding: 0px 25px !important;
+        white-space: nowrap !important; /* FORÇA LINHA ÚNICA */
+        word-break: keep-all !important;
     }
     
+    /* Redução drástica da distância entre colunas para os checkboxes */
+    [data-testid="column"] { padding-left: 2px !important; padding-right: 2px !important; }
+
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
@@ -92,22 +99,21 @@ with tab_cad:
 
         st.write("")
         
-        # --- CHECKBOXES CENTRALIZADOS COM DISTÂNCIA REDUZIDA (1cm aprox.) ---
+        # --- CHECKBOXES CENTRALIZADOS COM DISTÂNCIA MÍNIMA (0,5cm aprox.) ---
         recuo, area_botoes = st.columns([1.2, 4])
         with area_botoes:
-            # Aumentamos as 'molas' laterais para 0.8 e usamos gap="small"
-            mola_esq, b1, b2, b3, mola_dir = st.columns([0.8, 1, 1, 1, 0.8], gap="small")
+            # Molas maiores nas laterais aproximam os 3 botões no centro
+            mola_esq, b1, b2, b3, mola_dir = st.columns([1.1, 1, 1, 1, 1.1], gap="small")
             with b1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
             with b2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
             with b3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
 
         st.write("")
         
-        # --- BOTÕES DE AÇÃO CENTRALIZADOS E PRÓXIMOS ---
+        # --- BOTÕES DE AÇÃO CENTRALIZADOS EM LINHA ÚNICA ---
         recuo_btn, area_acao = st.columns([1.2, 4])
         with area_acao:
-            # Molas maiores (1.1) para fechar o espaço entre os dois botões centrais
-            m_esq, btn_salvar, btn_enviar, m_dir = st.columns([1.1, 1, 1, 1.1], gap="small")
+            m_esq, btn_salvar, btn_enviar, m_dir = st.columns([1.2, 1, 1, 1.2], gap="small")
             with btn_salvar:
                 if st.button("💾 SALVAR ALUNO"):
                     if st.session_state.f_nome:
