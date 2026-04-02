@@ -16,7 +16,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS ESTÉTICA HUD NEON (COM VERDE ESCURO) ---
+# --- CSS ESTÉTICA HUD NEON ---
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e1e; color: #e0e0e0; }
@@ -38,22 +38,19 @@ st.markdown("""
     div[data-testid="stTextInput"] > div { min-height: 25px !important; height: 25px !important; }
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 14px !important; padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end; }
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 25px !important; border-radius: 5px !important; }
-    .stCheckbox label p { color: #145a32 !important; font-weight: bold !important; font-size: 11px !important; }
 
     /* CARDS RELATÓRIO HUD */
     .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; }
     .neon-pink { color: #ff007a; text-shadow: 0 0 10px rgba(255, 0, 122, 0.5); border-top: 2px solid #ff007a; }
-    
-    /* VERDE MAIS ESCURO (ESMERALDA DARK) */
     .neon-green { color: #27ae60; text-shadow: 0 0 8px rgba(39, 174, 96, 0.4); border-top: 3px solid #145a32; }
-    
     .neon-blue { color: #00f2ff; text-shadow: 0 0 10px rgba(0, 242, 255, 0.5); border-top: 2px solid #00f2ff; }
     .neon-purple { color: #bc13fe; text-shadow: 0 0 10px rgba(188, 19, 254, 0.5); border-top: 2px solid #bc13fe; }
 
-    /* BARRA DE CIDADES HUD */
-    .hud-bar-container { background: rgba(31, 41, 90, 0.3); height: 14px; border-radius: 20px; width: 100%; position: relative; margin: 45px 0 20px 0; border: 1px solid #1f295a; }
+    /* BARRA DE CIDADES HUD ATUALIZADA */
+    .hud-bar-container { background: rgba(31, 41, 90, 0.3); height: 14px; border-radius: 20px; width: 100%; position: relative; margin: 50px 0 40px 0; border: 1px solid #1f295a; }
     .hud-segment { height: 100%; float: left; position: relative; }
     .hud-label { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); background: #121629; border: 1px solid currentColor; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+    .hud-city-name { position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: bold; text-transform: uppercase; white-space: nowrap; letter-spacing: 1px; }
 
     .stButton > button { background-color: #00f2ff !important; color: #0b0e1e !important; font-weight: bold !important; border: none !important; border-radius: 5px !important; width: 100%; }
     header {visibility: hidden;} footer {visibility: hidden;}
@@ -109,7 +106,6 @@ def processar_pagto():
 # --- ESTRUTURA DE ABAS ---
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
-# --- ABA 1: CADASTRO ---
 with tab_cad:
     _, centro, _ = st.columns([0.5, 5, 0.5])
     with centro:
@@ -143,7 +139,6 @@ with tab_cad:
                     st.session_state.lista_previa = []; st.success("Sistema Atualizado!"); st.rerun()
         st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
-# --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
     st.markdown("<h3 style='text-align: center; color: #00f2ff;'>🖥️ DATABASE MONITOR</h3>", unsafe_allow_html=True)
     try:
@@ -154,7 +149,6 @@ with tab_ger:
             if st.button("🔄 REFRESH DATABASE"): st.cache_data.clear(); st.rerun()
     except: st.error("Falha na conexão com a base de dados.")
 
-# --- ABA 3: RELATÓRIOS ---
 with tab_rel:
     try:
         df_rel = conn.read(ttl="0s").dropna(how='all')
@@ -201,25 +195,18 @@ with tab_rel:
                     seg_html = ""
                     for i, (nome, qtd) in enumerate(df_cid.items()):
                         percent = (qtd / total_cid) * 100; cor = cores[i % 4]
-                        seg_html += f'<div class="hud-segment" style="width: {percent}%; background: {cor}; box-shadow: 0 0 10px {cor}80;"><div class="hud-label" style="color: {cor};">{qtd}</div></div>'
+                        seg_html += f'''
+                        <div class="hud-segment" style="width: {percent}%; background: {cor}; box-shadow: 0 0 10px {cor}80;">
+                            <div class="hud-label" style="color: {cor};">{qtd}</div>
+                            <div class="hud-city-name" style="color: {cor}; opacity: 0.8;">{nome}</div>
+                        </div>'''
                     st.markdown(f'<div class="hud-bar-container">{seg_html}</div>', unsafe_allow_html=True)
                 
                 col_g1, col_g2 = st.columns(2)
                 with col_g1:
                     st.markdown("<small style='color:#64748b'>QUANTIDADE POR STATUS</small>", unsafe_allow_html=True)
                     counts = df_f['STATUS'].value_counts()
-                    fig_p = go.Figure(data=[go.Pie(
-                        labels=counts.index, 
-                        values=counts.values, 
-                        hole=0.5,
-                        marker=dict(
-                            colors=['#27ae60', '#ff007a', '#00f2ff', '#bc13fe'],
-                            line=dict(color='#0b0e1e', width=3)
-                        ),
-                        textinfo='label+value', 
-                        textfont=dict(size=14, color="white"),
-                        hoverinfo='label+value+percent'
-                    )])
+                    fig_p = go.Figure(data=[go.Pie(labels=counts.index, values=counts.values, hole=0.5, marker=dict(colors=['#27ae60', '#ff007a', '#00f2ff', '#bc13fe'], line=dict(color='#0b0e1e', width=3)), textinfo='label+value', textfont=dict(size=14, color="white"))])
                     fig_p.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', showlegend=False, height=350)
                     st.plotly_chart(fig_p, use_container_width=True)
                     
