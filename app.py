@@ -30,14 +30,12 @@ st.markdown("""
         display: flex; align-items: center; justify-content: flex-end; padding-right: 15px; height: 25px;
     }
     
-    /* Letras verdes dos checkboxes e sem quebra de linha */
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; white-space: nowrap; }
     
-    /* Estilo dos botões de ação */
     div.stButton > button {
         background-color: #2ecc71 !important; color: white !important; font-weight: bold !important;
         height: 40px !important; border: none !important; border-radius: 5px !important;
-        padding: 0px 20px !important;
+        padding: 0px 25px !important;
     }
     
     header {visibility: hidden;} footer {visibility: hidden;}
@@ -94,23 +92,22 @@ with tab_cad:
 
         st.write("")
         
-        # --- CHECKBOXES CENTRALIZADOS COM DISTÂNCIA (3cm aprox.) ---
+        # --- CHECKBOXES CENTRALIZADOS COM DISTÂNCIA REDUZIDA (1cm aprox.) ---
         recuo, area_botoes = st.columns([1.2, 4])
         with area_botoes:
-            # Usamos colunas laterais vazias (0.5) para centralizar os itens no meio
-            # O gap="large" simula a distância de 3cm entre os itens
-            mola_esq, b1, b2, b3, mola_dir = st.columns([0.5, 1, 1, 1, 0.5], gap="large")
+            # Aumentamos as 'molas' laterais para 0.8 e usamos gap="small"
+            mola_esq, b1, b2, b3, mola_dir = st.columns([0.8, 1, 1, 1, 0.8], gap="small")
             with b1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
             with b2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
             with b3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
 
         st.write("")
         
-        # --- BOTÕES DE AÇÃO CENTRALIZADOS COM DISTÂNCIA ---
+        # --- BOTÕES DE AÇÃO CENTRALIZADOS E PRÓXIMOS ---
         recuo_btn, area_acao = st.columns([1.2, 4])
         with area_acao:
-            # Centralizando os dois botões no meio da área '4'
-            m_esq, btn_salvar, btn_enviar, m_dir = st.columns([0.8, 1, 1, 0.8], gap="large")
+            # Molas maiores (1.1) para fechar o espaço entre os dois botões centrais
+            m_esq, btn_salvar, btn_enviar, m_dir = st.columns([1.1, 1, 1, 1.1], gap="small")
             with btn_salvar:
                 if st.button("💾 SALVAR ALUNO"):
                     if st.session_state.f_nome:
