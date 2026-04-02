@@ -136,7 +136,7 @@ with tab_ger:
             if st.button("🔄 ATUALIZAR LISTA"): st.cache_data.clear(); st.rerun()
     except: st.error("Erro ao carregar dados.")
 
-# --- ABA 3: RELATÓRIOS (INFOGRÁFICO COM CORREÇÃO DE VENDEDOR) ---
+# --- ABA 3: RELATÓRIOS ---
 with tab_rel:
     try:
         df_rel = conn.read(ttl="0s").dropna(how='all')
@@ -145,7 +145,7 @@ with tab_rel:
             
             # --- LÓGICA DE UNIFICAÇÃO DE VENDEDORES (GILSON - COLÉGIO -> GILSON) ---
             if 'Vendedor' in df_rel.columns:
-                df_rel['Vendedor'] = df_rel['Vendedor'].astype(str).str.replace(' - COLÉGIO', '', case=False).str.strip()
+                df_rel['Vendedor'] = df_rel['Vendedor'].astype(str).str.replace(' - COLÉGIO', '', case=False).str.strip().str.upper()
             
             col_data = "Data Matrícula"
             df_rel[col_data] = pd.to_datetime(df_rel[col_data], dayfirst=True, errors='coerce')
@@ -166,8 +166,13 @@ with tab_rel:
                     cnc = len(df_f[df_f['STATUS'].str.upper() == 'CANCELADO']) if 'STATUS' in df_f.columns else 0
                     st.markdown(f'<div class="info-card card-blue"><small>CANCELADOS</small><br><h2>{cnc}</h2></div>', unsafe_allow_html=True)
                 with c4:
-                    vend_unicos = df_f['Vendedor'].nunique() if 'Vendedor' in df_f.columns else 0
-                    st.markdown(f'<div class="info-card card-orange"><small>DIVULGADORES</small><br><h2>{vend_unicos}</h2></div>', unsafe_allow_html=True)
+                    # Encontrar o vendedor com mais vendas no período
+                    if 'Vendedor' in df_f.columns and not df_f.empty:
+                        counts = df_f['Vendedor'].value_counts()
+                        top_vendedor = counts.idxmax() if not counts.empty else "N/A"
+                    else:
+                        top_vendedor = "N/A"
+                    st.markdown(f'<div class="info-card card-orange"><small>MAIOR DESEMPENHO EM CAPTAÇÃO DE ALUNOS</small><br><h2 style="font-size: 18px;">{top_vendedor}</h2></div>', unsafe_allow_html=True)
 
                 st.write("---")
                 
@@ -198,10 +203,10 @@ with tab_rel:
                         st.plotly_chart(fig_p, use_container_width=True)
                 
                 with col_g2:
-                    st.markdown('<p style="color:#FF00FF; font-weight:bold;">▸ Analytics (Top Vendedores)</p>', unsafe_allow_html=True)
-                    df_vend = df_f['Vendedor'].value_counts().reset_index()
-                    df_vend.columns = ['Vendedor', 'Vendas']
-                    fig_v = px.bar(df_vend.head(10), x='Vendas', y='Vendedor', orientation='h', color='Vendas', color_continuous_scale='Magma')
+                    st.markdown('<p style="color:#FF00FF; font-weight:bold;">▸ Analytics (Top Divulgadores)</p>', unsafe_allow_html=True)
+                    df_vend_chart = df_f['Vendedor'].value_counts().reset_index()
+                    df_vend_chart.columns = ['Vendedor', 'Vendas']
+                    fig_v = px.bar(df_vend_chart.head(10), x='Vendas', y='Vendedor', orientation='h', color='Vendas', color_continuous_scale='Magma')
                     fig_v.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=350, showlegend=False)
                     st.plotly_chart(fig_v, use_container_width=True)
 
