@@ -14,7 +14,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS FINAL (REDUÇÃO DE ESPAÇOS SUPERIORES) ---
+# --- CSS FINAL (PROXIMIDADE MÁXIMA AO TOPO) ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
@@ -34,10 +34,10 @@ st.markdown("""
     .stTabs [data-baseweb="tab"] { color: #ffffff !important; font-weight: 600; padding: 10px 30px; }
     .stTabs [aria-selected="true"] { border-bottom: 4px solid #2ecc71 !important; }
     
-    /* REDUÇÃO DO ESPAÇO NO TOPO: De 80px para 50px para subir tudo */
+    /* REMOÇÃO TOTAL DE ESPAÇO NO TOPO */
     .main .block-container { 
-        padding-top: 50px !important; 
-        margin-top: 0px !important;
+        padding-top: 40px !important; /* Espaço mínimo para não sumir atrás do menu */
+        margin-top: -20px !important; /* Puxa o conteúdo para cima */
     }
 
     /* Inputs */
@@ -118,8 +118,7 @@ with tab_cad:
     _, col_central, _ = st.columns([0.5, 3, 0.5])
     
     with col_central:
-        # Removi o st.write("") inicial para subir mais o conteúdo
-        # Form de Cadastro
+        # Formulário de Cadastro
         for label, key, func in [
             ("ID:", "f_id", None), ("ALUNO:", "f_nome", None), ("CIDADE:", "f_cid", None),
             ("CURSO:", "input_curso_key", transformar_curso), ("PAGAMENTO:", "input_pagto_key", None),
