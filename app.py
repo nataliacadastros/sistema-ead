@@ -1,7 +1,9 @@
 import streamlit as st
 import pandas as pd
 import re
-from datetime import date
+import plotly.express as px
+import plotly.graph_objects as go
+from datetime import date, timedelta
 from streamlit_gsheets import GSheetsConnection
 
 # --- CONFIGURAÇÕES DA PÁGINA ---
@@ -14,7 +16,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS CONSOLIDADO ---
+# --- CSS CONSOLIDADO (CADASTRO, GERENCIAMENTO E RELATÓRIOS) ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
@@ -37,14 +39,14 @@ st.markdown("""
     }
     .stTabs [aria-selected="true"] { border-bottom: 3px solid #2ecc71 !important; }
     
-    /* CONTEÚDO COLADO NO TOPO */
+    /* CONTEÚDO GERAL */
     .main .block-container { 
         padding-top: 38px !important; 
         max-width: 1100px !important;
         margin: 0 auto !important;
     }
 
-    /* CONFIGURAÇÃO DOS CAMPOS */
+    /* CONFIGURAÇÃO DOS CAMPOS DE CADASTRO (SUAS MEDIDAS) */
     div[data-testid="stHorizontalBlock"] { 
         margin-bottom: 3px !important;
         display: flex;
@@ -78,7 +80,7 @@ st.markdown("""
         border-radius: 5px !important;
     }
 
-    /* Checkboxes e Botões Grandes (Cadastro) */
+    /* CHECKBOXES E BOTÕES */
     .stCheckbox { display: flex; justify-content: center; margin-top: 8px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
     
@@ -87,13 +89,12 @@ st.markdown("""
         border-radius: 5px !important;
     }
 
-    /* Ajuste para o Botão "Salvar/Enviar" (Grandes) */
     div[data-testid="column"] .stButton > button {
         height: 40px !important;
         width: 90% !important;
     }
 
-    /* CSS para o Botão Atualizar (Menor e centralizado abaixo da tabela) */
+    /* BOTÃO ATUALIZAR MENOR */
     .btn-atualizar-container {
         display: flex;
         justify-content: center;
@@ -104,16 +105,15 @@ st.markdown("""
         width: auto !important;
         padding: 0 20px !important;
         font-size: 12px !important;
-        background-color: #34495e !important; /* Cor mais neutra para o botão de apoio */
+        background-color: #34495e !important;
     }
 
-    hr { margin-top: 20px !important; margin-bottom: 5px !important; }
     .contador-estilo {
         text-align: center;
         color: #2ecc71;
         font-weight: bold;
         font-size: 14px;
-        margin-bottom: 8px;
+        margin: 8px 0;
     }
     
     header {visibility: hidden;} footer {visibility: hidden;}
@@ -126,7 +126,7 @@ if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "val_curso" not in st.session_state: st.session_state.val_curso = ""
 if "val_pagto" not in st.session_state: st.session_state.val_pagto = ""
 
-# --- FUNÇÕES ---
+# --- FUNÇÕES DE PROCESSAMENTO ---
 def transformar_curso():
     entrada = st.session_state.input_curso_key.strip()
     if not entrada: st.session_state.val_curso = ""; st.session_state.input_curso_key = ""; return
@@ -153,6 +153,7 @@ def processar_pagto():
 # --- UI PRINCIPAL ---
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
+# --- ABA 1: CADASTRO ---
 with tab_cad:
     _, centro, _ = st.columns([0.5, 5, 0.5])
     with centro:
@@ -173,7 +174,6 @@ with tab_cad:
             else:
                 c_inp.text_input(label, key=key, label_visibility="collapsed")
 
-        st.write("")
         _, c_c1, c_c2, c_c3, _ = st.columns([0.8, 1.2, 1.2, 1.2, 0.8])
         with c_c1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
         with c_c2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
@@ -190,7 +190,9 @@ with tab_cad:
         with b_right:
             if st.button("📤 ENVIAR PLANILHA", key="btn_enviar"):
                 if st.session_state.lista_previa:
-                    df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa); conn.update(data=pd.concat([df_old, df_new], ignore_index=True)); st.session_state.lista_previa = []; st.success("Enviado!"); st.rerun()
+                    df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa)
+                    conn.update(data=pd.concat([df_old, df_new], ignore_index=True))
+                    st.session_state.lista_previa = []; st.success("Enviado!"); st.rerun()
 
         st.write("---") 
         qtd = len(st.session_state.lista_previa)
@@ -198,31 +200,68 @@ with tab_cad:
         df_previa = pd.DataFrame(st.session_state.lista_previa) if st.session_state.lista_previa else pd.DataFrame(columns=["ID", "Aluno", "Cidade", "Curso", "Pagamento", "Vendedor", "Data"])
         st.dataframe(df_previa, use_container_width=True, hide_index=True)
 
+# --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
     st.markdown("<h3 style='text-align: center; color: #2ecc71;'>🖥️ BASE DE DADOS COMPLETA</h3>", unsafe_allow_html=True)
-    
     try:
         with st.spinner("Sincronizando registros..."):
             dados = conn.read(ttl="0s").fillna("")
-            
             if not dados.empty:
                 if "ID" in dados.columns:
                     dados["ID"] = dados["ID"].astype(str).str.replace(r'\.0$', '', regex=True)
-                
-                # Exibição da Tabela
                 st.dataframe(dados.iloc[::-1], use_container_width=True, hide_index=True, height=500)
-                
-                # BOTÃO ATUALIZAR (MENOR E ABAIXO DA LISTA)
                 st.markdown('<div class="btn-atualizar-container">', unsafe_allow_html=True)
                 if st.button("🔄 ATUALIZAR LISTA", key="btn_refresh_ger"):
-                    st.cache_data.clear()
-                    st.rerun()
+                    st.cache_data.clear(); st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
-            else:
-                st.info("Aguardando registros ou planilha vazia.")
-    except:
-        st.error("Erro ao carregar os dados do Google Sheets.")
+            else: st.info("Planilha vazia ou em sincronização.")
+    except: st.error("Erro ao carregar dados do Google Sheets.")
 
+# --- ABA 3: RELATÓRIOS ---
 with tab_rel:
-    st.markdown("<h3 style='text-align: center; color: #2ecc71;'>📊 RELATÓRIOS</h3>", unsafe_allow_html=True)
-    st.info("Módulo de estatísticas em desenvolvimento.")
+    st.markdown("<h3 style='text-align: center; color: #2ecc71;'>📊 DASHBOARD DE PERFORMANCE</h3>", unsafe_allow_html=True)
+    try:
+        df_rel = conn.read(ttl="0s").fillna("")
+        if not df_rel.empty:
+            df_rel['Data'] = pd.to_datetime(df_rel['Data'], dayfirst=True, errors='coerce')
+            df_rel = df_rel.dropna(subset=['Data'])
+            
+            st.markdown("### 📅 Período de Análise")
+            c_d1, c_d2 = st.columns(2)
+            d_ini = c_d1.date_input("Início", date.today() - timedelta(days=7))
+            d_fim = c_d2.date_input("Fim", date.today())
+            
+            df_f = df_rel.loc[(df_rel['Data'].dt.date >= d_ini) & (df_rel['Data'].dt.date <= d_fim)]
+            
+            if not df_f.empty:
+                st.write("---")
+                k1, k2, k3 = st.columns(3)
+                total = len(df_f)
+                v_top = df_f['Vendedor'].value_counts().idxmax()
+                v_qtd = df_f['Vendedor'].value_counts().max()
+                
+                k1.markdown(f"<div style='background-color:#1a3a5a;padding:15px;border-radius:10px;text-align:center;border-left:5px solid #2ecc71'><small>MATRÍCULAS</small><h2>{total}</h2></div>", unsafe_allow_html=True)
+                k2.markdown(f"<div style='background-color:#1a3a5a;padding:15px;border-radius:10px;text-align:center;border-left:5px solid #f1c40f'><small>TOP VENDEDOR</small><h3>{v_top}</h3><p>{v_qtd} vendas</p></div>", unsafe_allow_html=True)
+                
+                # Cálculo de Status se houver coluna
+                if 'Status' in df_f.columns:
+                    atv = len(df_f[df_f['Status'].str.upper() == 'ATIVO'])
+                    k3.markdown(f"<div style='background-color:#1a3a5a;padding:15px;border-radius:10px;text-align:center;border-left:5px solid #3498db'><small>ATIVAS</small><h2>{atv}</h2></div>", unsafe_allow_html=True)
+                
+                st.write("")
+                col_g1, col_g2 = st.columns(2)
+                with col_g1:
+                    st.markdown("<p style='text-align:center;color:#2ecc71'>CIDADES</p>", unsafe_allow_html=True)
+                    fig_c = px.bar(df_f['Cidade'].value_counts().reset_index(), x='count', y='Cidade', orientation='h', color='count', color_continuous_scale='Viridis')
+                    fig_c.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=300, showlegend=False)
+                    st.plotly_chart(fig_c, use_container_width=True)
+                
+                with col_g2:
+                    st.markdown("<p style='text-align:center;color:#2ecc71'>STATUS</p>", unsafe_allow_html=True)
+                    if 'Status' in df_f.columns:
+                        fig_p = px.pie(df_f, names='Status', hole=0.7, color_discrete_sequence=['#2ecc71', '#e74c3c'])
+                        fig_p.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=300)
+                        st.plotly_chart(fig_p, use_container_width=True)
+            else: st.warning("Sem dados no período.")
+        else: st.info("Planilha vazia.")
+    except Exception as e: st.error(f"Erro no dashboard: {e}")
