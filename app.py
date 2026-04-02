@@ -60,12 +60,6 @@ def extrair_valor_recebido(texto):
         except: return 0.0
     return 0.0
 
-def extrair_valor_geral(texto):
-    try:
-        valores = re.findall(r'\d+(?:\.\d+)?(?:,\d+)?', str(texto).replace('.', '').replace(',', '.'))
-        return float(valores[0]) if valores else 0.0
-    except: return 0.0
-
 def transformar_curso(chave):
     entrada = st.session_state[chave].strip()
     if not entrada: st.session_state.val_curso = ""; return
@@ -112,7 +106,6 @@ with tab_cad:
         c_cid_lab.markdown("<label>CIDADE:</label>", unsafe_allow_html=True)
         f_cid = c_cid_inp.text_input("CIDADE", key=f"f_cid_{suffix_geral}", label_visibility="collapsed")
 
-        # CURSO AGORA LIMPA NO SALVAR (VINCULADO AO suffix_aluno)
         c_cur_lab, c_cur_inp = st.columns([1.5, 3.5])
         c_cur_lab.markdown("<label>CURSO CONTRATADO:</label>", unsafe_allow_html=True)
         key_curso = f"input_curso_key_{suffix_aluno}"
@@ -128,8 +121,8 @@ with tab_cad:
 
         c_dat_lab, c_dat_inp = st.columns([1.5, 3.5])
         c_dat_lab.markdown("<label>DATA DA MATRÍCULA:</label>", unsafe_allow_html=True)
-        data_default = date.today().strftime("%d/%m/%Y")
-        f_data = c_dat_inp.text_input("DATA", key=f"f_data_{suffix_geral}", value=data_default, label_visibility="collapsed")
+        # Removido o valor padrão para permitir digitação manual
+        f_data = c_dat_inp.text_input("DATA", key=f"f_data_{suffix_geral}", label_visibility="collapsed")
 
         st.write("")
         _, c_c1, c_c2, c_c3, _ = st.columns([1.5, 1.1, 1.2, 1.2, 0.1])
@@ -143,6 +136,7 @@ with tab_cad:
         with b_col1:
             if st.button("💾 SALVAR ALUNO"):
                 if f_nome:
+                    # Lógica dos botões s1, s2 e s3 integrada aqui
                     obs = []
                     if chk_1: obs.append("LIBERAÇÃO IN-GLÊS")
                     if chk_2: obs.append("CURSO BÔNUS")
@@ -203,21 +197,4 @@ with tab_ger:
 
 # --- ABA 3: RELATÓRIOS ---
 with tab_rel:
-    try:
-        df_raw = conn.read(ttl="0s").dropna(how='all')
-        if not df_raw.empty:
-            df_rel = df_raw.copy()
-            col_names = ['STATUS', 'UNIDADE', 'TURMA', '10_CURSOS', 'INGLES', 'DATA_CAD', 'ID', 'ALUNO', 'T1', 'T2', 'CPF', 'CIDADE', 'CURSO', 'PAGAMENTO', 'VENDEDOR', 'DATA_MATRICULA']
-            df_rel.columns = col_names[:len(df_rel.columns)]
-            df_rel['DATA_MATRICULA'] = pd.to_datetime(df_rel['DATA_MATRICULA'], dayfirst=True, errors='coerce')
-            
-            c1, c2, c3, c4 = st.columns(4)
-            with c1: st.metric("Total Matrículas", len(df_rel))
-            with c2: st.metric("Ativos", len(df_rel[df_rel["STATUS"]=="ATIVO"]))
-            with c3: 
-                v_total = df_rel['PAGAMENTO'].apply(extrair_valor_recebido).sum()
-                st.metric("Total Recebido", f"R$ {v_total:,.2f}")
-            with c4:
-                top_v = df_rel['VENDEDOR'].value_counts().idxmax() if not df_rel.empty else "N/A"
-                st.metric("Top Vendedor", top_v)
-    except Exception as e: st.error(f"Erro nos relatórios.")
+    st.info("Relatórios baseados na base de dados conectada.")
