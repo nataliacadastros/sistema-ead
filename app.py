@@ -17,12 +17,12 @@ DIC_CURSOS = {
 # --- INICIALIZAÇÃO DE VARIÁVEIS DE PERSONALIZAÇÃO ---
 if "cfg_input_height" not in st.session_state: st.session_state.cfg_input_height = 25
 if "cfg_input_width" not in st.session_state: st.session_state.cfg_input_width = 100
-if "cfg_dist_check" not in st.session_state: st.session_state.cfg_dist_check = 2
-if "cfg_dist_btn" not in st.session_state: st.session_state.cfg_dist_btn = 5
+if "cfg_dist_check" not in st.session_state: st.session_state.cfg_dist_check = 10
+if "cfg_dist_btn" not in st.session_state: st.session_state.cfg_dist_btn = 10
 if "cfg_pos_check" not in st.session_state: st.session_state.cfg_pos_check = 0
 if "cfg_pos_btn" not in st.session_state: st.session_state.cfg_pos_btn = 0
 
-# --- CSS DINÂMICO (CORRIGIDO PARA MOVIMENTAÇÃO) ---
+# --- CSS DINÂMICO ---
 st.markdown(f"""
     <style>
     .stApp {{ background-color: #1a2436; color: white; }}
@@ -53,21 +53,22 @@ st.markdown(f"""
         white-space: nowrap !important; font-size: 13px !important;
     }}
     
-    /* LÓGICA DE POSIÇÃO (OFFSET) */
-    div.element-container:has(div.check-mover) {{
-        position: relative !important;
-        left: {st.session_state.cfg_pos_check}px !important;
+    /* LÓGICA DE MOVIMENTAÇÃO (Utilizando transform para ignorar travas de layout) */
+    div:has(> .check-area) {{
+        transform: translateX({st.session_state.cfg_pos_check}px);
     }}
     
-    div.element-container:has(div.acao-mover) {{
-        position: relative !important;
-        left: {st.session_state.cfg_pos_btn}px !important;
+    div:has(> .acao-area) {{
+        transform: translateX({st.session_state.cfg_pos_btn}px);
     }}
 
-    /* Distanciamento Interno das Colunas */
-    div[data-testid="column"] {{ 
-        padding-left: {st.session_state.cfg_dist_check}px !important; 
-        padding-right: {st.session_state.cfg_dist_check}px !important; 
+    /* ESPAÇAMENTO ENTRE COLUNAS (GAP) */
+    div:has(> .check-area) [data-testid="column"] {{
+        padding-right: {st.session_state.cfg_dist_check}px !important;
+    }}
+    
+    div:has(> .acao-area) [data-testid="column"] {{
+        padding-right: {st.session_state.cfg_dist_btn}px !important;
     }}
 
     header {{visibility: hidden;}} footer {{visibility: hidden;}}
@@ -122,22 +123,22 @@ with tab_cad:
 
         st.write("")
         
-        # --- BLOCO CHECKBOXES ---
-        st.markdown('<div class="check-mover"></div>', unsafe_allow_html=True) # Marcador para o CSS
+        # --- BLOCO CHECKBOXES (COM IDENTIFICADOR CSS) ---
+        st.markdown('<div class="check-area"></div>', unsafe_allow_html=True)
         r1, r2 = st.columns([1.2, 4])
         with r2:
-            s1, s2, s3 = st.columns(3, gap="small")
+            s1, s2, s3 = st.columns(3)
             with s1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
             with s2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
             with s3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
 
         st.write("")
         
-        # --- BLOCO BOTÕES DE AÇÃO ---
-        st.markdown('<div class="acao-mover"></div>', unsafe_allow_html=True) # Marcador para o CSS
+        # --- BLOCO BOTÕES DE AÇÃO (COM IDENTIFICADOR CSS) ---
+        st.markdown('<div class="acao-area"></div>', unsafe_allow_html=True)
         r3, r4 = st.columns([1.2, 4])
         with r4:
-            b1, b2 = st.columns(2, gap="small")
+            b1, b2 = st.columns(2)
             with b1:
                 if st.button("💾 SALVAR ALUNO"):
                     if st.session_state.f_nome:
@@ -150,23 +151,26 @@ with tab_cad:
 
 # --- ABA: AJUSTES ---
 with tab_cfg:
-    st.subheader("⚙️ Personalização em Tempo Real")
-    col_a, col_b = st.columns(2)
-    with col_a:
-        st.markdown("### 🖱️ Posição Horizontal (Mover)")
-        st.session_state.cfg_pos_check = st.slider("Posição Checkboxes (Esquerda/Direita)", -300, 300, st.session_state.cfg_pos_check)
-        st.session_state.cfg_pos_btn = st.slider("Posição Botões Ação (Esquerda/Direita)", -300, 300, st.session_state.cfg_pos_btn)
-        
-        st.markdown("### ⌨️ Campos de Texto")
-        st.session_state.cfg_input_height = st.slider("Altura", 20, 60, st.session_state.cfg_input_height)
-        st.session_state.cfg_input_width = st.slider("Largura (%)", 50, 100, st.session_state.cfg_input_width)
+    st.subheader("⚙️ Painel de Personalização")
     
-    with col_b:
+    c_pos, c_estilo = st.columns(2)
+    
+    with c_pos:
+        st.markdown("### ↔️ Posição Horizontal")
+        st.session_state.cfg_pos_check = st.slider("Mover Checkboxes (px)", -300, 300, st.session_state.cfg_pos_check)
+        st.session_state.cfg_pos_btn = st.slider("Mover Botões Ação (px)", -300, 300, st.session_state.cfg_pos_btn)
+        
         st.markdown("### 🔘 Espaçamento (Gap)")
-        st.session_state.cfg_dist_check = st.slider("Distância entre Checkboxes", 0, 50, st.session_state.cfg_dist_check)
-        st.session_state.cfg_dist_btn = st.slider("Distância entre Botões Ação", 0, 100, st.session_state.cfg_dist_btn)
+        st.session_state.cfg_dist_check = st.slider("Distância entre Checkboxes", 0, 100, st.session_state.cfg_dist_check)
+        st.session_state.cfg_dist_btn = st.slider("Distância entre Botões Ação", 0, 200, st.session_state.cfg_dist_btn)
 
-    if st.button("🔄 Aplicar"): st.rerun()
+    with c_estilo:
+        st.markdown("### ⌨️ Campos de Texto")
+        st.session_state.cfg_input_height = st.slider("Altura (px)", 20, 60, st.session_state.cfg_input_height)
+        st.session_state.cfg_input_width = st.slider("Largura (%)", 50, 100, st.session_state.cfg_input_width)
+
+    if st.button("💾 Aplicar Alterações Visuais"):
+        st.rerun()
 
 # --- ABA GERENCIAMENTO ---
 with tab_ger:
