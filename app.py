@@ -14,7 +14,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS COM PADDING DE 25PX ---
+# --- CSS PARA ELIMINAR O ESPAÇO AMARELO ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
@@ -30,16 +30,18 @@ st.markdown("""
         z-index: 999;
         justify-content: center;
     }
-    .stTabs [data-baseweb="tab"] { color: #ffffff !important; font-weight: 600; padding: 10px 30px; }
-    .stTabs [aria-selected="true"] { border-bottom: 4px solid #2ecc71 !important; }
     
-    /* ALTERAÇÃO SOLICITADA: 25px de distância do topo */
+    /* ZERANDO ESPAÇOS DO CONTAINER */
     .main .block-container { 
-        padding-top: 25px !important; 
-        margin-top: 0px !important;
+        padding-top: 45px !important; /* Altura exata do menu */
     }
 
-    /* Inputs */
+    /* PUXANDO O CONTEÚDO PARA CIMA (Elimina o espaço amarelo) */
+    div[data-testid="stVerticalBlock"] > div:first-child {
+        margin-top: -40px !important;
+    }
+
+    /* Inputs (Seus Ajustes) */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 3px !important; }
     div[data-testid="stTextInput"] > div { 
         min-height: 25px !important; height: 25px !important;
@@ -163,10 +165,3 @@ with tab_cad:
         st.markdown(f'<div class="contador-estilo">Alunos Salvos: {qtd}</div>', unsafe_allow_html=True)
         df_previa = pd.DataFrame(st.session_state.lista_previa) if st.session_state.lista_previa else pd.DataFrame(columns=["ID", "Aluno", "Cidade", "Curso", "Pagamento", "Vendedor", "Data"])
         st.dataframe(df_previa, use_container_width=True, hide_index=True)
-
-with tab_ger:
-    try:
-        dados = conn.read(ttl="0s").fillna("")
-        if "ID" in dados.columns: dados["ID"] = dados["ID"].astype(str).str.replace(r'\.0$', '', regex=True)
-        st.dataframe(dados.iloc[::-1], use_container_width=True, hide_index=True, height=600)
-    except: st.error("Erro ao carregar banco de dados.")
