@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import re
 import plotly.express as px
-import plotly.graph_objects as go
 from datetime import date, timedelta
 from streamlit_gsheets import GSheetsConnection
 
@@ -16,7 +15,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS CONSOLIDADO ---
+# --- CSS CONSOLIDADO (AJUSTADO PARA LIMPAR O CALENDÁRIO) ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
@@ -28,17 +27,17 @@ st.markdown("""
     .stTabs [data-baseweb="tab"] { color: #ffffff !important; font-weight: 600; padding: 0px 30px !important; height: 32px !important; line-height: 32px !important; font-size: 13px !important; }
     .stTabs [aria-selected="true"] { border-bottom: 3px solid #2ecc71 !important; }
     .main .block-container { padding-top: 38px !important; max-width: 1100px !important; margin: 0 auto !important; }
-    div[data-testid="stHorizontalBlock"] { margin-bottom: 3px !important; display: flex; align-items: center; justify-content: center; }
-    div[data-testid="stTextInput"] > div { min-height: 25px !important; height: 25px !important; width: 100% !important; }
-    label { color: #2ecc71 !important; font-weight: bold !important; font-size: 15px !important; padding-right: 15px !important; height: 25px !important; display: flex; align-items: center; justify-content: flex-end; }
-    .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 25px !important; border-radius: 5px !important; }
-    .stCheckbox { display: flex; justify-content: center; margin-top: 8px !important; }
-    .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
+    
+    /* Estilo para labels e inputs */
+    label { color: #2ecc71 !important; font-weight: bold !important; font-size: 15px !important; }
+    .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; height: 25px !important; border-radius: 5px !important; }
+    
+    /* Botão Salvar e Enviar */
     .stButton > button { background-color: #2ecc71 !important; color: white !important; font-weight: bold !important; border-radius: 5px !important; }
-    div[data-testid="column"] .stButton > button { height: 40px !important; width: 90% !important; }
-    .btn-atualizar-container { display: flex; justify-content: center; margin-top: 10px; }
-    .btn-atualizar-container .stButton > button { height: 30px !important; width: auto !important; padding: 0 20px !important; font-size: 12px !important; background-color: #34495e !important; }
-    .contador-estilo { text-align: center; color: #2ecc71; font-weight: bold; font-size: 14px; margin: 8px 0; }
+    
+    /* Esconder o texto automático 'Choose a date range' que fica dentro do input */
+    div[data-baseweb="calendar"] button { color: black !important; }
+    
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
@@ -49,6 +48,7 @@ if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "val_curso" not in st.session_state: st.session_state.val_curso = ""
 if "val_pagto" not in st.session_state: st.session_state.val_pagto = ""
 
+# Funções de processamento permanecem iguais...
 def transformar_curso():
     entrada = st.session_state.input_curso_key.strip()
     if not entrada: st.session_state.val_curso = ""; st.session_state.input_curso_key = ""; return
@@ -74,6 +74,7 @@ def processar_pagto():
 
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
+# --- ABA CADASTRO ---
 with tab_cad:
     _, centro, _ = st.columns([0.5, 5, 0.5])
     with centro:
@@ -85,10 +86,12 @@ with tab_cad:
             elif key == "input_pagto_key": c_inp.text_input(label, key=key, value=st.session_state.val_pagto, label_visibility="collapsed")
             elif key == "f_data": c_inp.text_input(label, key=key, value=date.today().strftime("%d/%m/%Y"), label_visibility="collapsed")
             else: c_inp.text_input(label, key=key, label_visibility="collapsed")
+        
         _, c_c1, c_c2, c_c3, _ = st.columns([0.8, 1.2, 1.2, 1.2, 0.8])
         with c_c1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
         with c_c2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
         with c_c3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
+        
         st.write("")
         _, b_left, b_right, _ = st.columns([0.5, 2, 2, 0.5])
         with b_left:
@@ -102,27 +105,23 @@ with tab_cad:
                 if st.session_state.lista_previa:
                     df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa)
                     conn.update(data=pd.concat([df_old, df_new], ignore_index=True))
-                    st.session_state.lista_previa = []; st.success("Enviado com sucesso!"); st.rerun()
-        st.write("---") 
+                    st.session_state.lista_previa = []; st.success("Enviado!"); st.rerun()
+        
         qtd = len(st.session_state.lista_previa)
-        st.markdown(f'<div class="contador-estilo">FILA DE ENVIO: {qtd} ALUNO(S)</div>', unsafe_allow_html=True)
-        df_previa = pd.DataFrame(st.session_state.lista_previa) if st.session_state.lista_previa else pd.DataFrame(columns=["ID", "Aluno", "Cidade", "Curso", "Pagamento", "Vendedor", "Data Matrícula"])
-        st.dataframe(df_previa, use_container_width=True, hide_index=True)
+        st.markdown(f'<div style="text-align:center; color:#2ecc71; font-weight:bold; margin:10px">FILA: {qtd}</div>', unsafe_allow_html=True)
+        st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
+# --- ABA GERENCIAMENTO ---
 with tab_ger:
-    st.markdown("<h3 style='text-align: center; color: #2ecc71;'>🖥️ BASE DE DADOS COMPLETA</h3>", unsafe_allow_html=True)
     try:
         dados = conn.read(ttl="0s").fillna("")
-        if not dados.empty:
-            if "ID" in dados.columns: dados["ID"] = dados["ID"].astype(str).str.replace(r'\.0$', '', regex=True)
-            st.dataframe(dados.iloc[::-1], use_container_width=True, hide_index=True, height=500)
-            st.markdown('<div class="btn-atualizar-container">', unsafe_allow_html=True)
-            if st.button("🔄 ATUALIZAR LISTA", key="btn_refresh_ger"): st.cache_data.clear(); st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+        st.dataframe(dados.iloc[::-1], use_container_width=True, hide_index=True)
     except: st.error("Erro ao carregar dados.")
 
+# --- ABA RELATÓRIOS (CALENDÁRIO CORRIGIDO) ---
 with tab_rel:
-    st.markdown("<h3 style='text-align: center; color: #2ecc71;'>📊 DASHBOARD DE PERFORMANCE</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center; color: #2ecc71;'>📊 PERFORMANCE</h3>", unsafe_allow_html=True)
+    
     try:
         df_rel = conn.read(ttl="0s").fillna("")
         if not df_rel.empty:
@@ -132,62 +131,45 @@ with tab_rel:
                 df_rel[col_data] = pd.to_datetime(df_rel[col_data], dayfirst=True, errors='coerce')
                 df_rel = df_rel.dropna(subset=[col_data])
                 
-                st.markdown("### 📅 Selecione o Período")
+                # --- FILTRO DE DATA EM PORTUGUÊS ---
+                st.markdown("**Selecione o período no calendário abaixo:**")
                 
-                # Definição do intervalo padrão (últimos 7 dias)
-                data_ini_default = date.today() - timedelta(days=7)
-                data_fim_default = date.today()
-                
-                # TRADUÇÃO APLICADA AQUI: label em PT-BR e formato brasileiro
-                periodo_selecionado = st.date_input(
-                    "Selecione o intervalo de datas:",
-                    value=(data_ini_default, data_fim_default),
-                    format="DD/MM/YYYY",
-                    label_visibility="collapsed"
+                # Usamos um valor padrão de 7 dias atrás até hoje
+                intervalo = st.date_input(
+                    label="Período de Matrícula", # Label em PT
+                    value=(date.today() - timedelta(days=7), date.today()),
+                    format="DD/MM/YYYY", # Formato brasileiro
+                    label_visibility="collapsed" # Esconde o label para ficar mais limpo
                 )
                 
-                # Lógica para garantir o processamento apenas com intervalo válido
-                if isinstance(periodo_selecionado, (list, tuple)):
-                    if len(periodo_selecionado) == 2:
-                        d_ini, d_fim = periodo_selecionado
-                    else:
-                        d_ini = d_fim = periodo_selecionado[0]
+                # Processamento das datas selecionadas
+                if isinstance(intervalo, (list, tuple)) and len(intervalo) == 2:
+                    d_ini, d_fim = intervalo
+                elif isinstance(intervalo, (list, tuple)) and len(intervalo) == 1:
+                    d_ini = d_fim = intervalo[0]
                 else:
-                    d_ini = d_fim = periodo_selecionado
+                    d_ini = d_fim = intervalo
 
                 df_f = df_rel.loc[(df_rel[col_data].dt.date >= d_ini) & (df_rel[col_data].dt.date <= d_fim)]
                 
                 if not df_f.empty:
-                    st.write("---")
-                    k1, k2, k3 = st.columns(3)
-                    k1.markdown(f"<div style='background-color:#1a3a5a;padding:15px;border-radius:10px;text-align:center;border-left:5px solid #2ecc71'><small>MATRÍCULAS NO PERÍODO</small><h2>{len(df_f)}</h2></div>", unsafe_allow_html=True)
-                    
+                    st.divider()
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("MATRÍCULAS", len(df_f))
                     if 'Vendedor' in df_f.columns:
-                        v_top = df_f['Vendedor'].value_counts().idxmax()
-                        k2.markdown(f"<div style='background-color:#1a3a5a;padding:15px;border-radius:10px;text-align:center;border-left:5px solid #f1c40f'><small>MELHOR VENDEDOR</small><h3>{v_top}</h3></div>", unsafe_allow_html=True)
+                        c2.metric("TOP VENDEDOR", df_f['Vendedor'].value_counts().idxmax())
                     
-                    if 'Status' in df_f.columns:
-                        ativas = len(df_f[df_f['Status'].str.upper() == 'ATIVO'])
-                        k3.markdown(f"<div style='background-color:#1a3a5a;padding:15px;border-radius:10px;text-align:center;border-left:5px solid #3498db'><small>MATRÍCULAS ATIVAS</small><h2>{ativas}</h2></div>", unsafe_allow_html=True)
-
                     col_g1, col_g2 = st.columns(2)
                     with col_g1:
-                        if 'Cidade' in df_f.columns:
-                            st.markdown("<p style='text-align:center;color:#2ecc71;font-weight:bold'>DISTRIBUIÇÃO POR CIDADES</p>", unsafe_allow_html=True)
-                            df_cid_plot = df_f['Cidade'].value_counts().reset_index()
-                            df_cid_plot.columns = ['Cidade', 'Quantidade']
-                            fig_c = px.bar(df_cid_plot, x='Quantidade', y='Cidade', orientation='h', color='Quantidade', color_continuous_scale='Viridis')
-                            fig_c.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=350, showlegend=False)
-                            st.plotly_chart(fig_c, use_container_width=True)
+                        fig_c = px.bar(df_f['Cidade'].value_counts().reset_index(), x='count', y='Cidade', orientation='h', title="Cidades")
+                        fig_c.update_layout(template="plotly_dark", height=300)
+                        st.plotly_chart(fig_c, use_container_width=True)
                     with col_g2:
                         if 'Status' in df_f.columns:
-                            st.markdown("<p style='text-align:center;color:#2ecc71;font-weight:bold'>STATUS DAS MATRÍCULAS</p>", unsafe_allow_html=True)
-                            fig_p = px.pie(df_f, names='Status', hole=0.7, color_discrete_sequence=['#2ecc71', '#e74c3c', '#f1c40f'])
-                            fig_p.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=350)
+                            fig_p = px.pie(df_f, names='Status', hole=0.6, title="Status")
+                            fig_p.update_layout(template="plotly_dark", height=300)
                             st.plotly_chart(fig_p, use_container_width=True)
                 else:
-                    st.warning(f"Nenhum registro encontrado para o período: {d_ini.strftime('%d/%m/%Y')} até {d_fim.strftime('%d/%m/%Y')}.")
-            else:
-                st.error("Coluna 'Data Matrícula' não encontrada.")
+                    st.warning("Nenhum dado encontrado para este período.")
     except Exception as e:
-        st.error(f"Erro no Dashboard: {e}")
+        st.error(f"Erro: {e}")
