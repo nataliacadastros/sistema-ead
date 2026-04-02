@@ -85,8 +85,7 @@ def transformar_curso():
         nome = DIC_CURSOS.get(codigo)
         if nome:
             base = entrada[:match.start()].strip().rstrip('+').strip()
-            resultado = f"{base} + {nome}" if base and nome.upper() not in base.upper() else (base if base else nome)
-            st.session_state.f_curso = resultado.upper()
+            st.session_state.f_curso = f"{base} + {nome}".upper() if base and nome.upper() not in base.upper() else nome.upper()
         else: st.session_state.f_curso = entrada.upper()
     else: st.session_state.f_curso = entrada.upper()
 
@@ -137,8 +136,8 @@ with tab_cad:
         st.write("")
         _, c_c1, c_c2, c_c3, _ = st.columns([1.5, 1.1, 1.2, 1.2, 0.1])
         with c_c1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
-        with c_c2: st.checkbox("CURSO BÔNUS", key="chk_3", on_change=processar_pagto) # Corrigi a key aqui
-        with c_c3: st.checkbox("CONFIRMAÇÃO", key="chk_2", on_change=processar_pagto) # Corrigi a key aqui
+        with c_c2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
+        with c_c3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
 
         st.write("")
         _, b_col1, b_col2, _ = st.columns([1.5, 1.75, 1.75, 0.1])
@@ -153,7 +152,7 @@ with tab_cad:
                         "Data Matrícula": st.session_state.f_data, "STATUS": "ATIVO"
                     }
                     st.session_state.lista_previa.append(aluno)
-                    # Limpa específicos
+                    # Limpeza seletiva conforme solicitado
                     st.session_state.f_id = ""
                     st.session_state.f_nome = ""
                     st.session_state.f_curso = ""
@@ -174,7 +173,7 @@ with tab_cad:
                         linha = ultima + 2 if ultima > 0 else 2
                         ws.insert_rows(dados, row=linha)
                         
-                        # Limpa TUDO
+                        # Limpa TUDO após enviar
                         st.session_state.lista_previa = []
                         st.session_state.f_id = ""
                         st.session_state.f_nome = ""
@@ -193,46 +192,56 @@ with tab_cad:
             st.markdown("<p style='color:#00f2ff; font-weight:bold; text-align:center;'>PRÉ-VISUALIZAÇÃO</p>", unsafe_allow_html=True)
             st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
-# --- GERENCIAMENTO (ABREVIADO) ---
+# --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
     conn = st.connection("gsheets", type=GSheetsConnection)
-    df_ger = conn.read(ttl="0s").fillna("")
-    if not df_ger.empty:
-        st.dataframe(df_ger.iloc[::-1], use_container_width=True, hide_index=True, height=500)
+    try:
+        df_ger = conn.read(ttl="0s").fillna("")
+        if not df_ger.empty:
+            st.dataframe(df_ger.iloc[::-1], use_container_width=True, hide_index=True, height=500)
+    except: st.error("Erro na conexão com a planilha.")
 
-# --- RELATÓRIOS (CORRIGIDO) ---
+# --- ABA 3: RELATÓRIOS ---
 with tab_rel:
     conn = st.connection("gsheets", type=GSheetsConnection)
-    df_rel = conn.read(ttl="0s").dropna(how='all')
-    if not df_rel.empty:
-        df_rel.columns = [c.strip() for c in df_rel.columns]
-        df_rel["Data Matrícula"] = pd.to_datetime(df_rel["Data Matrícula"], dayfirst=True, errors='coerce')
-        intervalo = st.date_input("Filtro", value=(date.today()-timedelta(days=7), date.today()), format="DD/MM/YYYY")
-        
-        if len(intervalo) == 2:
-            df_f = df_rel.loc[(df_rel["Data Matrícula"].dt.date >= intervalo[0]) & (df_rel["Data Matrícula"].dt.date <= intervalo[1])].copy()
-            df_f['Valor_Recebido'] = df_f['Pagamento'].apply(extrair_v_recebido)
-            df_f['Valor_Ticket'] = df_f['Pagamento'].apply(extrair_v_geral)
+    try:
+        df_rel = conn.read(ttl="0s").dropna(how='all')
+        if not df_rel.empty:
+            df_rel.columns = [c.strip() for c in df_rel.columns]
+            df_rel["Data Matrícula"] = pd.to_datetime(df_rel["Data Matrícula"], dayfirst=True, errors='coerce')
+            intervalo = st.date_input("Filtro", value=(date.today()-timedelta(days=7), date.today()), format="DD/MM/YYYY")
             
-            # Cards HUD
-            c1, c2, c3, c4, c5, c6 = st.columns(6)
-            c1.markdown(f'<div class="card-hud neon-pink"><small>Mats</small><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
-            atv = len(df_f[df_f['STATUS'].str.upper() == 'ATIVO']) if 'STATUS' in df_f.columns else 0
-            c2.markdown(f'<div class="card-hud neon-green"><small>Ativos</small><h2>{atv}</h2></div>', unsafe_allow_html=True)
-            cnc = len(df_f[df_f['STATUS'].str.upper() == 'CANCELADO']) if 'STATUS' in df_f.columns else 0
-            c3.markdown(f'<div class="card-hud neon-red"><small>Cancelados</small><h2>{cnc}</h2></div>', unsafe_allow_html=True)
-            c4.markdown(f'<div class="card-hud neon-blue"><small>Recebido</small><h2>R${df_f["Valor_Recebido"].sum():,.2f}</h2></div>', unsafe_allow_html=True)
-            c5.markdown(f'<div class="card-hud neon-purple"><small>Ticket</small><h6>B: R${df_f["Valor_Ticket"].mean():.2f}</h6></div>', unsafe_allow_html=True)
-            venda = df_f['Vendedor'].value_counts().idxmax() if not df_f.empty else "N/A"
-            c6.markdown(f'<div class="card-hud neon-blue"><small>Top</small><h6>{venda}</h6></div>', unsafe_allow_html=True)
+            if len(intervalo) == 2:
+                df_f = df_rel.loc[(df_rel["Data Matrícula"].dt.date >= intervalo[0]) & (df_rel["Data Matrícula"].dt.date <= intervalo[1])].copy()
+                df_f['Valor_Recebido'] = df_f['Pagamento'].apply(extrair_v_recebido)
+                df_f['Valor_Ticket'] = df_f['Pagamento'].apply(extrair_v_geral)
+                
+                c1, c2, c3, c4, c5, c6 = st.columns(6)
+                c1.markdown(f'<div class="card-hud neon-pink"><small>Mats</small><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
+                atv = len(df_f[df_f['STATUS'].str.upper() == 'ATIVO']) if 'STATUS' in df_f.columns else 0
+                c2.markdown(f'<div class="card-hud neon-green"><small>Ativos</small><h2>{atv}</h2></div>', unsafe_allow_html=True)
+                cnc = len(df_f[df_f['STATUS'].str.upper() == 'CANCELADO']) if 'STATUS' in df_f.columns else 0
+                c3.markdown(f'<div class="card-hud neon-red"><small>Cancelados</small><h2>{cnc}</h2></div>', unsafe_allow_html=True)
+                c4.markdown(f'<div class="card-hud neon-blue"><small>Recebido</small><h2>R${df_f["Valor_Recebido"].sum():,.2f}</h2></div>', unsafe_allow_html=True)
+                c5.markdown(f'<div class="card-hud neon-purple"><small>Ticket</small><h6>B: R${df_f["Valor_Ticket"].mean():.2f}</h6></div>', unsafe_allow_html=True)
+                venda = df_f['Vendedor'].value_counts().idxmax() if not df_f.empty else "N/A"
+                c6.markdown(f'<div class="card-hud neon-blue"><small>Top</small><h6>{venda}</h6></div>', unsafe_allow_html=True)
 
-            # Gráficos
-            st.write("---")
-            g1, g2 = st.columns(2)
-            with g1:
-                st.plotly_chart(go.Figure(data=[go.Pie(labels=df_f['STATUS'].value_counts().index, values=df_f['STATUS'].value_counts().values, hole=0.5, marker=dict(colors=['#2ecc71', '#ff4b4b', '#00f2ff']))]).update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', showlegend=False), use_container_width=True)
-            with g2:
-                df_v = df_f['Vendedor'].value_counts().reset_index().head(5)
-                fig_v = px.line(df_v, x='Vendedor', y='count', markers=True, text='Vendedor')
-                fig_v.update_traces(line_color='#00f2ff', marker=dict(size=10, color='#ff007a'), textposition="top center")
-                st.plotly_chart(fig_v.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)'), use_container_width=True)
+                st.write("---")
+                df_cid_v = df_f['Cidade'].value_counts().head(4)
+                if not df_cid_v.empty:
+                    st.markdown("<small style='color:#00f2ff'>▸ GEOLOCATION ANALYTICS</small>", unsafe_allow_html=True)
+                    total_c = df_cid_v.sum(); cores = ["#ff007a", "#2ecc71", "#00f2ff", "#bc13fe"]
+                    seg_html = "".join([f'<div class="hud-segment" style="width: {(v/total_c)*100}%; background: {cores[i%4]}; box-shadow: 0 0 10px {cores[i%4]}80;"><div class="hud-label" style="color: {cores[i%4]};">{v}</div><div class="hud-city-name" style="color: {cores[i%4]};">{k}</div></div>' for i, (k,v) in enumerate(df_cid_v.items())])
+                    st.markdown(f'<div class="hud-bar-container">{seg_html}</div>', unsafe_allow_html=True)
+
+                g1, g2 = st.columns(2)
+                with g1:
+                    st.plotly_chart(go.Figure(data=[go.Pie(labels=df_f['STATUS'].value_counts().index, values=df_f['STATUS'].value_counts().values, hole=0.5, marker=dict(colors=['#2ecc71', '#ff4b4b', '#00f2ff']))]).update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', showlegend=False), use_container_width=True)
+                with g2:
+                    df_v = df_f['Vendedor'].value_counts().reset_index().head(5)
+                    df_v.columns = ['Vendedor', 'count']
+                    fig_v = px.line(df_v, x='Vendedor', y='count', markers=True, text='Vendedor')
+                    fig_v.update_traces(line_color='#00f2ff', marker=dict(size=10, color='#ff007a'), textposition="top center", mode='lines+markers+text')
+                    st.plotly_chart(fig_v.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(showgrid=False, showticklabels=False)), use_container_width=True)
+    except: st.error("Erro ao carregar relatórios.")
