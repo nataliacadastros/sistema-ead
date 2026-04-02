@@ -30,13 +30,17 @@ st.markdown("""
         display: flex; align-items: center; justify-content: flex-end; padding-right: 15px; height: 25px;
     }
     
-    .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
+    .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; white-space: nowrap; }
     
+    /* Ajuste para os botões de ação ficarem mais compactos se necessário */
     div.stButton > button {
         background-color: #2ecc71 !important; color: white !important; font-weight: bold !important;
-        height: 40px !important; width: 100% !important; border: none !important; border-radius: 5px !important;
+        height: 38px !important; width: 100% !important; border: none !important; border-radius: 5px !important;
     }
     
+    /* Remove espaços extras entre colunas de botões */
+    [data-testid="column"] { width: fit-content !important; min-width: fit-content !important; }
+
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
@@ -47,21 +51,19 @@ if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "val_curso" not in st.session_state: st.session_state.val_curso = ""
 if "val_pagto" not in st.session_state: st.session_state.val_pagto = ""
 
-# --- FUNÇÕES DE LÓGICA (CURSO E PAGAMENTO) ---
+# --- FUNÇÕES (CURSO E PAGAMENTO) ---
 def transformar_curso():
     entrada = st.session_state.input_curso_key.strip()
-    if not entrada:
-        st.session_state.val_curso = ""; st.session_state.input_curso_key = ""; return
+    if not entrada: st.session_state.val_curso = ""; st.session_state.input_curso_key = ""; return
     match = re.search(r'(\d+)$', entrada)
     if match:
-        codigo = match.group(1)
-        if codigo in DIC_CURSOS:
-            nome_curso = DIC_CURSOS[codigo]
-            texto_base = entrada[:match.start()].strip().rstrip('+').strip()
-            st.session_state.val_curso = f"{texto_base} + {nome_curso}" if texto_base and nome_curso.upper() not in texto_base.upper() else (texto_base if texto_base else nome_curso)
+        codigo = match.group(1); nome = DIC_CURSOS.get(codigo)
+        if nome:
+            base = entrada[:match.start()].strip().rstrip('+').strip()
+            st.session_state.val_curso = f"{base} + {nome}" if base and nome.upper() not in base.upper() else (base if base else nome)
         else: st.session_state.val_curso = entrada.upper()
     else: st.session_state.val_curso = entrada.upper()
-    st.session_state.val_curso = st.session_state.val_curso.upper().replace("++", "+").strip() + " "
+    st.session_state.val_curso = st.session_state.val_curso.upper().strip() + " "
     st.session_state.input_curso_key = st.session_state.val_curso
 
 def processar_pagto():
@@ -77,10 +79,10 @@ def processar_pagto():
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
 with tab_cad:
-    _, col_central, _ = st.columns([0.5, 3, 0.5])
+    _, col_central, _ = st.columns([0.2, 3, 0.2])
     with col_central:
         st.write("")
-        # Campos de preenchimento (Mantendo a proporção 1.2 : 4)
+        # Frame de Preenchimento
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>ID:</label>", unsafe_allow_html=True); c2.text_input("ID", key="f_id", label_visibility="collapsed")
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>ALUNO:</label>", unsafe_allow_html=True); c2.text_input("ALUNO", key="f_nome", label_visibility="collapsed")
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>CIDADE:</label>", unsafe_allow_html=True); c2.text_input("CIDADE", key="f_cid", label_visibility="collapsed")
@@ -91,27 +93,29 @@ with tab_cad:
 
         st.write("")
         
-        # --- BOTÕES SELECIONÁVEIS ALINHADOS AO FRAME ---
-        # Usamos uma coluna de 1.2 (vazia) para pular o espaço das labels e centralizar os botões nos 4 de largura
-        recuo, area_botoes = st.columns([1.2, 4])
-        with area_botoes:
-            s1, s2, s3 = st.columns(3)
+        # --- BOTÕES SELECIONÁVEIS (AGORA BEM MAIS PRÓXIMOS) ---
+        # Usamos o recuo de 1.2 e dividimos os botões em colunas menores para não espalhar
+        r1, r2 = st.columns([1.2, 4])
+        with r2:
+            # gap="small" e colunas compactas
+            s1, s2, s3, s_espaço = st.columns([1, 1, 1, 0.5], gap="small")
             with s1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
             with s2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
             with s3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
 
         st.write("")
         
-        # --- BOTÕES DE AÇÃO ALINHADOS AO FRAME ---
-        recuo_btn, area_acao = st.columns([1.2, 4])
-        with area_acao:
-            b1, b2 = st.columns(2)
+        # --- BOTÕES DE AÇÃO (MAIS CENTRALIZADOS E PRÓXIMOS) ---
+        r3, r4 = st.columns([1.2, 4])
+        with r4:
+            # Criamos colunas para os botões de ação não ocuparem a largura toda se você achar que estão longe
+            # Aqui eles ocupam 2 de 4 partes, centralizados.
+            b1, b2 = st.columns(2, gap="medium")
             with b1:
                 if st.button("💾 SALVAR ALUNO"):
                     if st.session_state.f_nome:
                         aluno = {"ID": st.session_state.f_id.upper(), "Aluno": st.session_state.f_nome.upper(), "Cidade": st.session_state.f_cid.upper(), "Curso": st.session_state.input_curso_key.strip(), "Pagamento": st.session_state.input_pagto_key.upper(), "Vendedor": st.session_state.f_vend.upper(), "Data": st.session_state.f_data}
-                        st.session_state.lista_previa.append(aluno)
-                        st.session_state.val_curso = ""; st.session_state.val_pagto = ""; st.session_state.f_nome = ""; st.session_state.f_id = ""; st.rerun()
+                        st.session_state.lista_previa.append(aluno); st.session_state.val_curso = ""; st.session_state.val_pagto = ""; st.session_state.f_nome = ""; st.session_state.f_id = ""; st.rerun()
             with b2:
                 if st.button("📤 ENVIAR PARA PLANILHA"):
                     if st.session_state.lista_previa:
