@@ -186,27 +186,25 @@ with tab_cad:
 with tab_ger:
     st.markdown("<h3 style='text-align: center; color: #2ecc71;'>🖥️ GERENCIAMENTO DE REGISTROS</h3>", unsafe_allow_html=True)
     
-    # Botão de emergência para limpar cache
+    # Botões de controle
     c1, c2 = st.columns([1, 4])
     with c1:
-        if st.button("🔄 LIMPAR CACHE"):
-            st.cache_data.clear()
-            st.rerun()
-
+        refresh = st.button("🔄 ATUALIZAR")
+    
     try:
-        with st.spinner("Conectando ao banco de dados..."):
-            # Lendo com TTL=0 para garantir dados frescos
-            dados = conn.read(ttl="0s")
+        if refresh:
+            st.cache_data.clear()
+
+        with st.spinner("Sincronizando com Google Sheets..."):
+            # Lendo dados sem remover linhas vazias
+            dados = conn.read(ttl="0s").fillna("")
             
-            if dados is not None and not dados.empty:
-                # Limpeza básica
-                dados = dados.dropna(how='all').fillna("")
-                
-                # Formatar ID para tirar o .0
+            if not dados.empty:
+                # Tratamento de ID para evitar o .0 (formato numérico para string)
                 if "ID" in dados.columns:
                     dados["ID"] = dados["ID"].astype(str).str.replace(r'\.0$', '', regex=True)
                 
-                # Exibição
+                # Exibição (Invertida para ver novos no topo, mas mantendo linhas vazias se houverem)
                 st.dataframe(
                     dados.iloc[::-1], 
                     use_container_width=True, 
@@ -214,10 +212,9 @@ with tab_ger:
                     height=600
                 )
             else:
-                st.info("Aguardando sincronização inicial ou planilha vazia.")
-    except Exception as e:
-        st.error("Erro ao carregar os dados.")
-        st.info("Certifique-se de que a planilha está compartilhada como 'Qualquer pessoa com o link'.")
+                st.info("Planilha vazia ou em processo de sincronização.")
+    except:
+        st.error("Não foi possível carregar os dados. Verifique a conexão.")
 
 with tab_rel:
     st.markdown("<h3 style='text-align: center; color: #2ecc71;'>📊 RELATÓRIOS</h3>", unsafe_allow_html=True)
