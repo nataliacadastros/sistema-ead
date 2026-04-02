@@ -21,7 +21,6 @@ st.markdown("""
     <style>
     .stApp { background-color: #0b0e1e; color: #e0e0e0; }
     
-    /* Menu Slim HUD */
     .stTabs [data-baseweb="tab-list"] { 
         background-color: #121629; border-bottom: 1px solid #1f295a;
         position: fixed; top: 0; left: 0 !important; width: 100vw !important;
@@ -34,7 +33,7 @@ st.markdown("""
     }
     .main .block-container { padding-top: 45px !important; max-width: 1200px !important; margin: 0 auto !important; }
 
-    /* ESTILO CADASTRO (CAMPOS 25PX) */
+    /* ESTILO CADASTRO */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 3px !important; display: flex; align-items: center; justify-content: center; }
     div[data-testid="stTextInput"] > div { min-height: 25px !important; height: 25px !important; }
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 14px !important; padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end; }
@@ -158,7 +157,6 @@ with tab_rel:
         df_rel = conn.read(ttl="0s").dropna(how='all')
         if not df_rel.empty:
             df_rel.columns = [c.strip() for c in df_rel.columns]
-            # Unificação de Nomes
             if 'Vendedor' in df_rel.columns:
                 df_rel['Vendedor'] = df_rel['Vendedor'].astype(str).str.replace(' - COLÉGIO', '', case=False).str.strip().str.upper()
             
@@ -171,7 +169,6 @@ with tab_rel:
             if isinstance(intervalo, (tuple, list)) and len(intervalo) == 2:
                 df_f = df_rel.loc[(df_rel[col_data].dt.date >= intervalo[0]) & (df_rel[col_data].dt.date <= intervalo[1])].copy()
                 
-                # Cálculos Financeiros
                 df_f['Valor_Recebido'] = df_f['Pagamento'].apply(extrair_valor_recebido)
                 total_recebido = df_f['Valor_Recebido'].sum()
                 df_f['Valor_Ticket'] = df_f['Pagamento'].apply(extrair_valor_geral)
@@ -180,24 +177,23 @@ with tab_rel:
                 tm_boleto = df_boleto['Valor_Ticket'].mean() if not df_boleto.empty else 0.0
                 tm_cartao = df_cartao['Valor_Ticket'].mean() if not df_cartao.empty else 0.0
 
-                # Cards KPI
                 st.write("")
                 c1, c2, c3, c4, c5 = st.columns([1, 1, 1.2, 1.8, 1.2])
-                with c1: st.markdown(f'<div class="card-hud neon-pink"><small>Matrículas</small><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
+                with c1: st.markdown(f'<div class="card-hud neon-pink"><small>Mats</small><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
                 with c2: 
-                    atv = len(df_f[df_f['STATUS'].str.upper() == 'ATIVO']) if 'STATUS' in df_f.columns else 0
-                    st.markdown(f'<div class="card-hud neon-green"><small>Ativos</small><h2>{atv}</h2></div>', unsafe_allow_html=True)
+                    atv_count = len(df_f[df_f['STATUS'].str.upper() == 'ATIVO']) if 'STATUS' in df_f.columns else 0
+                    st.markdown(f'<div class="card-hud neon-green"><small>Ativos</small><h2>{atv_count}</h2></div>', unsafe_allow_html=True)
                 with c3: st.markdown(f'<div class="card-hud neon-blue"><small>Recebido</small><h2 style="font-size:18px">R${total_recebido:,.2f}</h2></div>', unsafe_allow_html=True)
                 with c4: st.markdown(f'<div class="card-hud neon-purple"><small>Ticket Médio</small><div style="font-size:12px; margin-top:5px">🎫 Boleto: <b>R${tm_boleto:.2f}</b><br>💳 Cartão: <b>R${tm_cartao:.2f}</b></div></div>', unsafe_allow_html=True)
                 with c5:
                     top_v = df_f['Vendedor'].value_counts().idxmax() if not df_f.empty else "N/A"
-                    st.markdown(f'<div class="card-hud neon-blue"><small>Maior Desempenho em Captação de Alunos</small><h2 style="font-size:14px">{top_v}</h2></div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="card-hud neon-blue"><small>Top Captador</small><h2 style="font-size:14px">{top_v}</h2></div>', unsafe_allow_html=True)
 
                 st.write("---")
-                # Barra de Cidades HUD
+                
                 df_cid = df_f['Cidade'].value_counts().head(4)
                 if not df_cid.empty:
-                    st.markdown("<small style='color:#00f2ff'>▸ Matrículas por Cidade</small>", unsafe_allow_html=True)
+                    st.markdown("<small style='color:#00f2ff'>▸ GEOLOCATION ANALYTICS</small>", unsafe_allow_html=True)
                     total_cid = df_cid.sum(); cores = ["#ff007a", "#39ff14", "#00f2ff", "#bc13fe"]
                     seg_html = ""
                     for i, (nome, qtd) in enumerate(df_cid.items()):
@@ -207,13 +203,37 @@ with tab_rel:
                 
                 col_g1, col_g2 = st.columns(2)
                 with col_g1:
-                    fig_p = go.Figure(data=[go.Pie(labels=df_f['STATUS'].unique(), values=df_f['STATUS'].value_counts(), hole=0.8, marker=dict(colors=['#ff007a', '#00f2ff', '#39ff14']))])
-                    fig_p.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', showlegend=False, height=300)
+                    st.markdown("<small style='color:#64748b'>QUANTIDADE POR STATUS</small>", unsafe_allow_html=True)
+                    counts = df_f['STATUS'].value_counts()
+                    
+                    # Gráfico de Pizza Tech com cores vibrantes/gradientes simulados
+                    fig_p = go.Figure(data=[go.Pie(
+                        labels=counts.index, 
+                        values=counts.values, 
+                        hole=0.5, # Donut moderno
+                        marker=dict(
+                            colors=['#39ff14', '#ff007a', '#00f2ff', '#bc13fe'],
+                            line=dict(color='#0b0e1e', width=3)
+                        ),
+                        textinfo='label+value', # EXIBE NOME E QUANTIDADE
+                        textfont=dict(size=14, color="white"),
+                        hoverinfo='label+value+percent'
+                    )])
+                    
+                    fig_p.update_layout(
+                        template="plotly_dark", 
+                        paper_bgcolor='rgba(0,0,0,0)', 
+                        showlegend=False, 
+                        height=350,
+                        margin=dict(t=20, b=20, l=20, r=20)
+                    )
                     st.plotly_chart(fig_p, use_container_width=True)
+                    
                 with col_g2:
+                    st.markdown("<small style='color:#64748b'>PERFORMANCE POR DIVULGADOR</small>", unsafe_allow_html=True)
                     df_v = df_f['Vendedor'].value_counts().reset_index().head(5)
                     fig_v = px.line(df_v, x='Vendedor', y='count', markers=True)
-                    fig_v.update_traces(line_color='#00f2ff', marker=dict(size=10, color='#ff007a'))
-                    fig_v.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=300)
+                    fig_v.update_traces(line_color='#00f2ff', marker=dict(size=10, color='#ff007a', line=dict(width=2, color='white')))
+                    fig_v.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=350)
                     st.plotly_chart(fig_v, use_container_width=True)
     except Exception as e: st.error(f"Erro: {e}")
