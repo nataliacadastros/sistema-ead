@@ -37,6 +37,7 @@ st.markdown("""
     div[data-testid="stTextInput"] > div { min-height: 25px !important; height: 25px !important; }
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 14px !important; padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end; }
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 25px !important; border-radius: 5px !important; }
+    .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
     .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 100px; display: flex; flex-direction: column; justify-content: center; }
     .neon-pink { color: #ff007a; text-shadow: 0 0 10px rgba(255, 0, 122, 0.5); border-top: 2px solid #ff007a; }
     .neon-green { color: #2ecc71; text-shadow: 0 0 10px rgba(46, 204, 113, 0.5); border-top: 2px solid #2ecc71; }
@@ -56,6 +57,7 @@ st.markdown("""
 conn = st.connection("gsheets", type=GSheetsConnection)
 if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "val_curso" not in st.session_state: st.session_state.val_curso = ""
+if "val_pagto" not in st.session_state: st.session_state.val_pagto = ""
 
 # --- FUNÇÕES AUXILIARES ---
 def extrair_valor_recebido(texto):
@@ -87,14 +89,21 @@ def transformar_curso():
     st.session_state.val_curso = st.session_state.val_curso.upper().strip()
     st.session_state.input_curso_key = st.session_state.val_curso
 
-# --- ABAS DO SISTEMA ---
+def processar_pagto():
+    base = st.session_state.f_pagto.split(" | ")[0].strip().upper()
+    obs = []
+    if st.session_state.chk_1: obs.append("LIBERAÇÃO IN-GLÊS")
+    if st.session_state.chk_2: obs.append("CURSO BÔNUS")
+    if st.session_state.chk_3: obs.append("CONFIRMAÇÃO MATRÍCULA")
+    st.session_state.f_pagto = f"{base} | {' | '.join(obs)}" if obs else base
+
+# --- ABAS ---
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
 # --- ABA 1: CADASTRO ---
 with tab_cad:
     _, centro, _ = st.columns([0.5, 5, 0.5])
     with centro:
-        # Layout de campos conforme original, mas com nova ordem e campos
         campos = [
             ("ID:", "f_id"), ("ALUNO:", "f_nome"), ("TEL. RESPONSÁVEL:", "f_tel_resp"),
             ("TEL. ALUNO:", "f_tel_aluno"), ("CPF RESPONSÁVEL:", "f_cpf"), ("CIDADE:", "f_cid"),
@@ -113,6 +122,13 @@ with tab_cad:
             else:
                 c_inp.text_input(label, key=key, label_visibility="collapsed")
 
+        # Restaurando Checkboxes Originais
+        st.write("")
+        _, c_c1, c_c2, c_c3, _ = st.columns([1.5, 1.1, 1.2, 1.2, 0.1])
+        with c_c1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
+        with c_c2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
+        with c_c3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
+
         st.write("")
         _, b_col1, b_col2, _ = st.columns([1.5, 1.75, 1.75, 0.1])
         with b_col1:
@@ -126,9 +142,10 @@ with tab_cad:
                         "Vendedor": st.session_state.f_vend.upper(), "Data_Mat": st.session_state.f_data
                     }
                     st.session_state.lista_previa.append(aluno)
-                    # Limpeza seletiva: limpa dados do aluno, mantém Cidade, Vendedor e Data
-                    for k in ["f_id", "f_nome", "f_tel_resp", "f_tel_aluno", "f_cpf", "input_curso_key", "f_pagto"]:
-                        st.session_state[k] = ""
+                    # Limpeza seletiva (conforme regra)
+                    for k in ["f_id", "f_nome", "f_tel_resp", "f_tel_aluno", "f_cpf", "input_curso_key", "f_pagto", "chk_1", "chk_2", "chk_3"]:
+                        if k in ["chk_1", "chk_2", "chk_3"]: st.session_state[k] = False
+                        else: st.session_state[k] = ""
                     st.rerun()
 
         with b_col2:
@@ -146,7 +163,6 @@ with tab_cad:
                         for a in st.session_state.lista_previa:
                             col_d = "SIM" if "10 CURSOS PROFISSIONALIZANTES" in a["Curso"].upper() else "NÃO"
                             col_e = "A DEFINIR" if "INGLÊS" in a["Curso"].upper() else "NÃO"
-                            # Mapeamento A-P
                             linha = ["ATIVO", "MGA", "A DEFINIR", col_d, col_e, hoje, 
                                      a["ID"], a["Aluno"], a["Tel_Resp"], a["Tel_Aluno"], a["CPF"], 
                                      a["Cidade"], a["Curso"], a["Pagto"], a["Vendedor"], a["Data_Mat"]]
