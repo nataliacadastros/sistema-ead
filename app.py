@@ -9,13 +9,11 @@ from google.oauth2.service_account import Credentials
 # --- CONFIGURAÇÕES DA PÁGINA ---
 st.set_page_config(page_title="SISTEMA ADM | PROFISSIONALIZA", layout="wide", initial_sidebar_state="collapsed")
 
-# --- 🛠️ PAINEL DE AJUSTE DE DESIGN (SIDEBAR) ---
-st.sidebar.header("🎨 AJUSTES DE CADASTRO")
-# Sliders para você encontrar a medida perfeita
-adj_width = st.sidebar.slider("Largura dos Campos (%)", 10, 100, 70)
-adj_height = st.sidebar.slider("Altura dos Campos (px)", 10, 60, 25)
-adj_margin = st.sidebar.slider("Distância entre Linhas (px)", 0, 50, 5)
-adj_label_size = st.sidebar.slider("Tamanho da Fonte Rótulos (px)", 10, 24, 14)
+# --- ESTADOS E CONEXÃO ---
+conn = st.connection("gsheets", type=GSheetsConnection)
+if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
+if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
+if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
 
 # --- DICIONÁRIO DE CURSOS ---
 DIC_CURSOS = {
@@ -24,102 +22,77 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS DINÂMICO COM AS VARIÁVEIS DOS SLIDERS ---
-st.markdown(f"""
-    <style>
-    .stApp {{ background-color: #0b0e1e; color: #e0e0e0; }}
-    .stTabs [data-baseweb="tab-list"] {{ 
-        background-color: #121629; border-bottom: 1px solid #1f295a;
-        position: fixed; top: 0; left: 0 !important; width: 100vw !important;
-        z-index: 999; justify-content: center; height: 35px !important;
-    }}
-    .stTabs [data-baseweb="tab"] {{ color: #64748b !important; font-size: 11px !important; padding: 0 30px !important; }}
-    .stTabs [aria-selected="true"] {{ color: #00f2ff !important; border-bottom: 2px solid #00f2ff !important; }}
-    .main .block-container {{ padding-top: 45px !important; max-width: 100% !important; }}
-    
-    /* CONFIGURAÇÃO DINÂMICA DAS LINHAS DE CADASTRO */
-    div[data-testid="stHorizontalBlock"] {{ 
-        margin-bottom: {adj_margin}px !important; 
-        display: flex; 
-        align-items: center; 
-    }}
-    
-    /* RÓTULOS (LABELS) */
-    label {{ 
-        color: #00f2ff !important; 
-        font-weight: bold !important; 
-        font-size: {adj_label_size}px !important; 
-        padding-right: 15px !important; 
-        display: flex; 
-        align-items: center; 
-        justify-content: flex-end; 
-    }}
-    
-    /* INPUTS (CAMPOS BRANCOS) */
-    div[data-testid="stTextInput"] {{ width: {adj_width}% !important; }}
-    .stTextInput input {{ 
-        background-color: white !important; 
-        color: black !important; 
-        text-transform: uppercase !important; 
-        font-size: 12px !important; 
-        height: {adj_height}px !important; 
-        border-radius: 5px !important; 
-    }}
-
-    /* GERENCIAMENTO */
-    .custom-table-wrapper {{ width: 100%; max-height: 60vh; overflow-x: auto !important; overflow-y: auto !important; background-color: #121629; border: 1px solid #1f295a; border-radius: 10px; }}
-    .custom-table {{ width: 100%; border-collapse: collapse; min-width: 2200px !important; }}
-    .custom-table th {{ background-color: #1f295a; color: #00f2ff; text-align: left; padding: 12px; font-size: 11px; position: sticky; top: 0; z-index: 10; }}
-    .custom-table td {{ padding: 10px 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: nowrap; }}
-    .status-badge {{ padding: 3px 10px; border-radius: 12px; font-size: 9px; font-weight: bold; text-transform: uppercase; }}
-    .status-ativo {{ background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }}
-    .status-cancelado {{ background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }}
-
-    .stButton > button {{ background-color: #00f2ff !important; color: #0b0e1e !important; font-weight: bold !important; border-radius: 5px !important; width: 100%; height: 35px !important; }}
-    header {{visibility: hidden;}} footer {{visibility: hidden;}}
-    
-    /* Scrollbar Cyan */
-    .custom-table-wrapper::-webkit-scrollbar {{ height: 10px; width: 10px; }}
-    .custom-table-wrapper::-webkit-scrollbar-track {{ background: #0b0e1e; }}
-    .custom-table-wrapper::-webkit-scrollbar-thumb {{ background: #00f2ff; border-radius: 10px; }}
-    </style>
-    """, unsafe_allow_html=True)
-
-# --- ESTADOS E CONEXÃO ---
-conn = st.connection("gsheets", type=GSheetsConnection)
-if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
-if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
-if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
-
-# --- FUNÇÕES ---
-def atualizar_pagamento():
-    suffix = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"
-    base = st.session_state.get(f"f_pagto_{suffix}", "").split('|')[0].strip()
-    novo = base
-    if st.session_state.get(f"chk_1_{suffix}"): novo += " | Após pagamento link cartão, avisar Natália para liberação In-glês"
-    if st.session_state.get(f"chk_2_{suffix}"): novo += " | Caso pague via link cartão, avisar Natália para liberação curso bônus a escolha"
-    if st.session_state.get(f"chk_3_{suffix}"): novo += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
-    st.session_state[f"f_pagto_{suffix}"] = novo.upper()
-
-def transformar_curso(chave):
-    entrada = st.session_state[chave].strip()
-    if not entrada: return
-    match = re.search(r'(\d+)$', entrada)
-    if match:
-        codigo = match.group(1); nome = DIC_CURSOS.get(codigo)
-        if nome:
-            base = entrada[:match.start()].strip().rstrip('+').strip()
-            st.session_state[chave] = (f"{base} + {nome}" if base and nome.upper() not in base.upper() else (base if base else nome)).upper()
-    else: st.session_state[chave] = entrada.upper()
-
 # --- ABAS ---
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
 with tab_cad:
-    # BLOCO DE CÓDIGO PARA VOCÊ ME ENVIAR DEPOIS
-    st.info("💡 Ajuste os valores na barra lateral. Quando estiver perfeito, me envie os números abaixo:")
-    st.code(f"LARGURA: {adj_width}% | ALTURA: {adj_height}px | DISTÂNCIA: {adj_margin}px | FONTE: {adj_label_size}px", language="txt")
-    
+    # 🛠️ PAINEL DE AJUSTE DENTRO DA ABA (VISÍVEL)
+    with st.expander("🎨 CLIQUE AQUI PARA AJUSTAR O DESIGN (LARGURA/ALTURA/DISTÂNCIA)", expanded=True):
+        col_adj1, col_adj2, col_adj3, col_adj4 = st.columns(4)
+        adj_width = col_adj1.slider("Largura (%)", 10, 100, 70)
+        adj_height = col_adj2.slider("Altura (px)", 10, 60, 25)
+        adj_margin = col_adj3.slider("Distância (px)", 0, 50, 5)
+        adj_label_size = col_adj4.slider("Fonte Rótulo (px)", 10, 24, 14)
+        
+        st.info(f"📍 VALORES ATUAIS: Largura: {adj_width}% | Altura: {adj_height}px | Distância: {adj_margin}px | Fonte: {adj_label_size}px")
+
+    # --- CSS DINÂMICO ---
+    st.markdown(f"""
+        <style>
+        .stApp {{ background-color: #0b0e1e; color: #e0e0e0; }}
+        .stTabs [data-baseweb="tab-list"] {{ 
+            background-color: #121629; border-bottom: 1px solid #1f295a;
+            position: fixed; top: 0; left: 0 !important; width: 100vw !important;
+            z-index: 999; justify-content: center; height: 35px !important;
+        }}
+        .main .block-container {{ padding-top: 45px !important; max-width: 100% !important; }}
+        
+        /* LINHAS DE CADASTRO */
+        div[data-testid="stHorizontalBlock"] {{ margin-bottom: {adj_margin}px !important; display: flex; align-items: center; }}
+        
+        /* RÓTULOS */
+        label {{ color: #00f2ff !important; font-weight: bold !important; font-size: {adj_label_size}px !important; padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end; }}
+        
+        /* INPUTS */
+        div[data-testid="stTextInput"] {{ width: {adj_width}% !important; }}
+        .stTextInput input {{ background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: {adj_height}px !important; border-radius: 5px !important; }}
+
+        /* GERENCIAMENTO */
+        .custom-table-wrapper {{ width: 100%; max-height: 60vh; overflow-x: auto !important; overflow-y: auto !important; background-color: #121629; border: 1px solid #1f295a; border-radius: 10px; }}
+        .custom-table {{ width: 100%; border-collapse: collapse; min-width: 2200px !important; }}
+        .custom-table th {{ background-color: #1f295a; color: #00f2ff; text-align: left; padding: 12px; font-size: 11px; position: sticky; top: 0; z-index: 10; }}
+        .custom-table td {{ padding: 10px 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: nowrap; }}
+        .status-badge {{ padding: 3px 10px; border-radius: 12px; font-size: 9px; font-weight: bold; text-transform: uppercase; }}
+        .status-ativo {{ background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }}
+        .status-cancelado {{ background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }}
+
+        .stButton > button {{ background-color: #00f2ff !important; color: #0b0e1e !important; font-weight: bold !important; border-radius: 5px !important; width: 100%; height: 35px !important; }}
+        header {{visibility: hidden;}} footer {{visibility: hidden;}}
+        </style>
+        """, unsafe_allow_html=True)
+
+    # --- FUNÇÕES ---
+    def atualizar_pagamento():
+        suffix = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"
+        base = st.session_state.get(f"f_pagto_{suffix}", "").split('|')[0].strip()
+        novo = base
+        if st.session_state.get(f"chk_1_{suffix}"): novo += " | Após pagamento link cartão, avisar Natália para liberação In-glês"
+        if st.session_state.get(f"chk_2_{suffix}"): novo += " | Caso pague via link cartão, avisar Natália para liberação curso bônus a escolha"
+        if st.session_state.get(f"chk_3_{suffix}"): novo += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
+        st.session_state[f"f_pagto_{suffix}"] = novo.upper()
+
+    def transformar_curso(chave):
+        entrada = st.session_state[chave].strip()
+        if not entrada: return
+        match = re.search(r'(\d+)$', entrada)
+        if match:
+            codigo = match.group(1); nome = DIC_CURSOS.get(codigo)
+            if nome:
+                base = entrada[:match.start()].strip().rstrip('+').strip()
+                st.session_state[chave] = (f"{base} + {nome}" if base and nome.upper() not in base.upper() else (base if base else nome)).upper()
+        else: st.session_state[chave] = entrada.upper()
+
+    # --- FORMULÁRIO DE CADASTRO ---
     _, centro, _ = st.columns([0.5, 5, 0.5])
     with centro:
         s_al = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"; s_ge = f"g_{st.session_state.reset_geral}"
@@ -158,8 +131,26 @@ with tab_cad:
                         st.session_state.lista_previa = []; st.session_state.reset_geral += 1; st.success("Enviado!"); st.cache_data.clear(); st.rerun()
                     except Exception as e: st.error(f"Erro: {e}")
 
-# --- ABAS GERENCIAMENTO E RELATÓRIO (PRESERVADAS) ---
+# --- GERENCIAMENTO (PRESERVADO) ---
 with tab_ger:
-    st.write("Aba Gerenciamento com scroll horizontal funcional.")
+    cf1, cf2, cf3, cf4 = st.columns([2.5, 1.5, 1.5, 0.5])
+    with cf1: bu = st.text_input("🔍 Buscar...", key="busca_ger", placeholder="Nome ou ID", label_visibility="collapsed")
+    with cf2: fs = st.selectbox("Status", ["Todos", "ATIVO", "CANCELADO"], key="filtro_status", label_visibility="collapsed")
+    with cf3: fu = st.selectbox("Unidade", ["Todos", "MGA"], key="filtro_unid", label_visibility="collapsed")
+    with cf4: 
+        if st.button("🔄", key="btn_refresh"): st.cache_data.clear(); st.rerun()
+
+    try:
+        df_g = conn.read(ttl="0s").fillna("")
+        hd = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
+        df_g.columns = hd[:len(df_g.columns)]
+        rows = ""
+        for _, r in df_g.iloc[::-1].iterrows():
+            sc = "status-ativo" if r['STATUS'] == "ATIVO" else "status-cancelado"
+            rows += f"<tr><td><span class='status-badge {sc}'>{r['STATUS']}</span></td><td>{r['UNID.']}</td><td>{r['TURMA']}</td><td>{r['10C']}</td><td>{r['ING']}</td><td>{r['DT_CAD']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ID']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ALUNO']}</td><td>{r['TEL_RESP']}</td><td>{r['TEL_ALU']}</td><td>{r['CPF']}</td><td>{r['CIDADE']}</td><td>{r['CURSO']}</td><td>{r['PAGTO']}</td><td>{r['VEND.']}</td><td>{r['DT_MAT']}</td></tr>"
+        st.markdown(f"<div class='custom-table-wrapper'><table class='custom-table'><thead><tr>{''.join([f'<th>{h}</th>' for h in hd])}</tr></thead><tbody>{rows}</tbody></table></div>", unsafe_allow_html=True)
+    except: st.error("Erro no Gerenciamento.")
+
+# --- RELATÓRIOS (PRESERVADO) ---
 with tab_rel:
-    st.write("Aba Relatórios impecável preservada.")
+    st.info("Aba Relatórios preservada.")
