@@ -17,10 +17,6 @@ DIC_CURSOS = {
 # --- INICIALIZAÇÃO DE VARIÁVEIS DE PERSONALIZAÇÃO ---
 if "cfg_input_height" not in st.session_state: st.session_state.cfg_input_height = 25
 if "cfg_input_width" not in st.session_state: st.session_state.cfg_input_width = 100
-if "cfg_dist_check" not in st.session_state: st.session_state.cfg_dist_check = 20
-if "cfg_dist_btn" not in st.session_state: st.session_state.cfg_dist_btn = 30
-if "cfg_pos_check" not in st.session_state: st.session_state.cfg_pos_check = 80
-if "cfg_pos_btn" not in st.session_state: st.session_state.cfg_pos_btn = 100
 
 # --- CSS DINÂMICO ---
 st.markdown(f"""
@@ -30,7 +26,7 @@ st.markdown(f"""
     .stTabs [data-baseweb="tab"] {{ color: #ffffff !important; font-weight: 600; padding: 0px 30px; }}
     .stTabs [aria-selected="true"] {{ background-color: #2c5282 !important; border-bottom: 4px solid #2ecc71 !important; }}
     
-    /* Inputs */
+    /* ESTE É O BLOCO QUE VOCÊ ESTÁ AJUSTANDO */
     div[data-testid="stTextInput"] > div {{ 
         min-height: {st.session_state.cfg_input_height}px !important; 
         height: {st.session_state.cfg_input_height}px !important;
@@ -45,34 +41,13 @@ st.markdown(f"""
     
     .stCheckbox label p {{ color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; white-space: nowrap; }}
     
-    /* Botões de Ação */
     div.stButton > button {{
         background-color: #2ecc71 !important; color: white !important; font-weight: bold !important;
-        height: 40px !important; width: auto !important; border: none !important; border-radius: 5px !important;
+        height: 40px !important; width: 100% !important; border: none !important; border-radius: 5px !important;
         display: flex !important; align-items: center !important; justify-content: center !important;
-        padding: 0px 25px !important; white-space: nowrap !important; font-size: 13px !important;
+        white-space: nowrap !important; font-size: 13px !important;
     }}
-
-    /* Container de Alinhamento para Checkboxes (Área Vermelha) */
-    .container-vermelho {{
-        display: flex !important;
-        flex-direction: row !important;
-        justify-content: flex-start !important;
-        padding-left: {st.session_state.cfg_pos_check}px !important;
-        gap: {st.session_state.cfg_dist_check}px !important;
-        margin-top: 10px;
-    }}
-
-    /* Container de Alinhamento para Botões de Ação (Área Amarela) */
-    .container-amarelo {{
-        display: flex !important;
-        flex-direction: row !important;
-        justify-content: flex-start !important;
-        padding-left: {st.session_state.cfg_pos_btn}px !important;
-        gap: {st.session_state.cfg_dist_btn}px !important;
-        margin-top: 20px;
-    }}
-
+    
     header {{visibility: hidden;}} footer {{visibility: hidden;}}
     </style>
     """, unsafe_allow_html=True)
@@ -107,14 +82,13 @@ def processar_pagto():
     st.session_state.val_pagto = f"{base} | {' | '.join(obs)}" if obs else base
     st.session_state.input_pagto_key = st.session_state.val_pagto
 
-# --- UI - ABAS ---
+# --- UI ---
 tab_cad, tab_ger, tab_rel, tab_cfg = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "⚙️ AJUSTES"])
 
 with tab_cad:
     _, col_central, _ = st.columns([0.5, 3, 0.5])
     with col_central:
         st.write("")
-        # Frame de preenchimento (Mantendo ID, Aluno, etc.)
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>ID:</label>", unsafe_allow_html=True); c2.text_input("ID", key="f_id", label_visibility="collapsed")
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>ALUNO:</label>", unsafe_allow_html=True); c2.text_input("ALUNO", key="f_nome", label_visibility="collapsed")
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>CIDADE:</label>", unsafe_allow_html=True); c2.text_input("CIDADE", key="f_cid", label_visibility="collapsed")
@@ -123,51 +97,48 @@ with tab_cad:
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>VENDEDOR:</label>", unsafe_allow_html=True); c2.text_input("VENDEDOR", key="f_vend", label_visibility="collapsed")
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>DATA:</label>", unsafe_allow_html=True); c2.text_input("DATA", key="f_data", value=date.today().strftime("%d/%m/%Y"), label_visibility="collapsed")
 
-        # --- ÁREA VERMELHA (CHECKBOXES) ---
-        # Criamos o container HTML e injetamos os componentes dentro
-        st.markdown('<div class="container-vermelho">', unsafe_allow_html=True)
-        col_c1, col_c2, col_c3 = st.columns([1,1,1]) # Colunas internas apenas para segurar os widgets
-        with col_c1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
-        with col_c2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
-        with col_c3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.write("")
+        recuo, area_botoes = st.columns([1.2, 4])
+        with area_botoes:
+            s1, s2, s3 = st.columns(3)
+            with s1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
+            with s2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
+            with s3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
 
-        # --- ÁREA AMARELA (BOTÕES DE AÇÃO) ---
-        st.markdown('<div class="container-amarelo">', unsafe_allow_html=True)
-        col_b1, col_b2 = st.columns([1,1])
-        with col_b1:
-            if st.button("💾 SALVAR ALUNO"):
-                if st.session_state.f_nome:
-                    aluno = {"ID": st.session_state.f_id.upper(), "Aluno": st.session_state.f_nome.upper(), "Cidade": st.session_state.f_cid.upper(), "Curso": st.session_state.input_curso_key.strip(), "Pagamento": st.session_state.input_pagto_key.upper(), "Vendedor": st.session_state.f_vend.upper(), "Data": st.session_state.f_data}
-                    st.session_state.lista_previa.append(aluno); st.session_state.val_curso = ""; st.session_state.val_pagto = ""; st.session_state.f_nome = ""; st.session_state.f_id = ""; st.rerun()
-        with col_b2:
-            if st.button("📤 ENVIAR PLANILHA"):
-                if st.session_state.lista_previa:
-                    df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa); conn.update(data=pd.concat([df_old, df_new], ignore_index=True)); st.session_state.lista_previa = []; st.success("Enviado!"); st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.write("")
+        recuo_btn, area_acao = st.columns([1.2, 4])
+        with area_acao:
+            b1, b2 = st.columns(2)
+            with b1:
+                if st.button("💾 SALVAR ALUNO"):
+                    if st.session_state.f_nome:
+                        aluno = {"ID": st.session_state.f_id.upper(), "Aluno": st.session_state.f_nome.upper(), "Cidade": st.session_state.f_cid.upper(), "Curso": st.session_state.input_curso_key.strip(), "Pagamento": st.session_state.input_pagto_key.upper(), "Vendedor": st.session_state.f_vend.upper(), "Data": st.session_state.f_data}
+                        st.session_state.lista_previa.append(aluno); st.session_state.val_curso = ""; st.session_state.val_pagto = ""; st.session_state.f_nome = ""; st.session_state.f_id = ""; st.rerun()
+            with b2:
+                if st.button("📤 ENVIAR PLANILHA"):
+                    if st.session_state.lista_previa:
+                        df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa); conn.update(data=pd.concat([df_old, df_new], ignore_index=True)); st.session_state.lista_previa = []; st.success("Enviado!"); st.rerun()
 
-# --- ABA: AJUSTES ---
+# --- ABA DE AJUSTES ---
 with tab_cfg:
-    st.subheader("⚙️ Ajustes de Posição (Arraste para alinhar com as caixas vermelha/amarela)")
+    st.subheader("⚙️ Ajustes dos Campos de Texto")
     
-    col_x, col_y = st.columns(2)
-    with col_x:
-        st.markdown("### 🔴 Área Vermelha (Checkboxes)")
-        st.session_state.cfg_pos_check = st.slider("Mover Bloco (Esquerda/Direita)", 0, 800, st.session_state.cfg_pos_check, key="s1")
-        st.session_state.cfg_dist_check = st.slider("Espaçamento entre eles", 0, 200, st.session_state.cfg_dist_check, key="s2")
+    st.session_state.cfg_input_height = st.slider("Altura (px)", 20, 100, st.session_state.cfg_input_height)
+    st.session_state.cfg_input_width = st.slider("Largura (%)", 10, 100, st.session_state.cfg_input_width)
     
-    with col_y:
-        st.markdown("### 🟡 Área Amarela (Ações)")
-        st.session_state.cfg_pos_btn = st.slider("Mover Bloco (Esquerda/Direita)", 0, 800, st.session_state.cfg_pos_btn, key="s3")
-        st.session_state.cfg_dist_btn = st.slider("Espaçamento entre eles", 0, 300, st.session_state.cfg_dist_btn, key="s4")
+    st.write("---")
+    st.write("### 📋 COPIE O CÓDIGO ABAIXO E ME ENVIE:")
+    
+    # Gera o texto do código para você me enviar
+    codigo_gerado = f"""
+div[data-testid="stTextInput"] > div {{ 
+    min-height: {st.session_state.cfg_input_height}px !important; 
+    height: {st.session_state.cfg_input_height}px !important;
+    width: {st.session_state.cfg_input_width}% !important;
+}}
+"""
+    st.code(codigo_gerado, language="css")
 
-    st.markdown("---")
-    st.session_state.cfg_input_height = st.slider("Altura dos Campos de Texto", 20, 60, st.session_state.cfg_input_height)
-
-    if st.button("💾 Aplicar e Salvar Visual"):
-        st.rerun()
-
-# --- ABA GERENCIAMENTO ---
 with tab_ger:
     try:
         dados = conn.read(ttl="0s").fillna("")
