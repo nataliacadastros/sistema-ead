@@ -30,19 +30,31 @@ st.markdown("""
         display: flex; align-items: center; justify-content: flex-end; padding-right: 15px; height: 25px;
     }
     
-    /* Checkboxes: Letras verdes, sem quebra e distância mínima */
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; white-space: nowrap; }
     
-    /* Botões de Ação: Texto em linha única (sem quebra) */
+    /* BOTÕES DE AÇÃO: Centralização Total e Ajuste de Texto */
     div.stButton > button {
-        background-color: #2ecc71 !important; color: white !important; font-weight: bold !important;
-        height: 40px !important; border: none !important; border-radius: 5px !important;
-        padding: 0px 25px !important;
-        white-space: nowrap !important; /* FORÇA LINHA ÚNICA */
-        word-break: keep-all !important;
+        background-color: #2ecc71 !important; 
+        color: white !important; 
+        font-weight: bold !important;
+        height: 40px !important; 
+        width: 100% !important;
+        border: none !important; 
+        border-radius: 5px !important;
+        
+        /* Centralização do texto */
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+        
+        /* Evita que o texto vaze */
+        padding: 0px 10px !important;
+        white-space: nowrap !important;
+        font-size: 13px !important;
     }
     
-    /* Redução drástica da distância entre colunas para os checkboxes */
+    /* Redução de distância entre colunas */
     [data-testid="column"] { padding-left: 2px !important; padding-right: 2px !important; }
 
     header {visibility: hidden;} footer {visibility: hidden;}
@@ -88,7 +100,6 @@ with tab_cad:
     _, col_central, _ = st.columns([0.5, 3, 0.5])
     with col_central:
         st.write("")
-        # Frame de preenchimento (1.2 : 4)
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>ID:</label>", unsafe_allow_html=True); c2.text_input("ID", key="f_id", label_visibility="collapsed")
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>ALUNO:</label>", unsafe_allow_html=True); c2.text_input("ALUNO", key="f_nome", label_visibility="collapsed")
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>CIDADE:</label>", unsafe_allow_html=True); c2.text_input("CIDADE", key="f_cid", label_visibility="collapsed")
@@ -99,10 +110,9 @@ with tab_cad:
 
         st.write("")
         
-        # --- CHECKBOXES CENTRALIZADOS COM DISTÂNCIA MÍNIMA (0,5cm aprox.) ---
+        # Checkboxes (0.5cm aprox)
         recuo, area_botoes = st.columns([1.2, 4])
         with area_botoes:
-            # Molas maiores nas laterais aproximam os 3 botões no centro
             mola_esq, b1, b2, b3, mola_dir = st.columns([1.1, 1, 1, 1, 1.1], gap="small")
             with b1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
             with b2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
@@ -110,10 +120,11 @@ with tab_cad:
 
         st.write("")
         
-        # --- BOTÕES DE AÇÃO CENTRALIZADOS EM LINHA ÚNICA ---
+        # Botões de Ação Centralizados
         recuo_btn, area_acao = st.columns([1.2, 4])
         with area_acao:
-            m_esq, btn_salvar, btn_enviar, m_dir = st.columns([1.2, 1, 1, 1.2], gap="small")
+            # Proporção ajustada para os botões ficarem centralizados e o texto caber
+            m_esq, btn_salvar, btn_enviar, m_dir = st.columns([0.6, 1.4, 1.4, 0.6], gap="small")
             with btn_salvar:
                 if st.button("💾 SALVAR ALUNO"):
                     if st.session_state.f_nome:
