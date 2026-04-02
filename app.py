@@ -16,7 +16,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS ESTÉTICA HUD NEON COMPLETO ---
+# --- CSS ESTÉTICA HUD NEON ---
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e1e; color: #e0e0e0; }
@@ -36,29 +36,9 @@ st.markdown("""
     /* ESTILO CADASTRO */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 5px !important; display: flex; align-items: center; }
     div[data-testid="stTextInput"] > div { min-height: 25px !important; height: 25px !important; }
-    
-    label { 
-        color: #00f2ff !important; font-weight: bold !important; font-size: 14px !important; 
-        padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end;
-    }
-    
-    .stTextInput input { 
-        background-color: white !important; color: black !important; 
-        text-transform: uppercase !important; font-size: 12px !important; 
-        height: 25px !important; border-radius: 5px !important; 
-    }
-
-    /* Checkboxes Alinhados */
-    .stCheckbox { margin-top: 0px !important; display: flex; justify-content: center; }
+    label { color: #00f2ff !important; font-weight: bold !important; font-size: 14px !important; padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end; }
+    .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 25px !important; border-radius: 5px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
-
-    /* Botões de Ação */
-    .stButton > button { 
-        background-color: #00f2ff !important; color: #0b0e1e !important; 
-        font-weight: bold !important; border: none !important; border-radius: 5px !important; 
-        width: 100% !important; height: 35px !important;
-    }
-    .stButton > button:hover { background-color: #39ff14 !important; color: black !important; }
 
     /* CARDS RELATÓRIO HUD */
     .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 100px; display: flex; flex-direction: column; justify-content: center; }
@@ -74,6 +54,7 @@ st.markdown("""
     .hud-label { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); background: #121629; border: 1px solid currentColor; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
     .hud-city-name { position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
 
+    .stButton > button { background-color: #00f2ff !important; color: #0b0e1e !important; font-weight: bold !important; border: none !important; border-radius: 5px !important; width: 100%; height: 35px !important; }
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
@@ -130,64 +111,64 @@ tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "
 with tab_cad:
     _, centro, _ = st.columns([0.5, 5, 0.5])
     with centro:
-        # Formulário de entrada
-        campos = [
-            ("ID:", "f_id"), ("ALUNO:", "f_nome"), ("CIDADE:", "f_cid"), 
-            ("CURSO:", "input_curso_key"), ("PAGAMENTO:", "input_pagto_key"), 
-            ("VENDEDOR:", "f_vend"), ("DATA MATRÍCULA:", "f_data")
-        ]
-        
+        campos = [("ID:", "f_id"), ("ALUNO:", "f_nome"), ("CIDADE:", "f_cid"), 
+                  ("CURSO:", "input_curso_key"), ("PAGAMENTO:", "input_pagto_key"), 
+                  ("VENDEDOR:", "f_vend"), ("DATA MATRÍCULA:", "f_data")]
         for label, key in campos:
             c_lab, c_inp = st.columns([1.5, 3.5]) 
             c_lab.markdown(f"<label>{label}</label>", unsafe_allow_html=True)
-            
-            if key == "input_curso_key":
-                c_inp.text_input(label, key=key, value=st.session_state.val_curso, on_change=transformar_curso, label_visibility="collapsed")
-            elif key == "input_pagto_key":
-                c_inp.text_input(label, key=key, value=st.session_state.val_pagto, label_visibility="collapsed")
-            elif key == "f_data":
-                c_inp.text_input(label, key=key, value=date.today().strftime("%d/%m/%Y"), label_visibility="collapsed")
-            else:
-                c_inp.text_input(label, key=key, label_visibility="collapsed")
+            if key == "input_curso_key": c_inp.text_input(label, key=key, value=st.session_state.val_curso, on_change=transformar_curso, label_visibility="collapsed")
+            elif key == "input_pagto_key": c_inp.text_input(label, key=key, value=st.session_state.val_pagto, label_visibility="collapsed")
+            elif key == "f_data": c_inp.text_input(label, key=key, value=date.today().strftime("%d/%m/%Y"), label_visibility="collapsed")
+            else: c_inp.text_input(label, key=key, label_visibility="collapsed")
         
-        # Checkboxes (S1, S2, S3) Alinhados
         st.write("")
         _, c_c1, c_c2, c_c3, _ = st.columns([1.5, 1.1, 1.2, 1.2, 0.1])
         with c_c1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
         with c_c2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
         with c_c3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
         
-        # Botões de Ação
         st.write("")
         _, b_col1, b_col2, _ = st.columns([1.5, 1.75, 1.75, 0.1])
         with b_col1:
             if st.button("💾 SALVAR ALUNO"):
                 if st.session_state.f_nome:
-                    aluno = {
-                        "ID": st.session_state.f_id.upper(), 
-                        "Aluno": st.session_state.f_nome.upper(), 
-                        "Cidade": st.session_state.f_cid.upper(), 
-                        "Curso": st.session_state.input_curso_key.strip(), 
-                        "Pagamento": st.session_state.input_pagto_key.upper(), 
-                        "Vendedor": st.session_state.f_vend.upper(), 
-                        "Data Matrícula": st.session_state.f_data,
-                        "STATUS": "ATIVO" # Status padrão para novos cadastros
-                    }
+                    aluno = {"ID": st.session_state.f_id.upper(), "Aluno": st.session_state.f_nome.upper(), 
+                             "Cidade": st.session_state.f_cid.upper(), "Curso": st.session_state.input_curso_key.strip(), 
+                             "Pagamento": st.session_state.input_pagto_key.upper(), "Vendedor": st.session_state.f_vend.upper(), 
+                             "Data Matrícula": st.session_state.f_data, "STATUS": "ATIVO"}
                     st.session_state.lista_previa.append(aluno)
                     st.rerun()
         with b_col2:
             if st.button("📤 ENVIAR PLANILHA"):
                 if st.session_state.lista_previa:
-                    df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa)
-                    conn.update(data=pd.concat([df_old, df_new], ignore_index=True))
-                    st.session_state.lista_previa = []; st.success("Banco de Dados Atualizado!"); st.rerun()
-        
-        # Tabela de Pré-visualização com Cabeçalhos
+                    try:
+                        # ACESSO DIRETO VIA GSPREAD PARA EVITAR ERRO DE ATUALIZAÇÃO
+                        sh = conn._instance.client.open_by_url(st.secrets["connections"]["gsheets"]["spreadsheet"])
+                        worksheet = sh.get_worksheet(0)
+                        
+                        df_new = pd.DataFrame(st.session_state.lista_previa)
+                        novos_dados = df_new.values.tolist()
+                        
+                        # Localiza última linha preenchida na Coluna A
+                        col_a_values = worksheet.col_values(1)
+                        ultima_linha_real = len(col_a_values)
+                        
+                        # Regra: Localizar última > Pular uma > Adicionar
+                        linha_inicio = ultima_linha_real + 2 if ultima_linha_real > 0 else 2
+                        
+                        worksheet.insert_rows(novos_dados, row=linha_inicio)
+                        st.session_state.lista_previa = []
+                        st.success(f"Dados inseridos com sucesso a partir da linha {linha_inicio}!")
+                        st.cache_data.clear()
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erro ao enviar: {e}")
+
         st.write("---")
         st.markdown("<p style='color:#00f2ff; font-weight:bold; text-align:center;'>LISTA DE PRÉ-VISUALIZAÇÃO</p>", unsafe_allow_html=True)
         if st.session_state.lista_previa:
-            df_previa = pd.DataFrame(st.session_state.lista_previa)
-            st.dataframe(df_previa, use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
         else:
             st.info("Nenhum aluno na lista de espera.")
 
@@ -200,7 +181,7 @@ with tab_ger:
             if "ID" in dados.columns: dados["ID"] = dados["ID"].astype(str).str.replace(r'\.0$', '', regex=True)
             st.dataframe(dados.iloc[::-1], use_container_width=True, hide_index=True, height=500)
             if st.button("🔄 REFRESH DATABASE"): st.cache_data.clear(); st.rerun()
-    except: st.error("Erro na conexão com a planilha.")
+    except: st.error("Erro na conexão.")
 
 # --- ABA 3: RELATÓRIOS ---
 with tab_rel:
@@ -214,13 +195,11 @@ with tab_rel:
             col_data = "Data Matrícula"
             df_rel[col_data] = pd.to_datetime(df_rel[col_data], dayfirst=True, errors='coerce')
             
-            st.markdown("<small style='color:#64748b'>PERIODIC FILTER</small>", unsafe_allow_html=True)
-            intervalo = st.date_input("Filtro", value=(date.today()-timedelta(days=7), date.today()), format="DD/MM/YYYY", label_visibility="collapsed")
+            intervalo = st.date_input("Filtro", value=(date.today()-timedelta(days=7), date.today()), format="DD/MM/YYYY")
             
-            if isinstance(intervalo, (tuple, list)) and len(intervalo) == 2:
+            if len(intervalo) == 2:
                 df_f = df_rel.loc[(df_rel[col_data].dt.date >= intervalo[0]) & (df_rel[col_data].dt.date <= intervalo[1])].copy()
                 
-                # Cálculos Financeiros
                 df_f['Valor_Recebido'] = df_f['Pagamento'].apply(extrair_valor_recebido)
                 total_rec = df_f['Valor_Recebido'].sum()
                 df_f['Valor_Ticket'] = df_f['Pagamento'].apply(extrair_valor_geral)
@@ -229,8 +208,6 @@ with tab_rel:
                 tm_bol = df_bol['Valor_Ticket'].mean() if not df_bol.empty else 0.0
                 tm_car = df_car['Valor_Ticket'].mean() if not df_car.empty else 0.0
 
-                # CARDS KPI
-                st.write("")
                 c1, c2, c3, c4, c5, c6 = st.columns(6)
                 with c1: st.markdown(f'<div class="card-hud neon-pink"><small>Mats</small><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
                 with c2: 
@@ -246,7 +223,6 @@ with tab_rel:
                     st.markdown(f'<div class="card-hud neon-blue"><small>Top Captador</small><h2 style="font-size:14px">{top_v}</h2></div>', unsafe_allow_html=True)
 
                 st.write("---")
-                # GEOLOCATION ANALYTICS
                 df_cid_v = df_f['Cidade'].value_counts().head(4)
                 if not df_cid_v.empty:
                     st.markdown("<small style='color:#00f2ff'>▸ GEOLOCATION ANALYTICS</small>", unsafe_allow_html=True)
@@ -254,31 +230,20 @@ with tab_rel:
                     seg_html = ""
                     for i, (nome, qtd) in enumerate(df_cid_v.items()):
                         percent = (qtd / total_c) * 100; cor = cores[i % 4]
-                        seg_html += f'''
-                        <div class="hud-segment" style="width: {percent}%; background: {cor}; box-shadow: 0 0 10px {cor}80;">
-                            <div class="hud-label" style="color: {cor};">{qtd}</div>
-                            <div class="hud-city-name" style="color: {cor};">{nome}</div>
-                        </div>'''
+                        seg_html += f'<div class="hud-segment" style="width: {percent}%; background: {cor}; box-shadow: 0 0 10px {cor}80;"><div class="hud-label" style="color: {cor};">{qtd}</div><div class="hud-city-name" style="color: {cor};">{nome}</div></div>'
                     st.markdown(f'<div class="hud-bar-container">{seg_html}</div>', unsafe_allow_html=True)
                 
                 col_g1, col_g2 = st.columns(2)
                 with col_g1:
-                    st.markdown("<small style='color:#64748b'>QUANTIDADE POR STATUS</small>", unsafe_allow_html=True)
                     counts = df_f['STATUS'].str.upper().value_counts()
-                    fig_p = go.Figure(data=[go.Pie(labels=counts.index, values=counts.values, hole=0.5, 
-                        marker=dict(colors=['#2ecc71', '#ff4b4b', '#00f2ff'], line=dict(color='#0b0e1e', width=3)),
-                        textinfo='label+value', textfont=dict(size=14, color="white"))])
+                    fig_p = go.Figure(data=[go.Pie(labels=counts.index, values=counts.values, hole=0.5, marker=dict(colors=['#2ecc71', '#ff4b4b', '#00f2ff'], line=dict(color='#0b0e1e', width=3)), textinfo='label+value')])
                     fig_p.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', showlegend=False, height=400)
                     st.plotly_chart(fig_p, use_container_width=True)
-                    
                 with col_g2:
-                    st.markdown("<small style='color:#64748b'>PERFORMANCE POR DIVULGADOR</small>", unsafe_allow_html=True)
-                    df_v = df_f['Vendedor'].value_counts().reset_index()
+                    df_v = df_f['Vendedor'].value_counts().reset_index().head(5)
                     df_v.columns = ['Vendedor', 'Quantidade']
-                    fig_v = px.line(df_v.head(5), x='Vendedor', y='Quantidade', markers=True, text='Vendedor')
-                    fig_v.update_traces(line_color='#00f2ff', marker=dict(size=10, color='#ff007a', line=dict(width=2, color='white')),
-                                        textposition="top center", mode='lines+markers+text')
-                    fig_v.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
-                                        height=400, xaxis=dict(showgrid=False, showticklabels=False), yaxis=dict(showgrid=True, gridcolor='#1f295a'))
+                    fig_v = px.line(df_v, x='Vendedor', y='Quantidade', markers=True, text='Vendedor')
+                    fig_v.update_traces(line_color='#00f2ff', marker=dict(size=10, color='#ff007a', line=dict(width=2, color='white')), textposition="top center", mode='lines+markers+text')
+                    fig_v.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=400, xaxis=dict(showgrid=False, showticklabels=False))
                     st.plotly_chart(fig_v, use_container_width=True)
     except Exception as e: st.error(f"Erro: {e}")
