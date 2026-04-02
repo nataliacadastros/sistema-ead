@@ -16,7 +16,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS CONSOLIDADO (EFEITOS TECH + MEDIDAS EXATAS) ---
+# --- CSS CONSOLIDADO (MEDIDAS EXATAS + EFEITOS TECH) ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
@@ -32,39 +32,43 @@ st.markdown("""
     
     .main .block-container { padding-top: 38px !important; max-width: 1100px !important; margin: 0 auto !important; }
 
-    /* CAMPOS DE CADASTRO */
+    /* CAMPOS DE CADASTRO (PADRÃO 25PX) */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 3px !important; display: flex; align-items: center; justify-content: center; }
     div[data-testid="stTextInput"] > div { min-height: 25px !important; height: 25px !important; width: 100% !important; }
     label { color: #2ecc71 !important; font-weight: bold !important; font-size: 15px !important; padding-right: 15px !important; height: 25px !important; display: flex; align-items: center; justify-content: flex-end; }
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 25px !important; border-radius: 5px !important; }
 
-    /* CARDS TECH (RELATÓRIO) */
+    /* CARDS DE INDICADORES (RELATÓRIO) */
     .card-tech {
         background-color: #1a3a5a; 
         padding: 15px; 
         border-radius: 10px; 
         text-align: center; 
-        border-bottom: 4px solid #2ecc71;
-        box-shadow: 0px 4px 15px rgba(46, 204, 113, 0.2);
+        border-bottom: 4px solid #00f2ff;
+        box-shadow: 0px 4px 15px rgba(0, 242, 255, 0.1);
     }
     .card-tech small { color: #bdc3c7; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; }
-    .card-tech h2 { margin: 5px 0 0 0; color: white; font-size: 28px; }
+    .card-tech h2 { margin: 5px 0 0 0; color: white; font-size: 26px; }
 
+    /* BOTÕES */
     .stButton > button { background-color: #2ecc71 !important; color: white !important; font-weight: bold !important; border-radius: 5px !important; }
+    div[data-testid="column"] .stButton > button { height: 40px !important; width: 90% !important; }
+    
+    /* ESCONDER INTERFACE PADRÃO */
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
-# --- CONEXÃO ---
+# --- CONEXÃO E CACHE ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "val_curso" not in st.session_state: st.session_state.val_curso = ""
 if "val_pagto" not in st.session_state: st.session_state.val_pagto = ""
 
-# --- FUNÇÕES ---
+# --- FUNÇÕES DE APOIO ---
 def transformar_curso():
     entrada = st.session_state.input_curso_key.strip()
-    if not entrada: st.session_state.val_curso = ""; st.session_state.input_curso_key = ""; return
+    if not entrada: st.session_state.val_curso = ""; return
     match = re.search(r'(\d+)$', entrada)
     if match:
         codigo = match.group(1); nome = DIC_CURSOS.get(codigo)
@@ -79,16 +83,16 @@ def transformar_curso():
 def processar_pagto():
     base = st.session_state.input_pagto_key.split(" | ")[0].strip().upper()
     obs = []
-    if st.session_state.chk_1: obs.append("APÓS PAGAMENTO LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO IN-GLÊS")
-    if st.session_state.chk_2: obs.append("CASO PAGUE VIA LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO CURSO BÔNUS A ESCOLHA")
-    if st.session_state.chk_3: obs.append("AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA")
+    if st.session_state.chk_1: obs.append("AVISAR NATÁLIA: LIBERAÇÃO IN-GLÊS")
+    if st.session_state.chk_2: obs.append("AVISAR NATÁLIA: CURSO BÔNUS")
+    if st.session_state.chk_3: obs.append("AGUARDANDO CONFIRMAÇÃO")
     st.session_state.val_pagto = f"{base} | {' | '.join(obs)}" if obs else base
     st.session_state.input_pagto_key = st.session_state.val_pagto
 
-# --- UI PRINCIPAL ---
+# --- ABAS PRINCIPAIS ---
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
-# --- ABA 1: CADASTRO (FICA COMO ESTÁ) ---
+# --- CONTEÚDO CADASTRO ---
 with tab_cad:
     _, centro, _ = st.columns([0.5, 5, 0.5])
     with centro:
@@ -109,13 +113,13 @@ with tab_cad:
         st.write("")
         _, b_l, b_r, _ = st.columns([0.5, 2, 2, 0.5])
         with b_l:
-            if st.button("💾 SALVAR ALUNO", key="btn_salvar"):
+            if st.button("💾 SALVAR ALUNO"):
                 if st.session_state.f_nome:
                     aluno = {"ID": st.session_state.f_id.upper(), "Aluno": st.session_state.f_nome.upper(), "Cidade": st.session_state.f_cid.upper(), "Curso": st.session_state.input_curso_key.strip(), "Pagamento": st.session_state.input_pagto_key.upper(), "Vendedor": st.session_state.f_vend.upper(), "Data Matrícula": st.session_state.f_data}
                     st.session_state.lista_previa.append(aluno)
                     st.rerun()
         with b_r:
-            if st.button("📤 ENVIAR PLANILHA", key="btn_enviar"):
+            if st.button("📤 ENVIAR PLANILHA"):
                 if st.session_state.lista_previa:
                     df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa)
                     conn.update(data=pd.concat([df_old, df_new], ignore_index=True))
@@ -123,35 +127,33 @@ with tab_cad:
         
         st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
-# --- ABA 2: GERENCIAMENTO (FICA COMO ESTÁ) ---
+# --- CONTEÚDO GERENCIAMENTO ---
 with tab_ger:
-    st.markdown("<h3 style='text-align: center; color: #2ecc71;'>🖥️ BASE DE DADOS COMPLETA</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center; color: #2ecc71;'>🖥️ BASE DE DADOS</h3>", unsafe_allow_html=True)
     try:
         dados = conn.read(ttl="0s").fillna("")
         if not dados.empty:
             if "ID" in dados.columns: dados["ID"] = dados["ID"].astype(str).str.replace(r'\.0$', '', regex=True)
             st.dataframe(dados.iloc[::-1], use_container_width=True, hide_index=True, height=500)
-            if st.button("🔄 ATUALIZAR LISTA", key="btn_refresh_ger"): st.cache_data.clear(); st.rerun()
+            if st.button("🔄 ATUALIZAR LISTA"): st.cache_data.clear(); st.rerun()
     except: st.error("Erro ao carregar dados.")
 
-# --- ABA 3: RELATÓRIOS (CUSTOMIZADO TECH/NEON) ---
+# --- CONTEÚDO RELATÓRIOS (TECH HUD STYLE) ---
 with tab_rel:
     st.markdown("<h3 style='text-align: center; color: #2ecc71;'>📊 DASHBOARD ANALÍTICO</h3>", unsafe_allow_html=True)
     
     try:
-        # Lê a planilha e remove vazios completamente
         df_rel = conn.read(ttl="0s").dropna(how='all')
         if not df_rel.empty:
-            # Garante que as colunas críticas existem e limpa nomes (case-sensitive)
             df_rel.columns = [c.strip() for c in df_rel.columns]
-            
             col_data = "Data Matrícula"
+            
             if col_data in df_rel.columns:
                 df_rel[col_data] = pd.to_datetime(df_rel[col_data], dayfirst=True, errors='coerce')
                 df_rel = df_rel.dropna(subset=[col_data])
                 
-                # --- FILTRO PORTUGUÊS ÚNICO ---
-                st.markdown("<p style='color: #2ecc71; font-weight: bold; margin-bottom: -5px; font-size: 14px;'>Selecione o período de análise:</p>", unsafe_allow_html=True)
+                # --- FILTRO DE DATA PORTUGUÊS ---
+                st.markdown("<p style='color: #2ecc71; font-weight: bold; margin-bottom: -5px;'>Período:</p>", unsafe_allow_html=True)
                 intervalo = st.date_input("Filtro", value=(date.today()-timedelta(days=7), date.today()), format="DD/MM/YYYY", label_visibility="collapsed")
                 
                 if isinstance(intervalo, (list, tuple)) and len(intervalo) == 2:
@@ -160,67 +162,61 @@ with tab_rel:
                     
                     if not df_f.empty:
                         st.write("---")
-                        
-                        # --- CARDS TECH RESTAURADOS ---
+                        # --- CARDS KPI ---
                         c1, c2, c3 = st.columns(3)
                         with c1: st.markdown(f'<div class="card-tech"><small>Matrículas</small><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
                         with c2: 
                             v_top = df_f['Vendedor'].value_counts().idxmax() if 'Vendedor' in df_f.columns else "N/A"
-                            st.markdown(f'<div class="card-tech" style="border-color: #f1c40f;"><small>Top Vendedor</small><h2 style="font-size: 20px;">{v_top}</h2></div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="card-tech" style="border-color: #f1c40f;"><small>Top Vendedor</small><h2 style="font-size: 18px;">{v_top}</h2></div>', unsafe_allow_html=True)
                         with c3:
-                            col_status = 'STATUS' # Nome correto na planilha (maiúsculo)
+                            col_status = 'STATUS'
                             atv = len(df_f[df_f[col_status].str.upper() == 'ATIVO']) if col_status in df_f.columns else 0
-                            st.markdown(f'<div class="card-tech" style="border-color: #3498db;"><small>Ativos</small><h2>{atv}</h2></div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="card-tech" style="border-color: #00f2ff;"><small>Ativos</small><h2>{atv}</h2></div>', unsafe_allow_html=True)
 
                         st.write("")
-                        
-                        # --- GRÁFICOS TECH PERSONALIZADOS (PLOTLY NEON) ---
                         g1, g2 = st.columns(2)
+                        
                         with g1:
-                            if 'Cidade' in df_f.columns:
-                                st.markdown("<p style='text-align:center; color:#2ecc71; font-size:12px; font-weight:bold;'>RANKING POR CIDADE</p>", unsafe_allow_html=True)
-                                df_c = df_f['Cidade'].value_counts().reset_index()
-                                df_c.columns = ['Cidade', 'Qtd']
-                                fig_c = px.bar(df_c, x='Qtd', y='Cidade', orientation='h', color='Qtd', color_continuous_scale='Viridis')
-                                fig_c.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=380, margin=dict(t=20, b=20, l=20, r=20), showlegend=False)
-                                fig_c.update_traces(marker=dict(line=dict(color='#1a2436', width=1))) # Borda tech
-                                st.plotly_chart(fig_c, use_container_width=True)
+                            st.markdown("<p style='text-align:center; color:#2ecc71; font-weight:bold;'>RANKING CIDADES</p>", unsafe_allow_html=True)
+                            df_c = df_f['Cidade'].value_counts().reset_index()
+                            df_c.columns = ['Cidade', 'Qtd']
+                            fig_c = px.bar(df_c, x='Qtd', y='Cidade', orientation='h', color='Qtd', color_continuous_scale='Turbo')
+                            fig_c.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=380, showlegend=False)
+                            st.plotly_chart(fig_c, use_container_width=True)
                         
                         with g2:
-                            col_status = 'STATUS' # Nome correto na planilha
-                            if col_status in df_f.columns:
-                                st.markdown("<p style='text-align:center; color:#2ecc71; font-size:12px; font-weight:bold;'>STATUS GERAL (NEON STYLE)</p>", unsafe_allow_html=True)
-                                
-                                # --- CUSTOMIZAÇÃO SOLICITADA: DADOS DENTRO DA ROSCA ---
-                                # Cores tech baseadas na referência (Verde Neon, Vermelho Choque, etc.)
-                                cores_tech = ['#2ecc71', '#e74c3c', '#f1c40f', '#3498db'] 
-                                
-                                # Usamos Graph Objects para maior controle sobre os rótulos internos
-                                df_s = df_f[col_status].value_counts().reset_index()
-                                df_s.columns = ['Status', 'Total']
-                                
-                                fig_p = go.Figure(data=[go.Pie(
-                                    labels=df_s['Status'], 
-                                    values=df_s['Total'], 
-                                    hole=0.7, # Rosca vazada
-                                    marker=dict(colors=cores_tech, line=dict(color='#1a2436', width=3)), # Bordas grossas tech
-                                    textinfo='label+percent', # EXIBIR NOME E % DENTRO
-                                    textposition='inside', # FORÇAR DENTRO DAS FATIAS
-                                    insidetextorientation='horizontal', # Rotação legível
-                                    textfont=dict(color='white', size=12, family="Arial Black") # Fonte visível e robusta
-                                )])
-                                
-                                fig_p.update_layout(
-                                    template="plotly_dark", 
-                                    paper_bgcolor='rgba(0,0,0,0)', # Fundo transparente
-                                    height=380, 
-                                    margin=dict(t=30, b=30, l=30, r=30),
-                                    showlegend=False # REMOVER LEGENDA EXTERNA
-                                )
-                                st.plotly_chart(fig_p, use_container_width=True)
+                            st.markdown("<p style='text-align:center; color:#2ecc71; font-weight:bold;'>STATUS GERAL (HUD NEON)</p>", unsafe_allow_html=True)
+                            df_s = df_f[col_status].value_counts().reset_index()
+                            df_s.columns = ['Status', 'Total']
+
+                            # --- GRÁFICO DE ROSCA HUD ---
+                            fig_p = go.Figure(data=[go.Pie(
+                                labels=df_s['Status'], 
+                                values=df_s['Total'], 
+                                hole=0.75,
+                                marker=dict(
+                                    colors=['#00ff88', '#ff0055', '#00d4ff', '#ffcc00'], 
+                                    line=dict(color='#1a2436', width=4)
+                                ),
+                                textinfo='label+percent',
+                                textposition='outside', # Nomes e % do lado de fora para clareza
+                                textfont=dict(size=12, color="#00ff88"),
+                                pull=[0.03, 0.03] # Leve separação tech
+                            )])
+
+                            fig_p.update_layout(
+                                template="plotly_dark",
+                                paper_bgcolor='rgba(0,0,0,0)',
+                                showlegend=False,
+                                height=400,
+                                annotations=[dict(text='STATUS', x=0.5, y=0.5, font_size=16, showarrow=False, font_color='#2ecc71')]
+                            )
+                            # Círculo decorativo HUD
+                            fig_p.add_shape(type="circle", xref="paper", yref="paper", x0=0.2, y0=0.15, x1=0.8, y1=0.85, line_color="#2c5282", line_width=1, layer="below")
+                            st.plotly_chart(fig_p, use_container_width=True)
                     else:
-                        st.warning("Nenhum dado encontrado para o período selecionado.")
+                        st.warning("Sem dados no período.")
             else:
-                st.error("Coluna crítica 'Data Matrícula' não encontrada na planilha.")
+                st.error("Coluna 'Data Matrícula' não encontrada.")
     except Exception as e:
-        st.error(f"Erro ao processar o Dashboard: {e}")
+        st.error(f"Erro: {e}")
