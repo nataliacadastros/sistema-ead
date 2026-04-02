@@ -38,7 +38,7 @@ st.markdown("""
     label { color: #2ecc71 !important; font-weight: bold !important; font-size: 15px !important; padding-right: 15px !important; height: 25px !important; display: flex; align-items: center; justify-content: flex-end; }
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 25px !important; border-radius: 5px !important; }
 
-    /* CARDS TECH */
+    /* CARDS TECH (RELATÓRIO) */
     .card-tech {
         background-color: #1a3a5a; 
         padding: 15px; 
@@ -61,6 +61,7 @@ if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "val_curso" not in st.session_state: st.session_state.val_curso = ""
 if "val_pagto" not in st.session_state: st.session_state.val_pagto = ""
 
+# --- FUNÇÕES ---
 def transformar_curso():
     entrada = st.session_state.input_curso_key.strip()
     if not entrada: st.session_state.val_curso = ""; st.session_state.input_curso_key = ""; return
@@ -84,8 +85,10 @@ def processar_pagto():
     st.session_state.val_pagto = f"{base} | {' | '.join(obs)}" if obs else base
     st.session_state.input_pagto_key = st.session_state.val_pagto
 
+# --- UI PRINCIPAL ---
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
+# --- ABA 1: CADASTRO (FICA COMO ESTÁ) ---
 with tab_cad:
     _, centro, _ = st.columns([0.5, 5, 0.5])
     with centro:
@@ -106,13 +109,13 @@ with tab_cad:
         st.write("")
         _, b_l, b_r, _ = st.columns([0.5, 2, 2, 0.5])
         with b_l:
-            if st.button("💾 SALVAR ALUNO"):
+            if st.button("💾 SALVAR ALUNO", key="btn_salvar"):
                 if st.session_state.f_nome:
                     aluno = {"ID": st.session_state.f_id.upper(), "Aluno": st.session_state.f_nome.upper(), "Cidade": st.session_state.f_cid.upper(), "Curso": st.session_state.input_curso_key.strip(), "Pagamento": st.session_state.input_pagto_key.upper(), "Vendedor": st.session_state.f_vend.upper(), "Data Matrícula": st.session_state.f_data}
                     st.session_state.lista_previa.append(aluno)
                     st.rerun()
         with b_r:
-            if st.button("📤 ENVIAR PLANILHA"):
+            if st.button("📤 ENVIAR PLANILHA", key="btn_enviar"):
                 if st.session_state.lista_previa:
                     df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa)
                     conn.update(data=pd.concat([df_old, df_new], ignore_index=True))
@@ -120,67 +123,104 @@ with tab_cad:
         
         st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
+# --- ABA 2: GERENCIAMENTO (FICA COMO ESTÁ) ---
 with tab_ger:
-    st.markdown("<h3 style='text-align: center; color: #2ecc71;'>🖥️ BASE DE DADOS</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center; color: #2ecc71;'>🖥️ BASE DE DADOS COMPLETA</h3>", unsafe_allow_html=True)
     try:
         dados = conn.read(ttl="0s").fillna("")
         if not dados.empty:
             if "ID" in dados.columns: dados["ID"] = dados["ID"].astype(str).str.replace(r'\.0$', '', regex=True)
             st.dataframe(dados.iloc[::-1], use_container_width=True, hide_index=True, height=500)
-            if st.button("🔄 ATUALIZAR LISTA"): st.cache_data.clear(); st.rerun()
+            if st.button("🔄 ATUALIZAR LISTA", key="btn_refresh_ger"): st.cache_data.clear(); st.rerun()
     except: st.error("Erro ao carregar dados.")
 
+# --- ABA 3: RELATÓRIOS (CUSTOMIZADO TECH/NEON) ---
 with tab_rel:
     st.markdown("<h3 style='text-align: center; color: #2ecc71;'>📊 DASHBOARD ANALÍTICO</h3>", unsafe_allow_html=True)
     
     try:
-        df_rel = conn.read(ttl="0s").fillna("")
+        # Lê a planilha e remove vazios completamente
+        df_rel = conn.read(ttl="0s").dropna(how='all')
         if not df_rel.empty:
+            # Garante que as colunas críticas existem e limpa nomes (case-sensitive)
+            df_rel.columns = [c.strip() for c in df_rel.columns]
+            
             col_data = "Data Matrícula"
-            df_rel[col_data] = pd.to_datetime(df_rel[col_data], dayfirst=True, errors='coerce')
-            df_rel = df_rel.dropna(subset=[col_data])
-            
-            st.markdown("<p style='color: #2ecc71; font-weight: bold; margin-bottom: -5px;'>Selecione o período:</p>", unsafe_allow_html=True)
-            intervalo = st.date_input("Filtro", value=(date.today()-timedelta(days=7), date.today()), format="DD/MM/YYYY", label_visibility="collapsed")
-            
-            if isinstance(intervalo, (list, tuple)) and len(intervalo) == 2:
-                d_ini, d_fim = intervalo
-                df_f = df_rel.loc[(df_rel[col_data].dt.date >= d_ini) & (df_rel[col_data].dt.date <= d_fim)]
+            if col_data in df_rel.columns:
+                df_rel[col_data] = pd.to_datetime(df_rel[col_data], dayfirst=True, errors='coerce')
+                df_rel = df_rel.dropna(subset=[col_data])
                 
-                if not df_f.empty:
-                    st.write("---")
-                    c1, c2, c3 = st.columns(3)
-                    with c1: st.markdown(f'<div class="card-tech"><small>Matrículas</small><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
-                    with c2: 
-                        v_top = df_f['Vendedor'].value_counts().idxmax() if 'Vendedor' in df_f.columns else "N/A"
-                        st.markdown(f'<div class="card-tech" style="border-color: #f1c40f;"><small>Top Vendedor</small><h2 style="font-size: 20px;">{v_top}</h2></div>', unsafe_allow_html=True)
-                    with c3:
-                        # AJUSTADO PARA 'STATUS' EM MAIÚSCULO
-                        col_status = 'STATUS' if 'STATUS' in df_f.columns else 'Status'
-                        atv = len(df_f[df_f[col_status].str.upper() == 'ATIVO']) if col_status in df_f.columns else 0
-                        st.markdown(f'<div class="card-tech" style="border-color: #3498db;"><small>Ativos</small><h2>{atv}</h2></div>', unsafe_allow_html=True)
-
-                    st.write("")
-                    g1, g2 = st.columns(2)
-                    with g1:
-                        if 'Cidade' in df_f.columns:
-                            st.markdown("<p style='text-align:center; color:#2ecc71; font-size:12px;'>RANKING POR CIDADE</p>", unsafe_allow_html=True)
-                            df_c = df_f['Cidade'].value_counts().reset_index()
-                            # Renomeia colunas para o gráfico
-                            df_c.columns = ['Cidade', 'Qtd']
-                            fig_c = px.bar(df_c, x='Qtd', y='Cidade', orientation='h', color='Qtd', color_continuous_scale='Viridis')
-                            fig_c.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=350, margin=dict(t=20, b=20, l=20, r=20), showlegend=False)
-                            st.plotly_chart(fig_c, use_container_width=True)
+                # --- FILTRO PORTUGUÊS ÚNICO ---
+                st.markdown("<p style='color: #2ecc71; font-weight: bold; margin-bottom: -5px; font-size: 14px;'>Selecione o período de análise:</p>", unsafe_allow_html=True)
+                intervalo = st.date_input("Filtro", value=(date.today()-timedelta(days=7), date.today()), format="DD/MM/YYYY", label_visibility="collapsed")
+                
+                if isinstance(intervalo, (list, tuple)) and len(intervalo) == 2:
+                    d_ini, d_fim = intervalo
+                    df_f = df_rel.loc[(df_rel[col_data].dt.date >= d_ini) & (df_rel[col_data].dt.date <= d_fim)]
                     
-                    with g2:
-                        col_status = 'STATUS' if 'STATUS' in df_f.columns else 'Status'
-                        if col_status in df_f.columns:
-                            st.markdown("<p style='text-align:center; color:#2ecc71; font-size:12px;'>STATUS GERAL</p>", unsafe_allow_html=True)
-                            # AJUSTADO 'names' PARA O NOME CORRETO DA COLUNA (STATUS)
-                            fig_p = px.pie(df_f, names=col_status, hole=0.7, color_discrete_sequence=['#2ecc71', '#e74c3c', '#f1c40f'])
-                            fig_p.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=350, margin=dict(t=20, b=20, l=20, r=20))
-                            fig_p.update_traces(textinfo='percent+label', marker=dict(line=dict(color='#1a2436', width=2)))
-                            st.plotly_chart(fig_p, use_container_width=True)
-                else:
-                    st.warning("Nenhum dado no período.")
-    except Exception as e: st.error(f"Erro: {e}")
+                    if not df_f.empty:
+                        st.write("---")
+                        
+                        # --- CARDS TECH RESTAURADOS ---
+                        c1, c2, c3 = st.columns(3)
+                        with c1: st.markdown(f'<div class="card-tech"><small>Matrículas</small><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
+                        with c2: 
+                            v_top = df_f['Vendedor'].value_counts().idxmax() if 'Vendedor' in df_f.columns else "N/A"
+                            st.markdown(f'<div class="card-tech" style="border-color: #f1c40f;"><small>Top Vendedor</small><h2 style="font-size: 20px;">{v_top}</h2></div>', unsafe_allow_html=True)
+                        with c3:
+                            col_status = 'STATUS' # Nome correto na planilha (maiúsculo)
+                            atv = len(df_f[df_f[col_status].str.upper() == 'ATIVO']) if col_status in df_f.columns else 0
+                            st.markdown(f'<div class="card-tech" style="border-color: #3498db;"><small>Ativos</small><h2>{atv}</h2></div>', unsafe_allow_html=True)
+
+                        st.write("")
+                        
+                        # --- GRÁFICOS TECH PERSONALIZADOS (PLOTLY NEON) ---
+                        g1, g2 = st.columns(2)
+                        with g1:
+                            if 'Cidade' in df_f.columns:
+                                st.markdown("<p style='text-align:center; color:#2ecc71; font-size:12px; font-weight:bold;'>RANKING POR CIDADE</p>", unsafe_allow_html=True)
+                                df_c = df_f['Cidade'].value_counts().reset_index()
+                                df_c.columns = ['Cidade', 'Qtd']
+                                fig_c = px.bar(df_c, x='Qtd', y='Cidade', orientation='h', color='Qtd', color_continuous_scale='Viridis')
+                                fig_c.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=380, margin=dict(t=20, b=20, l=20, r=20), showlegend=False)
+                                fig_c.update_traces(marker=dict(line=dict(color='#1a2436', width=1))) # Borda tech
+                                st.plotly_chart(fig_c, use_container_width=True)
+                        
+                        with g2:
+                            col_status = 'STATUS' # Nome correto na planilha
+                            if col_status in df_f.columns:
+                                st.markdown("<p style='text-align:center; color:#2ecc71; font-size:12px; font-weight:bold;'>STATUS GERAL (NEON STYLE)</p>", unsafe_allow_html=True)
+                                
+                                # --- CUSTOMIZAÇÃO SOLICITADA: DADOS DENTRO DA ROSCA ---
+                                # Cores tech baseadas na referência (Verde Neon, Vermelho Choque, etc.)
+                                cores_tech = ['#2ecc71', '#e74c3c', '#f1c40f', '#3498db'] 
+                                
+                                # Usamos Graph Objects para maior controle sobre os rótulos internos
+                                df_s = df_f[col_status].value_counts().reset_index()
+                                df_s.columns = ['Status', 'Total']
+                                
+                                fig_p = go.Figure(data=[go.Pie(
+                                    labels=df_s['Status'], 
+                                    values=df_s['Total'], 
+                                    hole=0.7, # Rosca vazada
+                                    marker=dict(colors=cores_tech, line=dict(color='#1a2436', width=3)), # Bordas grossas tech
+                                    textinfo='label+percent', # EXIBIR NOME E % DENTRO
+                                    textposition='inside', # FORÇAR DENTRO DAS FATIAS
+                                    insidetextorientation='horizontal', # Rotação legível
+                                    textfont=dict(color='white', size=12, family="Arial Black") # Fonte visível e robusta
+                                )])
+                                
+                                fig_p.update_layout(
+                                    template="plotly_dark", 
+                                    paper_bgcolor='rgba(0,0,0,0)', # Fundo transparente
+                                    height=380, 
+                                    margin=dict(t=30, b=30, l=30, r=30),
+                                    showlegend=False # REMOVER LEGENDA EXTERNA
+                                )
+                                st.plotly_chart(fig_p, use_container_width=True)
+                    else:
+                        st.warning("Nenhum dado encontrado para o período selecionado.")
+            else:
+                st.error("Coluna crítica 'Data Matrícula' não encontrada na planilha.")
+    except Exception as e:
+        st.error(f"Erro ao processar o Dashboard: {e}")
