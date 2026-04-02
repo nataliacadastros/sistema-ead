@@ -16,12 +16,11 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS CONSOLIDADO (CADASTRO + GERENCIAMENTO + INFOGRÁFICO) ---
+# --- CSS CONSOLIDADO ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
     
-    /* MENU SLIM NO TOPO */
     .stTabs [data-baseweb="tab-list"] { 
         background-color: #1a3a5a; border-bottom: 2px solid #2c5282;
         position: fixed; top: 0; left: 0 !important; width: 100vw !important;
@@ -32,7 +31,6 @@ st.markdown("""
     
     .main .block-container { padding-top: 38px !important; max-width: 1100px !important; margin: 0 auto !important; }
 
-    /* ESTILO ABA CADASTRO (CAMPOS 25PX) */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 3px !important; display: flex; align-items: center; justify-content: center; }
     div[data-testid="stTextInput"] > div { min-height: 25px !important; height: 25px !important; width: 100% !important; }
     label { color: #2ecc71 !important; font-weight: bold !important; font-size: 15px !important; padding-right: 15px !important; height: 25px !important; display: flex; align-items: center; justify-content: flex-end; }
@@ -40,27 +38,18 @@ st.markdown("""
     .stCheckbox { display: flex; justify-content: center; margin-top: 8px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
     
-    /* BOTÕES PADRÃO */
     .stButton > button { background-color: #2ecc71 !important; color: white !important; font-weight: bold !important; border-radius: 5px !important; }
 
-    /* CARDS RELATÓRIO INFOGRÁFICO */
     .info-card { padding: 15px; border-radius: 10px; text-align: center; font-weight: bold; color: white; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
     .card-pink { background: linear-gradient(90deg, #FF00FF, #800080); }
     .card-green { background: linear-gradient(90deg, #00FF00, #008000); }
     .card-blue { background: linear-gradient(90deg, #00FFFF, #0000FF); }
     .card-orange { background: linear-gradient(90deg, #FFA500, #FF4500); }
 
-    /* COMPONENTE DA BARRA DE CIDADES */
     .container-cidades { margin-top: 50px; padding: 10px; width: 100%; }
-    .barra-segmentada {
-        display: flex; width: 100%; height: 28px; border-radius: 20px;
-        background: #333; position: relative; margin-top: 40px;
-    }
+    .barra-segmentada { display: flex; width: 100%; height: 28px; border-radius: 20px; background: #333; position: relative; margin-top: 40px; }
     .segmento { height: 100%; position: relative; display: flex; justify-content: center; align-items: center; }
-    .etiqueta {
-        position: absolute; bottom: 38px; padding: 4px 10px; border-radius: 8px 8px 8px 0px;
-        font-weight: bold; color: white; font-size: 13px; text-align: center;
-    }
+    .etiqueta { position: absolute; bottom: 38px; padding: 4px 10px; border-radius: 8px 8px 8px 0px; font-weight: bold; color: white; font-size: 13px; text-align: center; }
     .legenda-container { display: flex; justify-content: flex-start; gap: 20px; margin-top: 20px; flex-wrap: wrap; }
     .legenda-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
     .ponto { width: 12px; height: 12px; border-radius: 50%; }
@@ -75,7 +64,7 @@ if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "val_curso" not in st.session_state: st.session_state.val_curso = ""
 if "val_pagto" not in st.session_state: st.session_state.val_pagto = ""
 
-# --- FUNÇÕES DE APOIO ---
+# --- FUNÇÕES ---
 def transformar_curso():
     entrada = st.session_state.input_curso_key.strip()
     if not entrada: st.session_state.val_curso = ""; return
@@ -147,12 +136,17 @@ with tab_ger:
             if st.button("🔄 ATUALIZAR LISTA"): st.cache_data.clear(); st.rerun()
     except: st.error("Erro ao carregar dados.")
 
-# --- ABA 3: RELATÓRIOS (INFOGRÁFICO) ---
+# --- ABA 3: RELATÓRIOS (INFOGRÁFICO COM CORREÇÃO DE VENDEDOR) ---
 with tab_rel:
     try:
         df_rel = conn.read(ttl="0s").dropna(how='all')
         if not df_rel.empty:
             df_rel.columns = [c.strip() for c in df_rel.columns]
+            
+            # --- LÓGICA DE UNIFICAÇÃO DE VENDEDORES (GILSON - COLÉGIO -> GILSON) ---
+            if 'Vendedor' in df_rel.columns:
+                df_rel['Vendedor'] = df_rel['Vendedor'].astype(str).str.replace(' - COLÉGIO', '', case=False).str.strip()
+            
             col_data = "Data Matrícula"
             df_rel[col_data] = pd.to_datetime(df_rel[col_data], dayfirst=True, errors='coerce')
             
@@ -172,35 +166,31 @@ with tab_rel:
                     cnc = len(df_f[df_f['STATUS'].str.upper() == 'CANCELADO']) if 'STATUS' in df_f.columns else 0
                     st.markdown(f'<div class="info-card card-blue"><small>CANCELADOS</small><br><h2>{cnc}</h2></div>', unsafe_allow_html=True)
                 with c4:
-                    vend = df_f['Vendedor'].nunique() if 'Vendedor' in df_f.columns else 0
-                    st.markdown(f'<div class="info-card card-orange"><small>VENDEDORES</small><br><h2>{vend}</h2></div>', unsafe_allow_html=True)
+                    vend_unicos = df_f['Vendedor'].nunique() if 'Vendedor' in df_f.columns else 0
+                    st.markdown(f'<div class="info-card card-orange"><small>DIVULGADORES</small><br><h2>{vend_unicos}</h2></div>', unsafe_allow_html=True)
 
                 st.write("---")
                 
-                # SEÇÃO CIDADES (INFOGRÁFICO CORRIGIDO)
+                # SEÇÃO CIDADES
                 st.markdown('<p style="color:#FF00FF; font-weight:bold;">▸ Information activities (Cidades)</p>', unsafe_allow_html=True)
                 df_cid = df_f['Cidade'].value_counts().head(4)
                 if not df_cid.empty:
                     total_cid = df_cid.sum()
                     cores = ["#FF00FF", "#8AFF00", "#00C2FF", "#FFB800"]
                     grads = ["linear-gradient(90deg, #FF00FF, #800080)", "linear-gradient(90deg, #8AFF00, #4D8F00)", "linear-gradient(90deg, #00C2FF, #006080)", "linear-gradient(90deg, #FFB800, #996E00)"]
-                    
-                    seg_html = ""
-                    leg_html = ""
+                    seg_html = ""; leg_html = ""
                     for i, (nome, qtd) in enumerate(df_cid.items()):
                         percent = (qtd / total_cid) * 100
-                        cor = cores[i % 4]
-                        grad = grads[i % 4]
+                        cor = cores[i % 4]; grad = grads[i % 4]
                         seg_html += f'<div class="segmento" style="width: {percent}%; background: {grad}; border-radius: { "20px 0 0 20px" if i==0 else ("0 20px 20px 0" if i==len(df_cid)-1 else "0") };"><div class="etiqueta" style="background: {cor};">{qtd}</div></div>'
                         leg_html += f'<div class="legenda-item"><div class="ponto" style="background: {cor};"></div><span>{nome}</span></div>'
-                    
                     st.markdown(f'<div class="container-cidades"><div class="barra-segmentada">{seg_html}</div><div class="legenda-container">{leg_html}</div></div>', unsafe_allow_html=True)
 
                 st.write("---")
-                # OUTROS GRÁFICOS
+                # GRÁFICOS INFERIORES
                 col_g1, col_g2 = st.columns([1, 1])
                 with col_g1:
-                    st.markdown('<p style="color:#FF00FF; font-weight:bold;">▸ Statistics and analysis</p>', unsafe_allow_html=True)
+                    st.markdown('<p style="color:#FF00FF; font-weight:bold;">▸ Statistics and analysis (Status)</p>', unsafe_allow_html=True)
                     if 'STATUS' in df_f.columns:
                         fig_p = go.Figure(data=[go.Pie(labels=df_f['STATUS'].value_counts().index, values=df_f['STATUS'].value_counts().values, hole=.7, marker=dict(colors=['#FF00FF', '#00FFFF', '#FFA500']))])
                         fig_p.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', showlegend=False, height=350, margin=dict(t=30,b=30,l=30,r=30))
@@ -208,9 +198,10 @@ with tab_rel:
                         st.plotly_chart(fig_p, use_container_width=True)
                 
                 with col_g2:
-                    st.markdown('<p style="color:#FF00FF; font-weight:bold;">▸ Analytics (Vendedores)</p>', unsafe_allow_html=True)
+                    st.markdown('<p style="color:#FF00FF; font-weight:bold;">▸ Analytics (Top Vendedores)</p>', unsafe_allow_html=True)
                     df_vend = df_f['Vendedor'].value_counts().reset_index()
-                    fig_v = px.bar(df_vend, x='count', y='Vendedor', orientation='h', color='count', color_continuous_scale='Magma')
+                    df_vend.columns = ['Vendedor', 'Vendas']
+                    fig_v = px.bar(df_vend.head(10), x='Vendas', y='Vendedor', orientation='h', color='Vendas', color_continuous_scale='Magma')
                     fig_v.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=350, showlegend=False)
                     st.plotly_chart(fig_v, use_container_width=True)
 
