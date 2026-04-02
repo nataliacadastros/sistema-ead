@@ -14,7 +14,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS COM CORREÇÃO DE ESPAÇAMENTO ---
+# --- CSS PARA COLAR NO TOPO E MANTER ESPAÇAMENTO ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
@@ -37,15 +37,20 @@ st.markdown("""
     }
     .stTabs [aria-selected="true"] { border-bottom: 3px solid #2ecc71 !important; }
     
-    /* CONTEÚDO NO TOPO */
+    /* ZERANDO ESPAÇO MORTO NO TOPO */
     .main .block-container { 
-        padding-top: 35px !important; 
+        padding-top: 30px !important; /* Altura exata do menu */
         margin-top: 0px !important;
     }
     
-    /* AJUSTE DOS CAMPOS (SUAS MEDIDAS) */
+    /* Puxa o formulário para colar na linha do menu */
+    div[data-testid="stVerticalBlock"] > div:first-child {
+        margin-top: -15px !important;
+    }
+
+    /* ESPAÇAMENTO DOS CAMPOS (SUAS MEDIDAS) */
     div[data-testid="stHorizontalBlock"] { 
-        margin-bottom: 8px !important; /* Aumentado levemente para visualização, mude para 3px se preferir colado */
+        margin-bottom: 3px !important; 
     }
 
     div[data-testid="stTextInput"] > div { 
@@ -74,10 +79,10 @@ st.markdown("""
     }
 
     /* Checkboxes e Botões */
-    .stCheckbox { margin-top: 10px !important; }
+    .stCheckbox { margin-top: 5px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
     
-    div.stButton { margin-top: 15px !important; }
+    div.stButton { margin-top: 10px !important; }
     div.stButton > button {
         background-color: #2ecc71 !important; color: white !important; font-weight: bold !important;
         height: 40px !important; border-radius: 5px !important;
@@ -85,7 +90,7 @@ st.markdown("""
     }
 
     /* Lista e Contador */
-    hr { margin-top: 15px !important; margin-bottom: 5px !important; }
+    hr { margin-top: 10px !important; margin-bottom: 5px !important; }
     .contador-estilo {
         text-align: right;
         color: #2ecc71;
@@ -132,11 +137,10 @@ def processar_pagto():
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
 with tab_cad:
-    # Ajuste de colunas para centralização
-    _, col_central, _ = st.columns([0.8, 3, 0.8])
+    _, col_central, _ = st.columns([0.5, 3, 0.5])
     
     with col_central:
-        # Formulário organizado linha a linha
+        # Formulário
         campos = [
             ("ID:", "f_id", None), ("ALUNO:", "f_nome", None), ("CIDADE:", "f_cid", None),
             ("CURSO:", "input_curso_key", transformar_curso), ("PAGAMENTO:", "input_pagto_key", None),
@@ -144,7 +148,7 @@ with tab_cad:
         ]
         
         for label, key, func in campos:
-            c1, c2 = st.columns([1, 4])
+            c1, c2 = st.columns([1.2, 4])
             c1.markdown(f"<label>{label}</label>", unsafe_allow_html=True)
             if key == "input_curso_key":
                 c2.text_input(label, key=key, value=st.session_state.val_curso, on_change=func, label_visibility="collapsed")
@@ -157,24 +161,28 @@ with tab_cad:
 
         # Checkboxes
         st.write("")
-        c_checks = st.columns([1, 1.3, 1.3, 1.3])
-        with c_checks[1]: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
-        with c_checks[2]: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
-        with c_checks[3]: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
+        recuo, area_checks = st.columns([1.2, 4])
+        with area_checks:
+            s1, s2, s3 = st.columns(3)
+            with s1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
+            with s2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
+            with s3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
 
         # Botões
         st.write("")
-        c_btns = st.columns([1, 2, 2])
-        with c_btns[1]:
-            if st.button("💾 SALVAR ALUNO", use_container_width=True):
-                if st.session_state.f_nome:
-                    aluno = {"ID": st.session_state.f_id.upper(), "Aluno": st.session_state.f_nome.upper(), "Cidade": st.session_state.f_cid.upper(), "Curso": st.session_state.input_curso_key.strip(), "Pagamento": st.session_state.input_pagto_key.upper(), "Vendedor": st.session_state.f_vend.upper(), "Data": st.session_state.f_data}
-                    st.session_state.lista_previa.append(aluno)
-                    st.rerun()
-        with c_btns[2]:
-            if st.button("📤 ENVIAR PLANILHA", use_container_width=True):
-                if st.session_state.lista_previa:
-                    df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa); conn.update(data=pd.concat([df_old, df_new], ignore_index=True)); st.session_state.lista_previa = []; st.success("Enviado!"); st.rerun()
+        recuo_btn, area_btns = st.columns([1.2, 4])
+        with area_btns:
+            b1, b2 = st.columns(2)
+            with b1:
+                if st.button("💾 SALVAR ALUNO", use_container_width=True):
+                    if st.session_state.f_nome:
+                        aluno = {"ID": st.session_state.f_id.upper(), "Aluno": st.session_state.f_nome.upper(), "Cidade": st.session_state.f_cid.upper(), "Curso": st.session_state.input_curso_key.strip(), "Pagamento": st.session_state.input_pagto_key.upper(), "Vendedor": st.session_state.f_vend.upper(), "Data": st.session_state.f_data}
+                        st.session_state.lista_previa.append(aluno)
+                        st.rerun()
+            with b2:
+                if st.button("📤 ENVIAR PLANILHA", use_container_width=True):
+                    if st.session_state.lista_previa:
+                        df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa); conn.update(data=pd.concat([df_old, df_new], ignore_index=True)); st.session_state.lista_previa = []; st.success("Enviado!"); st.rerun()
 
         # Lista de Prévia
         st.write("---") 
