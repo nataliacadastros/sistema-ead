@@ -162,8 +162,10 @@ with tab_cad:
                         "Vendedor": f_vend.upper(), "Data_Mat": f_data
                     }
                     st.session_state.lista_previa.append(aluno)
-                    # Resetando campos específicos limpando o cache visual através do rerun
-                    for k in ["f_id", "f_nome", "f_tel_resp", "f_tel_aluno", "f_cpf", "input_curso_key", "f_pagto", "chk_1", "chk_2", "chk_3"]:
+                    
+                    # LIMPEZA SELETIVA: Mantém Cidade, Curso, Vendedor e Data
+                    chaves_para_limpar = ["f_id", "f_nome", "f_tel_resp", "f_tel_aluno", "f_cpf", "f_pagto", "chk_1", "chk_2", "chk_3"]
+                    for k in chaves_para_limpar:
                         if k in st.session_state: del st.session_state[k]
                     st.rerun()
 
@@ -192,8 +194,13 @@ with tab_cad:
                         worksheet.insert_rows(dados_finais, row=linha_ini)
                         
                         st.session_state.lista_previa = []
-                        if "f_cid" in st.session_state: del st.session_state["f_cid"]
-                        if "f_vend" in st.session_state: del st.session_state["f_vend"]
+                        
+                        # LIMPEZA TOTAL: Zera absolutamente todos os campos do formulário
+                        todas_as_chaves = ["f_id", "f_nome", "f_tel_resp", "f_tel_aluno", "f_cpf", "f_cid", 
+                                           "input_curso_key", "f_pagto", "f_vend", "f_data", "chk_1", "chk_2", "chk_3"]
+                        for k in todas_as_chaves:
+                            if k in st.session_state: del st.session_state[k]
+                            
                         st.success("Enviado com sucesso!")
                         st.cache_data.clear(); st.rerun()
                     except Exception as e: st.error(f"Erro: {e}")
