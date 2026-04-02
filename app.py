@@ -1,5 +1,5 @@
 import streamlit as st
-import pandas as pd
+import pd
 import re
 from datetime import date
 from streamlit_gsheets import GSheetsConnection
@@ -37,37 +37,38 @@ if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "val_curso" not in st.session_state: st.session_state.val_curso = ""
 if "val_pagto" not in st.session_state: st.session_state.val_pagto = ""
 
-# --- LÓGICA DO CAMPO CURSO (SUBSTITUIÇÃO INTELIGENTE COM REGEX) ---
+# --- LÓGICA DO CAMPO CURSO (SUBSTITUIÇÃO E LIMPEZA) ---
 def transformar_curso():
     entrada = st.session_state.input_curso_key.strip()
     
-    if entrada:
-        # 1. Encontra o último padrão numérico no final da string (ex: "Jovem Bancário 2")
-        match = re.search(r'(\d+)$', entrada)
-        
-        if match:
-            codigo = match.group(1)
-            if codigo in DIC_CURSOS:
-                nome_curso = DIC_CURSOS[codigo]
-                # Remove o código do final e limpa a string
-                texto_base = entrada[:match.start()].strip()
-                # Remove qualquer "+" sobrando no final da base
-                texto_base = texto_base.rstrip('+').strip()
-                
-                if texto_base:
-                    # Verifica se o curso já não está na lista para evitar duplicatas
-                    if nome_curso.upper() not in texto_base.upper():
-                        st.session_state.val_curso = f"{texto_base} + {nome_curso}"
-                    else:
-                        st.session_state.val_curso = texto_base
+    # SE O USUÁRIO APAGAR TUDO, LIMPA A MEMÓRIA
+    if not entrada:
+        st.session_state.val_curso = ""
+        st.session_state.input_curso_key = ""
+        return
+
+    # 1. Busca código no final da string
+    match = re.search(r'(\d+)$', entrada)
+    
+    if match:
+        codigo = match.group(1)
+        if codigo in DIC_CURSOS:
+            nome_curso = DIC_CURSOS[codigo]
+            texto_base = entrada[:match.start()].strip().rstrip('+').strip()
+            
+            if texto_base:
+                if nome_curso.upper() not in texto_base.upper():
+                    st.session_state.val_curso = f"{texto_base} + {nome_curso}"
                 else:
-                    st.session_state.val_curso = nome_curso
+                    st.session_state.val_curso = texto_base
             else:
-                st.session_state.val_curso = entrada.upper()
+                st.session_state.val_curso = nome_curso
         else:
             st.session_state.val_curso = entrada.upper()
+    else:
+        st.session_state.val_curso = entrada.upper()
     
-    # Formatação final: Maiúsculo, limpa "+" duplicados e garante espaço no final
+    # Formatação final
     st.session_state.val_curso = st.session_state.val_curso.upper().replace("++", "+").strip() + " "
     st.session_state.input_curso_key = st.session_state.val_curso
 
@@ -81,7 +82,6 @@ def processar_pagto():
     
     final = base
     if obs: final += " | " + " | ".join(obs)
-    
     st.session_state.val_pagto = final
     st.session_state.input_pagto_key = final
 
@@ -96,11 +96,9 @@ with tab_cad:
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>ALUNO:</label>", unsafe_allow_html=True); f_nome = c2.text_input("ALUNO", key="f_nome", label_visibility="collapsed")
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>CIDADE:</label>", unsafe_allow_html=True); f_cid = c2.text_input("CIDADE", key="f_cid", label_visibility="collapsed")
         
-        # Campo CURSO
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>CURSO:</label>", unsafe_allow_html=True)
         c2.text_input("CURSO", key="input_curso_key", value=st.session_state.val_curso, on_change=transformar_curso, label_visibility="collapsed")
         
-        # Campo PAGAMENTO
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>PAGAMENTO:</label>", unsafe_allow_html=True)
         c2.text_input("PAGAMENTO", key="input_pagto_key", value=st.session_state.val_pagto, label_visibility="collapsed")
         
