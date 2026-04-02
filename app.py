@@ -16,36 +16,35 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS ESTÉTICA HUD NEON (UNIFICADO) ---
+# --- CSS ESTÉTICA HUD NEON ---
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e1e; color: #e0e0e0; }
     
-    /* Menu Slim HUD */
     .stTabs [data-baseweb="tab-list"] { 
         background-color: #121629; border-bottom: 1px solid #1f295a;
         position: fixed; top: 0; left: 0 !important; width: 100vw !important;
         z-index: 999; justify-content: center; height: 35px !important;
     }
-    .stTabs [data-baseweb="tab"] { color: #64748b !important; font-size: 11px !important; padding: 0 30px !important; }
+    .stTabs [data-baseweb="tab"] { color: #64748b !important; font-size: 11px !important; padding: 0 20px !important; }
     .stTabs [aria-selected="true"] { 
         color: #00f2ff !important; border-bottom: 2px solid #00f2ff !important;
         background-color: rgba(0, 242, 255, 0.05) !important;
     }
-    .main .block-container { padding-top: 45px !important; max-width: 1100px !important; margin: 0 auto !important; }
+    .main .block-container { padding-top: 45px !important; max-width: 1200px !important; margin: 0 auto !important; }
 
-    /* ESTILO CADASTRO (CAMPOS 25PX) */
+    /* ESTILO CADASTRO */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 3px !important; display: flex; align-items: center; justify-content: center; }
     div[data-testid="stTextInput"] > div { min-height: 25px !important; height: 25px !important; }
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 14px !important; padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end; }
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 25px !important; border-radius: 5px !important; }
-    .stCheckbox label p { color: #39ff14 !important; font-weight: bold !important; font-size: 11px !important; }
 
     /* CARDS RELATÓRIO HUD */
-    .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 15px; border-radius: 10px; text-align: center; }
+    .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; }
     .neon-pink { color: #ff007a; text-shadow: 0 0 10px rgba(255, 0, 122, 0.5); border-top: 2px solid #ff007a; }
     .neon-green { color: #39ff14; text-shadow: 0 0 10px rgba(57, 255, 20, 0.5); border-top: 2px solid #39ff14; }
     .neon-blue { color: #00f2ff; text-shadow: 0 0 10px rgba(0, 242, 255, 0.5); border-top: 2px solid #00f2ff; }
+    .neon-yellow { color: #ffff00; text-shadow: 0 0 10px rgba(255, 255, 0, 0.5); border-top: 2px solid #ffff00; }
     .neon-purple { color: #bc13fe; text-shadow: 0 0 10px rgba(188, 19, 254, 0.5); border-top: 2px solid #bc13fe; }
 
     /* BARRA DE CIDADES HUD */
@@ -53,7 +52,7 @@ st.markdown("""
     .hud-segment { height: 100%; float: left; position: relative; }
     .hud-label { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); background: #121629; border: 1px solid currentColor; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
 
-    .stButton > button { background-color: #00f2ff !important; color: #0b0e1e !important; font-weight: bold !important; border: none !important; border-radius: 5px !important; width: 100%; }
+    .stButton > button { background-color: #00f2ff !important; color: #0b0e1e !important; font-weight: bold !important; border-radius: 5px !important; width: 100%; }
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
@@ -65,6 +64,13 @@ if "val_curso" not in st.session_state: st.session_state.val_curso = ""
 if "val_pagto" not in st.session_state: st.session_state.val_pagto = ""
 
 # --- FUNÇÕES ---
+def extrair_valor(texto):
+    """Extrai o valor numérico de uma string como 'BOLETO R$ 150,00'"""
+    try:
+        valores = re.findall(r'\d+(?:\.\d+)?(?:,\d+)?', str(texto).replace('.', '').replace(',', '.'))
+        return float(valores[0]) if valores else 0.0
+    except: return 0.0
+
 def transformar_curso():
     entrada = st.session_state.input_curso_key.strip()
     if not entrada: st.session_state.val_curso = ""; return
@@ -136,13 +142,14 @@ with tab_ger:
             if st.button("🔄 REFRESH DATABASE"): st.cache_data.clear(); st.rerun()
     except: st.error("Falha na conexão com a base de dados.")
 
-# --- ABA 3: RELATÓRIOS (ESTÉTICA HUD NEON) ---
+# --- ABA 3: RELATÓRIOS ---
 with tab_rel:
     try:
         df_rel = conn.read(ttl="0s").dropna(how='all')
         if not df_rel.empty:
             df_rel.columns = [c.strip() for c in df_rel.columns]
             df_rel['Vendedor'] = df_rel['Vendedor'].astype(str).str.replace(' - COLÉGIO', '', case=False).str.strip().str.upper()
+            
             col_data = "Data Matrícula"
             df_rel[col_data] = pd.to_datetime(df_rel[col_data], dayfirst=True, errors='coerce')
             
@@ -152,20 +159,38 @@ with tab_rel:
             if isinstance(intervalo, (tuple, list)) and len(intervalo) == 2:
                 df_f = df_rel.loc[(df_rel[col_data].dt.date >= intervalo[0]) & (df_rel[col_data].dt.date <= intervalo[1])]
                 
-                c1, c2, c3, c4 = st.columns(4)
-                with c1: st.markdown(f'<div class="card-hud neon-pink"><small>Total Mats</small><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
-                with c2: 
+                # --- CÁLCULO TICKET MÉDIO ---
+                if 'Pagamento' in df_f.columns:
+                    df_f['Valor_Num'] = df_f['Pagamento'].apply(extrair_valor)
+                    # Filtra Boletos e Cartões
+                    df_boleto = df_f[df_f['Pagamento'].str.contains('BOLETO', na=False, case=False)]
+                    df_cartao = df_f[df_f['Pagamento'].str.contains('CARTÃO|LINK|CREDITO|DEBITO', na=False, case=False)]
+                    
+                    tm_boleto = df_boleto['Valor_Num'].mean() if not df_boleto.empty else 0.0
+                    tm_cartao = df_cartao['Valor_Num'].mean() if not df_cartao.empty else 0.0
+                else:
+                    tm_boleto = tm_cartao = 0.0
+
+                # CARDS KPI (AGORA COM 6 COLUNAS PARA CABER TUDO)
+                st.write("")
+                kpi1, kpi2, kpi3, kpi4, kpi5, kpi6 = st.columns(6)
+                with kpi1: st.markdown(f'<div class="card-hud neon-pink"><small>Matrículas</small><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
+                with kpi2: 
                     atv = len(df_f[df_f['STATUS'].str.upper() == 'ATIVO']) if 'STATUS' in df_f.columns else 0
                     st.markdown(f'<div class="card-hud neon-green"><small>Status Ativo</small><h2>{atv}</h2></div>', unsafe_allow_html=True)
-                with c3:
+                with kpi3:
                     cnc = len(df_f[df_f['STATUS'].str.upper() == 'CANCELADO']) if 'STATUS' in df_f.columns else 0
                     st.markdown(f'<div class="card-hud neon-blue"><small>Status Canc</small><h2>{cnc}</h2></div>', unsafe_allow_html=True)
-                with c4:
+                with kpi4:
                     top_v = df_f['Vendedor'].value_counts().idxmax() if not df_f.empty else "N/A"
-                    st.markdown(f'<div class="card-hud neon-purple"><small>Top Captador</small><h2 style="font-size:16px">{top_v}</h2></div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="card-hud neon-purple"><small>Top Captador</small><h2 style="font-size:14px">{top_v}</h2></div>', unsafe_allow_html=True)
+                with kpi5:
+                    st.markdown(f'<div class="card-hud neon-yellow"><small>TM Boleto</small><h2>R${tm_boleto:.2f}</h2></div>', unsafe_allow_html=True)
+                with kpi6:
+                    st.markdown(f'<div class="card-hud neon-blue"><small>TM Cartão</small><h2>R${tm_cartao:.2f}</h2></div>', unsafe_allow_html=True)
 
                 st.write("---")
-                # Barra de Cidades HUD
+                # Barra de Cidades e Gráficos continuam iguais...
                 df_cid = df_f['Cidade'].value_counts().head(4)
                 if not df_cid.empty:
                     st.markdown("<small style='color:#00f2ff'>▸ GEOLOCATION ANALYTICS</small>", unsafe_allow_html=True)
