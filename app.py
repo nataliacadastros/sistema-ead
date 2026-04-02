@@ -14,7 +14,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS REVISADO: ORGANIZAÇÃO E CENTRALIZAÇÃO ---
+# --- CSS DEFINITIVO: TOPO AJUSTADO E SEM SOBREPOSIÇÃO ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
@@ -37,12 +37,13 @@ st.markdown("""
     }
     .stTabs [aria-selected="true"] { border-bottom: 3px solid #2ecc71 !important; }
     
-    /* AJUSTE DO CONTAINER PRINCIPAL */
+    /* AJUSTE DO CONTAINER PRINCIPAL - DISTÂNCIA DO MENU */
     .main .block-container { 
-        padding-top: 50px !important; 
+        padding-top: 40px !important; /* Espaço exato para ficar abaixo da linha azul */
+        margin-top: 0px !important;
     }
 
-    /* ESPAÇAMENTO DOS CAMPOS (SUAS MEDIDAS) */
+    /* ESPAÇAMENTO DOS CAMPOS (SUAS MEDIDAS EXATAS) */
     div[data-testid="stHorizontalBlock"] { 
         margin-bottom: 3px !important; 
     }
@@ -50,7 +51,7 @@ st.markdown("""
     div[data-testid="stTextInput"] > div { 
         min-height: 25px !important; 
         height: 25px !important;
-        width: 100% !important; /* Ajustado para ocupar a coluna corretamente */
+        width: 100% !important;
     }
 
     label { 
@@ -72,19 +73,20 @@ st.markdown("""
         height: 25px !important;
     }
 
-    /* Checkboxes e Botões */
-    .stCheckbox { margin-top: 15px !important; }
+    /* Checkboxes */
+    .stCheckbox { margin-top: 5px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
     
-    div.stButton { margin-top: 20px !important; }
+    /* Botões: Sem margens negativas para não sobrepor */
+    div.stButton { margin-top: 10px !important; }
     div.stButton > button {
         background-color: #2ecc71 !important; color: white !important; font-weight: bold !important;
-        height: 45px !important; border-radius: 5px !important;
+        height: 40px !important; border-radius: 5px !important;
         width: 100% !important;
     }
 
     /* Lista e Contador */
-    hr { margin-top: 25px !important; margin-bottom: 10px !important; }
+    hr { margin-top: 15px !important; margin-bottom: 5px !important; }
     .contador-estilo {
         text-align: right;
         color: #2ecc71;
@@ -131,18 +133,16 @@ def processar_pagto():
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
 with tab_cad:
-    # Colunas para centralizar todo o conteúdo no meio da página
+    # Centralização Total
     _, col_central, _ = st.columns([1, 2, 1])
     
     with col_central:
-        # Campos de Cadastro
-        campos = [
+        # Formulário (Linha por Linha)
+        for label, key, func in [
             ("ID:", "f_id", None), ("ALUNO:", "f_nome", None), ("CIDADE:", "f_cid", None),
             ("CURSO:", "input_curso_key", transformar_curso), ("PAGAMENTO:", "input_pagto_key", None),
             ("VENDEDOR:", "f_vend", None), ("DATA:", "f_data", None)
-        ]
-        
-        for label, key, func in campos:
+        ]:
             c1, c2 = st.columns([1, 3])
             c1.markdown(f"<label>{label}</label>", unsafe_allow_html=True)
             if key == "input_curso_key":
@@ -154,15 +154,15 @@ with tab_cad:
             else:
                 c2.text_input(label, key=key, label_visibility="collapsed")
 
-        # Checkboxes Centralizados
-        st.write("")
-        c_chk = st.columns([0.5, 1, 1, 1, 0.5])
+        # Checkboxes
+        c_chk = st.columns([1, 1, 1, 1])
         with c_chk[1]: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
         with c_chk[2]: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
         with c_chk[3]: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
 
-        # Botões Centralizados e descidos
-        c_btn = st.columns([0.5, 1.5, 1.5, 0.5])
+        # Botões (Descidos para evitar sobreposição)
+        st.write("") 
+        c_btn = st.columns([1, 1.5, 1.5])
         with c_btn[1]:
             if st.button("💾 SALVAR ALUNO"):
                 if st.session_state.f_nome:
