@@ -14,12 +14,12 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS COM PADDING DE 30PX ---
+# --- CSS PARA MENU FINO E CONTEÚDO COLADO ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
     
-    /* Menu de Navegação Fixo */
+    /* MENU DE NAVEGAÇÃO MAIS FINO (SLIM) */
     .stTabs [data-baseweb="tab-list"] { 
         background-color: #1a3a5a; 
         border-bottom: 2px solid #2c5282;
@@ -29,11 +29,25 @@ st.markdown("""
         width: 100vw !important;
         z-index: 999;
         justify-content: center;
+        height: 30px !important; /* Altura reduzida do menu */
     }
 
-    /* ALTERAÇÃO: 30px de distância do topo */
+    .stTabs [data-baseweb="tab"] { 
+        color: #ffffff !important; 
+        font-weight: 600; 
+        padding: 0px 30px !important;
+        height: 30px !important; /* Mesma altura do fundo */
+        line-height: 30px !important; /* Centraliza o texto verticalmente */
+        font-size: 13px !important;
+    }
+
+    .stTabs [aria-selected="true"] { 
+        border-bottom: 3px solid #2ecc71 !important; 
+    }
+    
+    /* CONTEÚDO COLADO NO MENU FINO */
     .main .block-container { 
-        padding-top: 30px !important; 
+        padding-top: 32px !important; /* 30px do menu + 2px de folga */
         padding-bottom: 0px !important;
     }
 
