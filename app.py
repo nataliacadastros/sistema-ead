@@ -14,32 +14,40 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS FINAL (COM SEUS AJUSTES APLICADOS) ---
+# --- CSS FINAL (MENU NO TOPO E CENTRALIZAÇÃO TOTAL) ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
-    .stTabs [data-baseweb="tab-list"] { background-color: #1a3a5a; border-bottom: 2px solid #2c5282; }
-    .stTabs [data-baseweb="tab"] { color: #ffffff !important; font-weight: 600; padding: 0px 30px; }
-    .stTabs [aria-selected="true"] { background-color: #2c5282 !important; border-bottom: 4px solid #2ecc71 !important; }
     
-    /* Ajustes que você enviou */
-    div[data-testid="stHorizontalBlock"] { margin-bottom: 3px !important; }
-
-    div[data-testid="stTextInput"] > div { 
-        min-height: 25px !important; 
-        height: 25px !important;
-        width: 55% !important;
+    /* Menu de Navegação no Topo */
+    .stTabs [data-baseweb="tab-list"] { 
+        background-color: #1a3a5a; 
+        border-bottom: 2px solid #2c5282;
+        position: fixed;
+        top: 0;
+        width: 100%;
+        z-index: 999;
+        justify-content: center;
     }
+    .stTabs [data-baseweb="tab"] { color: #ffffff !important; font-weight: 600; padding: 10px 30px; }
+    .stTabs [aria-selected="true"] { border-bottom: 4px solid #2ecc71 !important; }
+    
+    /* Espaçamento para o conteúdo não ficar embaixo do menu fixo */
+    .main .block-container { padding-top: 60px; }
 
+    /* Estilo dos Inputs (Seus Ajustes) */
+    div[data-testid="stHorizontalBlock"] { margin-bottom: 3px !important; }
+    div[data-testid="stTextInput"] > div { 
+        min-height: 25px !important; height: 25px !important;
+        width: 100% !important; /* Ocupa a coluna central */
+    }
+    .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; }
+
+    /* Labels Centralizadas */
     label { 
-        color: #2ecc71 !important;
-        font-weight: bold !important;
-        font-size: 15px !important; 
-        padding-right: 2px !important; 
-        height: 25px !important;
-        display: flex; 
-        align-items: center; 
-        justify-content: flex-end;
+        color: #2ecc71 !important; font-weight: bold !important; font-size: 15px !important; 
+        padding-right: 10px !important; height: 25px !important;
+        display: flex; align-items: center; justify-content: flex-end;
     }
     
     /* Checkboxes e Botões */
@@ -49,10 +57,13 @@ st.markdown("""
         background-color: #2ecc71 !important; color: white !important; font-weight: bold !important;
         height: 40px !important; border: none !important; border-radius: 5px !important;
         display: flex !important; align-items: center !important; justify-content: center !important;
-        white-space: nowrap !important; font-size: 13px !important; padding: 0px 20px !important;
+        white-space: nowrap !important; font-size: 13px !important; padding: 0px 25px !important;
+        width: auto !important; margin: 0 auto;
     }
 
-    /* Esconder elementos desnecessários */
+    /* Centralização dos blocos de botões */
+    [data-testid="column"] { display: flex; justify-content: center; align-items: center; }
+
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
@@ -87,42 +98,53 @@ def processar_pagto():
     st.session_state.val_pagto = f"{base} | {' | '.join(obs)}" if obs else base
     st.session_state.input_pagto_key = st.session_state.val_pagto
 
-# --- UI - ABAS ---
+# --- MENU DE NAVEGAÇÃO NO TOPO ---
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
 with tab_cad:
-    _, col_central, _ = st.columns([0.5, 3, 0.5])
+    # Centralização Total: Criamos 3 colunas, o conteúdo fica na do meio (proporção 1:2:1)
+    _, col_central, _ = st.columns([1, 2, 1])
+    
     with col_central:
         st.write("")
-        # Frame de preenchimento (Labels e Inputs com seus novos tamanhos)
-        c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>ID:</label>", unsafe_allow_html=True); c2.text_input("ID", key="f_id", label_visibility="collapsed")
-        c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>ALUNO:</label>", unsafe_allow_html=True); c2.text_input("ALUNO", key="f_nome", label_visibility="collapsed")
-        c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>CIDADE:</label>", unsafe_allow_html=True); c2.text_input("CIDADE", key="f_cid", label_visibility="collapsed")
-        c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>CURSO:</label>", unsafe_allow_html=True); c2.text_input("CURSO", key="input_curso_key", value=st.session_state.val_curso, on_change=transformar_curso, label_visibility="collapsed")
-        c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>PAGAMENTO:</label>", unsafe_allow_html=True); c2.text_input("PAGAMENTO", key="input_pagto_key", value=st.session_state.val_pagto, label_visibility="collapsed")
-        c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>VENDEDOR:</label>", unsafe_allow_html=True); c2.text_input("VENDEDOR", key="f_vend", label_visibility="collapsed")
-        c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>DATA:</label>", unsafe_allow_html=True); c2.text_input("DATA", key="f_data", value=date.today().strftime("%d/%m/%Y"), label_visibility="collapsed")
+        # Campos de preenchimento (Alinhados 1:2 para label e input)
+        for label, key, func in [
+            ("ID:", "f_id", None), ("ALUNO:", "f_nome", None), ("CIDADE:", "f_cid", None),
+            ("CURSO:", "input_curso_key", transformar_curso), ("PAGAMENTO:", "input_pagto_key", None),
+            ("VENDEDOR:", "f_vend", None), ("DATA:", "f_data", None)
+        ]:
+            c1, c2 = st.columns([1, 2])
+            c1.markdown(f"<label>{label}</label>", unsafe_allow_html=True)
+            if key == "input_curso_key":
+                c2.text_input(label, key=key, value=st.session_state.val_curso, on_change=func, label_visibility="collapsed")
+            elif key == "input_pagto_key":
+                c2.text_input(label, key=key, value=st.session_state.val_pagto, label_visibility="collapsed")
+            elif key == "f_data":
+                c2.text_input(label, key=key, value=date.today().strftime("%d/%m/%Y"), label_visibility="collapsed")
+            else:
+                c2.text_input(label, key=key, label_visibility="collapsed")
 
         st.write("")
-        # --- CHECKBOXES (Alinhados ao campo branco com mola lateral) ---
-        recuo, area_botoes = st.columns([1.2, 4])
-        with area_botoes:
-            m_esq, b1, b2, b3, m_dir = st.columns([0.5, 1, 1, 1, 1], gap="small")
-            with b1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
-            with b2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
-            with b3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
+        # --- CHECKBOXES CENTRALIZADOS NO MEIO ---
+        # Usamos colunas internas para agrupar no centro do bloco
+        _, area_checks, _ = st.columns([0.2, 3, 0.2])
+        with area_checks:
+            s1, s2, s3 = st.columns(3)
+            with s1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
+            with s2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
+            with s3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
 
         st.write("")
-        # --- BOTÕES DE AÇÃO (Alinhados ao centro do campo branco) ---
-        recuo_btn, area_acao = st.columns([1.2, 4])
-        with area_acao:
-            m_esq, btn_salvar, btn_enviar, m_dir = st.columns([0.8, 1.2, 1.2, 0.8], gap="medium")
-            with btn_salvar:
+        # --- BOTÕES DE AÇÃO CENTRALIZADOS NO MEIO ---
+        _, area_btns, _ = st.columns([0.5, 3, 0.5])
+        with area_btns:
+            b1, b2 = st.columns(2)
+            with b1:
                 if st.button("💾 SALVAR ALUNO"):
                     if st.session_state.f_nome:
                         aluno = {"ID": st.session_state.f_id.upper(), "Aluno": st.session_state.f_nome.upper(), "Cidade": st.session_state.f_cid.upper(), "Curso": st.session_state.input_curso_key.strip(), "Pagamento": st.session_state.input_pagto_key.upper(), "Vendedor": st.session_state.f_vend.upper(), "Data": st.session_state.f_data}
-                        st.session_state.lista_previa.append(aluno); st.session_state.val_curso = ""; st.session_state.val_pagto = ""; st.session_state.f_nome = ""; st.session_state.f_id = ""; st.rerun()
-            with btn_enviar:
+                        st.session_state.lista_previa.append(aluno); st.rerun()
+            with b2:
                 if st.button("📤 ENVIAR PLANILHA"):
                     if st.session_state.lista_previa:
                         df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa); conn.update(data=pd.concat([df_old, df_new], ignore_index=True)); st.session_state.lista_previa = []; st.success("Enviado!"); st.rerun()
@@ -131,7 +153,6 @@ with tab_cad:
     if st.session_state.lista_previa:
         st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
-# --- ABA GERENCIAMENTO ---
 with tab_ger:
     try:
         dados = conn.read(ttl="0s").fillna("")
