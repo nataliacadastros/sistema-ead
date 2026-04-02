@@ -14,7 +14,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS CONSOLIDADO (CENTRALIZAÇÃO, TOPO E MEDIDAS EXATAS) ---
+# --- CSS CONSOLIDADO ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
@@ -44,7 +44,7 @@ st.markdown("""
         margin: 0 auto !important;
     }
 
-    /* CONFIGURAÇÃO DOS CAMPOS (SUAS MEDIDAS) */
+    /* CONFIGURAÇÃO DOS CAMPOS */
     div[data-testid="stHorizontalBlock"] { 
         margin-bottom: 3px !important;
         display: flex;
@@ -78,18 +78,35 @@ st.markdown("""
         border-radius: 5px !important;
     }
 
-    /* Checkboxes e Botões */
+    /* Checkboxes e Botões Grandes (Cadastro) */
     .stCheckbox { display: flex; justify-content: center; margin-top: 8px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
     
-    div.stButton { display: flex; justify-content: center; margin-top: 15px !important; }
-    div.stButton > button {
+    .stButton > button {
         background-color: #2ecc71 !important; color: white !important; font-weight: bold !important;
-        height: 40px !important; border-radius: 5px !important;
+        border-radius: 5px !important;
+    }
+
+    /* Ajuste para o Botão "Salvar/Enviar" (Grandes) */
+    div[data-testid="column"] .stButton > button {
+        height: 40px !important;
         width: 90% !important;
     }
 
-    /* Lista e Contador */
+    /* CSS para o Botão Atualizar (Menor e centralizado abaixo da tabela) */
+    .btn-atualizar-container {
+        display: flex;
+        justify-content: center;
+        margin-top: 10px;
+    }
+    .btn-atualizar-container .stButton > button {
+        height: 30px !important;
+        width: auto !important;
+        padding: 0 20px !important;
+        font-size: 12px !important;
+        background-color: #34495e !important; /* Cor mais neutra para o botão de apoio */
+    }
+
     hr { margin-top: 20px !important; margin-bottom: 5px !important; }
     .contador-estilo {
         text-align: center;
@@ -138,14 +155,12 @@ tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "
 
 with tab_cad:
     _, centro, _ = st.columns([0.5, 5, 0.5])
-    
     with centro:
         campos = [
             ("ID:", "f_id", None), ("ALUNO:", "f_nome", None), ("CIDADE:", "f_cid", None),
             ("CURSO:", "input_curso_key", transformar_curso), ("PAGAMENTO:", "input_pagto_key", None),
             ("VENDEDOR:", "f_vend", None), ("DATA:", "f_data", None)
         ]
-        
         for label, key, func in campos:
             c_lab, c_inp = st.columns([1.5, 3.5]) 
             c_lab.markdown(f"<label>{label}</label>", unsafe_allow_html=True)
@@ -167,13 +182,13 @@ with tab_cad:
         st.write("")
         _, b_left, b_right, _ = st.columns([0.5, 2, 2, 0.5])
         with b_left:
-            if st.button("💾 SALVAR ALUNO", use_container_width=True):
+            if st.button("💾 SALVAR ALUNO", key="btn_salvar"):
                 if st.session_state.f_nome:
                     aluno = {"ID": st.session_state.f_id.upper(), "Aluno": st.session_state.f_nome.upper(), "Cidade": st.session_state.f_cid.upper(), "Curso": st.session_state.input_curso_key.strip(), "Pagamento": st.session_state.input_pagto_key.upper(), "Vendedor": st.session_state.f_vend.upper(), "Data": st.session_state.f_data}
                     st.session_state.lista_previa.append(aluno)
                     st.rerun()
         with b_right:
-            if st.button("📤 ENVIAR PLANILHA", use_container_width=True):
+            if st.button("📤 ENVIAR PLANILHA", key="btn_enviar"):
                 if st.session_state.lista_previa:
                     df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa); conn.update(data=pd.concat([df_old, df_new], ignore_index=True)); st.session_state.lista_previa = []; st.success("Enviado!"); st.rerun()
 
@@ -184,37 +199,29 @@ with tab_cad:
         st.dataframe(df_previa, use_container_width=True, hide_index=True)
 
 with tab_ger:
-    st.markdown("<h3 style='text-align: center; color: #2ecc71;'>🖥️ GERENCIAMENTO DE REGISTROS</h3>", unsafe_allow_html=True)
-    
-    # Botões de controle
-    c1, c2 = st.columns([1, 4])
-    with c1:
-        refresh = st.button("🔄 ATUALIZAR")
+    st.markdown("<h3 style='text-align: center; color: #2ecc71;'>🖥️ BASE DE DADOS COMPLETA</h3>", unsafe_allow_html=True)
     
     try:
-        if refresh:
-            st.cache_data.clear()
-
-        with st.spinner("Sincronizando com Google Sheets..."):
-            # Lendo dados sem remover linhas vazias
+        with st.spinner("Sincronizando registros..."):
             dados = conn.read(ttl="0s").fillna("")
             
             if not dados.empty:
-                # Tratamento de ID para evitar o .0 (formato numérico para string)
                 if "ID" in dados.columns:
                     dados["ID"] = dados["ID"].astype(str).str.replace(r'\.0$', '', regex=True)
                 
-                # Exibição (Invertida para ver novos no topo, mas mantendo linhas vazias se houverem)
-                st.dataframe(
-                    dados.iloc[::-1], 
-                    use_container_width=True, 
-                    hide_index=True, 
-                    height=600
-                )
+                # Exibição da Tabela
+                st.dataframe(dados.iloc[::-1], use_container_width=True, hide_index=True, height=500)
+                
+                # BOTÃO ATUALIZAR (MENOR E ABAIXO DA LISTA)
+                st.markdown('<div class="btn-atualizar-container">', unsafe_allow_html=True)
+                if st.button("🔄 ATUALIZAR LISTA", key="btn_refresh_ger"):
+                    st.cache_data.clear()
+                    st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
             else:
-                st.info("Planilha vazia ou em processo de sincronização.")
+                st.info("Aguardando registros ou planilha vazia.")
     except:
-        st.error("Não foi possível carregar os dados. Verifique a conexão.")
+        st.error("Erro ao carregar os dados do Google Sheets.")
 
 with tab_rel:
     st.markdown("<h3 style='text-align: center; color: #2ecc71;'>📊 RELATÓRIOS</h3>", unsafe_allow_html=True)
