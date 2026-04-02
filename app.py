@@ -30,11 +30,14 @@ st.markdown("""
         display: flex; align-items: center; justify-content: flex-end; padding-right: 15px; height: 25px;
     }
     
-    .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
+    /* Letras verdes dos checkboxes e sem quebra de linha */
+    .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; white-space: nowrap; }
     
+    /* Estilo dos botões de ação */
     div.stButton > button {
         background-color: #2ecc71 !important; color: white !important; font-weight: bold !important;
-        height: 40px !important; width: 100% !important; border: none !important; border-radius: 5px !important;
+        height: 40px !important; border: none !important; border-radius: 5px !important;
+        padding: 0px 20px !important;
     }
     
     header {visibility: hidden;} footer {visibility: hidden;}
@@ -47,7 +50,7 @@ if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "val_curso" not in st.session_state: st.session_state.val_curso = ""
 if "val_pagto" not in st.session_state: st.session_state.val_pagto = ""
 
-# --- FUNÇÕES DE LÓGICA (CURSO E PAGAMENTO) ---
+# --- FUNÇÕES DE LÓGICA ---
 def transformar_curso():
     entrada = st.session_state.input_curso_key.strip()
     if not entrada:
@@ -80,7 +83,7 @@ with tab_cad:
     _, col_central, _ = st.columns([0.5, 3, 0.5])
     with col_central:
         st.write("")
-        # Campos de preenchimento (Mantendo a proporção 1.2 : 4)
+        # Frame de preenchimento (1.2 : 4)
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>ID:</label>", unsafe_allow_html=True); c2.text_input("ID", key="f_id", label_visibility="collapsed")
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>ALUNO:</label>", unsafe_allow_html=True); c2.text_input("ALUNO", key="f_nome", label_visibility="collapsed")
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>CIDADE:</label>", unsafe_allow_html=True); c2.text_input("CIDADE", key="f_cid", label_visibility="collapsed")
@@ -91,31 +94,33 @@ with tab_cad:
 
         st.write("")
         
-        # --- BOTÕES SELECIONÁVEIS ALINHADOS AO FRAME ---
-        # Usamos uma coluna de 1.2 (vazia) para pular o espaço das labels e centralizar os botões nos 4 de largura
+        # --- CHECKBOXES CENTRALIZADOS COM DISTÂNCIA (3cm aprox.) ---
         recuo, area_botoes = st.columns([1.2, 4])
         with area_botoes:
-            s1, s2, s3 = st.columns(3)
-            with s1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
-            with s2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
-            with s3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
+            # Usamos colunas laterais vazias (0.5) para centralizar os itens no meio
+            # O gap="large" simula a distância de 3cm entre os itens
+            mola_esq, b1, b2, b3, mola_dir = st.columns([0.5, 1, 1, 1, 0.5], gap="large")
+            with b1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
+            with b2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
+            with b3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
 
         st.write("")
         
-        # --- BOTÕES DE AÇÃO ALINHADOS AO FRAME ---
+        # --- BOTÕES DE AÇÃO CENTRALIZADOS COM DISTÂNCIA ---
         recuo_btn, area_acao = st.columns([1.2, 4])
         with area_acao:
-            b1, b2 = st.columns(2)
-            with b1:
+            # Centralizando os dois botões no meio da área '4'
+            m_esq, btn_salvar, btn_enviar, m_dir = st.columns([0.8, 1, 1, 0.8], gap="large")
+            with btn_salvar:
                 if st.button("💾 SALVAR ALUNO"):
                     if st.session_state.f_nome:
                         aluno = {"ID": st.session_state.f_id.upper(), "Aluno": st.session_state.f_nome.upper(), "Cidade": st.session_state.f_cid.upper(), "Curso": st.session_state.input_curso_key.strip(), "Pagamento": st.session_state.input_pagto_key.upper(), "Vendedor": st.session_state.f_vend.upper(), "Data": st.session_state.f_data}
                         st.session_state.lista_previa.append(aluno)
                         st.session_state.val_curso = ""; st.session_state.val_pagto = ""; st.session_state.f_nome = ""; st.session_state.f_id = ""; st.rerun()
-            with b2:
-                if st.button("📤 ENVIAR PARA PLANILHA"):
+            with btn_enviar:
+                if st.button("📤 ENVIAR PLANILHA"):
                     if st.session_state.lista_previa:
-                        df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa); conn.update(data=pd.concat([df_old, df_new], ignore_index=True)); st.session_state.lista_previa = []; st.success("Enviado com sucesso!"); st.rerun()
+                        df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa); conn.update(data=pd.concat([df_old, df_new], ignore_index=True)); st.session_state.lista_previa = []; st.success("Enviado!"); st.rerun()
 
     st.write("---")
     if st.session_state.lista_previa:
