@@ -57,7 +57,6 @@ st.markdown("""
 conn = st.connection("gsheets", type=GSheetsConnection)
 if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "val_curso" not in st.session_state: st.session_state.val_curso = ""
-if "val_pagto" not in st.session_state: st.session_state.val_pagto = ""
 
 # --- FUNÇÕES AUXILIARES ---
 def extrair_valor_recebido(texto):
@@ -97,32 +96,54 @@ def processar_pagto():
     if st.session_state.chk_3: obs.append("CONFIRMAÇÃO MATRÍCULA")
     st.session_state.f_pagto = f"{base} | {' | '.join(obs)}" if obs else base
 
-# --- ABAS ---
+# --- ABAS DO SISTEMA ---
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
 # --- ABA 1: CADASTRO ---
 with tab_cad:
     _, centro, _ = st.columns([0.5, 5, 0.5])
     with centro:
-        campos = [
-            ("ID:", "f_id"), ("ALUNO:", "f_nome"), ("TEL. RESPONSÁVEL:", "f_tel_resp"),
-            ("TEL. ALUNO:", "f_tel_aluno"), ("CPF RESPONSÁVEL:", "f_cpf"), ("CIDADE:", "f_cid"),
-            ("CURSO CONTRATADO:", "input_curso_key"), ("FORMA DE PAGAMENTO:", "f_pagto"),
-            ("VENDEDOR:", "f_vend"), ("DATA DA MATRÍCULA:", "f_data")
-        ]
-        
-        for label, key in campos:
-            c_lab, c_inp = st.columns([1.5, 3.5])
-            c_lab.markdown(f"<label>{label}</label>", unsafe_allow_html=True)
-            if key == "input_curso_key":
-                c_inp.text_input(label, key=key, on_change=transformar_curso, label_visibility="collapsed")
-            elif key == "f_data":
-                if "f_data" not in st.session_state: st.session_state.f_data = date.today().strftime("%d/%m/%Y")
-                c_inp.text_input(label, key=key, label_visibility="collapsed")
-            else:
-                c_inp.text_input(label, key=key, label_visibility="collapsed")
+        c_id_lab, c_id_inp = st.columns([1.5, 3.5])
+        c_id_lab.markdown("<label>ID:</label>", unsafe_allow_html=True)
+        f_id = c_id_inp.text_input("ID", key="f_id", label_visibility="collapsed")
 
-        # Restaurando Checkboxes Originais
+        c_nom_lab, c_nom_inp = st.columns([1.5, 3.5])
+        c_nom_lab.markdown("<label>ALUNO:</label>", unsafe_allow_html=True)
+        f_nome = c_nom_inp.text_input("ALUNO", key="f_nome", label_visibility="collapsed")
+
+        c_tr_lab, c_tr_inp = st.columns([1.5, 3.5])
+        c_tr_lab.markdown("<label>TEL. RESPONSÁVEL:</label>", unsafe_allow_html=True)
+        f_tel_resp = c_tr_inp.text_input("TEL. RESP", key="f_tel_resp", label_visibility="collapsed")
+
+        c_ta_lab, c_ta_inp = st.columns([1.5, 3.5])
+        c_ta_lab.markdown("<label>TEL. ALUNO:</label>", unsafe_allow_html=True)
+        f_tel_aluno = c_ta_inp.text_input("TEL. ALUNO", key="f_tel_aluno", label_visibility="collapsed")
+
+        c_cpf_lab, c_cpf_inp = st.columns([1.5, 3.5])
+        c_cpf_lab.markdown("<label>CPF RESPONSÁVEL:</label>", unsafe_allow_html=True)
+        f_cpf = c_cpf_inp.text_input("CPF", key="f_cpf", label_visibility="collapsed")
+
+        c_cid_lab, c_cid_inp = st.columns([1.5, 3.5])
+        c_cid_lab.markdown("<label>CIDADE:</label>", unsafe_allow_html=True)
+        f_cid = c_cid_inp.text_input("CIDADE", key="f_cid", label_visibility="collapsed")
+
+        c_cur_lab, c_cur_inp = st.columns([1.5, 3.5])
+        c_cur_lab.markdown("<label>CURSO CONTRATADO:</label>", unsafe_allow_html=True)
+        f_curso = c_cur_inp.text_input("CURSO", key="input_curso_key", on_change=transformar_curso, label_visibility="collapsed")
+
+        c_pag_lab, c_pag_inp = st.columns([1.5, 3.5])
+        c_pag_lab.markdown("<label>FORMA DE PAGAMENTO:</label>", unsafe_allow_html=True)
+        f_pagto = c_pag_inp.text_input("PAGAMENTO", key="f_pagto", label_visibility="collapsed")
+
+        c_ven_lab, c_ven_inp = st.columns([1.5, 3.5])
+        c_ven_lab.markdown("<label>VENDEDOR:</label>", unsafe_allow_html=True)
+        f_vend = c_ven_inp.text_input("VENDEDOR", key="f_vend", label_visibility="collapsed")
+
+        c_dat_lab, c_dat_inp = st.columns([1.5, 3.5])
+        c_dat_lab.markdown("<label>DATA DA MATRÍCULA:</label>", unsafe_allow_html=True)
+        if "f_data_val" not in st.session_state: st.session_state.f_data_val = date.today().strftime("%d/%m/%Y")
+        f_data = c_dat_inp.text_input("DATA", key="f_data", value=st.session_state.f_data_val, label_visibility="collapsed")
+
         st.write("")
         _, c_c1, c_c2, c_c3, _ = st.columns([1.5, 1.1, 1.2, 1.2, 0.1])
         with c_c1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
@@ -133,19 +154,17 @@ with tab_cad:
         _, b_col1, b_col2, _ = st.columns([1.5, 1.75, 1.75, 0.1])
         with b_col1:
             if st.button("💾 SALVAR ALUNO"):
-                if st.session_state.f_nome:
+                if f_nome:
                     aluno = {
-                        "ID": st.session_state.f_id.upper(), "Aluno": st.session_state.f_nome.upper(),
-                        "Tel_Resp": st.session_state.f_tel_resp, "Tel_Aluno": st.session_state.f_tel_aluno,
-                        "CPF": st.session_state.f_cpf, "Cidade": st.session_state.f_cid.upper(),
-                        "Curso": st.session_state.input_curso_key.strip(), "Pagto": st.session_state.f_pagto.upper(),
-                        "Vendedor": st.session_state.f_vend.upper(), "Data_Mat": st.session_state.f_data
+                        "ID": f_id.upper(), "Aluno": f_nome.upper(), "Tel_Resp": f_tel_resp,
+                        "Tel_Aluno": f_tel_aluno, "CPF": f_cpf, "Cidade": f_cid.upper(),
+                        "Curso": st.session_state.input_curso_key.strip(), "Pagto": f_pagto.upper(),
+                        "Vendedor": f_vend.upper(), "Data_Mat": f_data
                     }
                     st.session_state.lista_previa.append(aluno)
-                    # Limpeza seletiva (conforme regra)
+                    # Resetando campos específicos limpando o cache visual através do rerun
                     for k in ["f_id", "f_nome", "f_tel_resp", "f_tel_aluno", "f_cpf", "input_curso_key", "f_pagto", "chk_1", "chk_2", "chk_3"]:
-                        if k in ["chk_1", "chk_2", "chk_3"]: st.session_state[k] = False
-                        else: st.session_state[k] = ""
+                        if k in st.session_state: del st.session_state[k]
                     st.rerun()
 
         with b_col2:
@@ -173,7 +192,8 @@ with tab_cad:
                         worksheet.insert_rows(dados_finais, row=linha_ini)
                         
                         st.session_state.lista_previa = []
-                        st.session_state.f_cid = ""; st.session_state.f_vend = ""
+                        if "f_cid" in st.session_state: del st.session_state["f_cid"]
+                        if "f_vend" in st.session_state: del st.session_state["f_vend"]
                         st.success("Enviado com sucesso!")
                         st.cache_data.clear(); st.rerun()
                     except Exception as e: st.error(f"Erro: {e}")
@@ -187,8 +207,8 @@ with tab_cad:
 with tab_ger:
     st.markdown("<h3 style='text-align: center; color: #00f2ff;'>🖥️ DATABASE MONITOR</h3>", unsafe_allow_html=True)
     try:
-        dados = conn.read(ttl="0s").fillna("")
-        st.dataframe(dados.iloc[::-1], use_container_width=True, hide_index=True, height=500)
+        dados_raw = conn.read(ttl="0s").fillna("")
+        st.dataframe(dados_raw.iloc[::-1], use_container_width=True, hide_index=True, height=500)
         if st.button("🔄 REFRESH"): st.cache_data.clear(); st.rerun()
     except: st.error("Erro na conexão.")
 
