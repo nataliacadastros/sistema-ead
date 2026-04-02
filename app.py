@@ -14,12 +14,12 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS FINAL (PROXIMIDADE MÁXIMA AO TOPO) ---
+# --- CSS DEFINITIVO (REMOÇÃO AGRESSIVA DE ESPAÇOS) ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
     
-    /* Menu de Navegação Largura Total */
+    /* Menu de Navegação */
     .stTabs [data-baseweb="tab-list"] { 
         background-color: #1a3a5a; 
         border-bottom: 2px solid #2c5282;
@@ -29,19 +29,21 @@ st.markdown("""
         width: 100vw !important;
         z-index: 999;
         justify-content: center;
-        padding: 0px 50px;
     }
-    .stTabs [data-baseweb="tab"] { color: #ffffff !important; font-weight: 600; padding: 10px 30px; }
-    .stTabs [aria-selected="true"] { border-bottom: 4px solid #2ecc71 !important; }
     
-    /* REMOÇÃO TOTAL DE ESPAÇO NO TOPO */
+    /* REMOÇÃO DE ESPAÇOS DO STREAMLIT (CONTAINERS INTERNOS) */
     .main .block-container { 
-        padding-top: 40px !important; /* Espaço mínimo para não sumir atrás do menu */
-        margin-top: -20px !important; /* Puxa o conteúdo para cima */
+        padding-top: 35px !important; 
+        margin-top: 0px !important;
+    }
+    
+    /* Puxa o bloco central para cima ignorando paddings padrão */
+    div[data-testid="stVerticalBlock"] > div:first-child {
+        margin-top: -35px !important;
     }
 
-    /* Inputs */
-    div[data-testid="stHorizontalBlock"] { margin-bottom: 3px !important; }
+    /* Inputs (Seus Ajustes) */
+    div[data-testid="stHorizontalBlock"] { margin-bottom: 2px !important; }
     div[data-testid="stTextInput"] > div { 
         min-height: 25px !important; height: 25px !important;
         width: 55% !important;
@@ -65,17 +67,16 @@ st.markdown("""
         white-space: nowrap !important; font-size: 13px !important; padding: 0px 20px !important;
     }
 
-    /* Ajuste de proximidade da lista */
-    hr { margin-top: 5px !important; margin-bottom: 5px !important; }
+    /* Lista e Contador */
+    hr { margin-top: 2px !important; margin-bottom: 2px !important; }
     .contador-estilo {
         text-align: right;
         color: #2ecc71;
         font-weight: bold;
         font-size: 14px;
         margin-bottom: 2px;
-        padding-right: 5px;
     }
-    div[data-testid="stDataFrame"] { margin-top: -10px !important; }
+    div[data-testid="stDataFrame"] { margin-top: -15px !important; }
 
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
@@ -118,12 +119,14 @@ with tab_cad:
     _, col_central, _ = st.columns([0.5, 3, 0.5])
     
     with col_central:
-        # Formulário de Cadastro
-        for label, key, func in [
+        # Loop do formulário
+        campos = [
             ("ID:", "f_id", None), ("ALUNO:", "f_nome", None), ("CIDADE:", "f_cid", None),
             ("CURSO:", "input_curso_key", transformar_curso), ("PAGAMENTO:", "input_pagto_key", None),
             ("VENDEDOR:", "f_vend", None), ("DATA:", "f_data", None)
-        ]:
+        ]
+        
+        for label, key, func in campos:
             c1, c2 = st.columns([1.2, 4])
             c1.markdown(f"<label>{label}</label>", unsafe_allow_html=True)
             if key == "input_curso_key":
@@ -135,7 +138,7 @@ with tab_cad:
             else:
                 c2.text_input(label, key=key, label_visibility="collapsed")
 
-        st.write("")
+        # Checkboxes
         recuo, area_checks = st.columns([1.2, 4])
         with area_checks:
             s1, s2, s3 = st.columns(3)
@@ -143,7 +146,7 @@ with tab_cad:
             with s2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
             with s3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
 
-        st.write("")
+        # Botões
         recuo_btn, area_btns = st.columns([1.2, 4])
         with area_btns:
             b1, b2 = st.columns(2)
@@ -158,12 +161,10 @@ with tab_cad:
                     if st.session_state.lista_previa:
                         df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa); conn.update(data=pd.concat([df_old, df_new], ignore_index=True)); st.session_state.lista_previa = []; st.success("Enviado!"); st.rerun()
 
-        # --- LISTA DE PRÉ-VISUALIZAÇÃO IMEDIATA ---
+        # Lista de Pré-Visualização
         st.write("---") 
-        
         qtd = len(st.session_state.lista_previa)
         st.markdown(f'<div class="contador-estilo">Alunos Salvos: {qtd}</div>', unsafe_allow_html=True)
-        
         df_previa = pd.DataFrame(st.session_state.lista_previa) if st.session_state.lista_previa else pd.DataFrame(columns=["ID", "Aluno", "Cidade", "Curso", "Pagamento", "Vendedor", "Data"])
         st.dataframe(df_previa, use_container_width=True, hide_index=True)
 
