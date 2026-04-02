@@ -14,7 +14,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS REVISADO (ALINHAMENTO ABAIXO DO MENU) ---
+# --- CSS COM PADDING DE 25PX ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
@@ -33,13 +33,13 @@ st.markdown("""
     .stTabs [data-baseweb="tab"] { color: #ffffff !important; font-weight: 600; padding: 10px 30px; }
     .stTabs [aria-selected="true"] { border-bottom: 4px solid #2ecc71 !important; }
     
-    /* BLOCO PRINCIPAL: Espaço exato para aparecer abaixo do menu */
+    /* ALTERAÇÃO SOLICITADA: 25px de distância do topo */
     .main .block-container { 
-        padding-top: 55px !important; 
+        padding-top: 25px !important; 
         margin-top: 0px !important;
     }
 
-    /* Inputs (Configuração que você validou) */
+    /* Inputs */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 3px !important; }
     div[data-testid="stTextInput"] > div { 
         min-height: 25px !important; height: 25px !important;
@@ -117,9 +117,6 @@ with tab_cad:
     _, col_central, _ = st.columns([0.5, 3, 0.5])
     
     with col_central:
-        # Espaçamento manual fixo para garantir que desça do menu
-        st.write(" ") 
-
         # Formulário de Cadastro
         for label, key, func in [
             ("ID:", "f_id", None), ("ALUNO:", "f_nome", None), ("CIDADE:", "f_cid", None),
@@ -137,7 +134,7 @@ with tab_cad:
             else:
                 c2.text_input(label, key=key, label_visibility="collapsed")
 
-        # Checkboxes
+        st.write("")
         recuo, area_checks = st.columns([1.2, 4])
         with area_checks:
             s1, s2, s3 = st.columns(3)
@@ -145,7 +142,7 @@ with tab_cad:
             with s2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
             with s3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
 
-        # Botões
+        st.write("")
         recuo_btn, area_btns = st.columns([1.2, 4])
         with area_btns:
             b1, b2 = st.columns(2)
