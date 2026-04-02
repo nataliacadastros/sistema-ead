@@ -14,56 +14,46 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- INICIALIZAÇÃO DE VARIÁVEIS DE PERSONALIZAÇÃO ---
-if "cfg_input_height" not in st.session_state: st.session_state.cfg_input_height = 25
-if "cfg_input_width" not in st.session_state: st.session_state.cfg_input_width = 100
-if "cfg_margin_bottom" not in st.session_state: st.session_state.cfg_margin_bottom = 10 # Distância entre campos
-if "cfg_label_padding" not in st.session_state: st.session_state.cfg_label_padding = 15 # Distância Título -> Campo
-if "cfg_label_size" not in st.session_state: st.session_state.cfg_label_size = 11      # Tamanho da Fonte
-
-# --- CSS DINÂMICO ---
-st.markdown(f"""
+# --- CSS FINAL (COM SEUS AJUSTES APLICADOS) ---
+st.markdown("""
     <style>
-    .stApp {{ background-color: #1a2436; color: white; }}
-    .stTabs [data-baseweb="tab-list"] {{ background-color: #1a3a5a; border-bottom: 2px solid #2c5282; }}
-    .stTabs [data-baseweb="tab"] {{ color: #ffffff !important; font-weight: 600; padding: 0px 30px; }}
-    .stTabs [aria-selected="true"] {{ background-color: #2c5282 !important; border-bottom: 4px solid #2ecc71 !important; }}
+    .stApp { background-color: #1a2436; color: white; }
+    .stTabs [data-baseweb="tab-list"] { background-color: #1a3a5a; border-bottom: 2px solid #2c5282; }
+    .stTabs [data-baseweb="tab"] { color: #ffffff !important; font-weight: 600; padding: 0px 30px; }
+    .stTabs [aria-selected="true"] { background-color: #2c5282 !important; border-bottom: 4px solid #2ecc71 !important; }
     
-    /* DISTÂNCIA ENTRE UM CAMPO E OUTRO */
-    div[data-testid="stHorizontalBlock"] {{
-        margin-bottom: {st.session_state.cfg_margin_bottom}px !important;
-    }}
+    /* Ajustes que você enviou */
+    div[data-testid="stHorizontalBlock"] { margin-bottom: 3px !important; }
 
-    /* ALTURA E LARGURA DOS CAMPOS */
-    div[data-testid="stTextInput"] > div {{ 
-        min-height: {st.session_state.cfg_input_height}px !important; 
-        height: {st.session_state.cfg_input_height}px !important;
-        width: {st.session_state.cfg_input_width}% !important;
-    }}
-    .stTextInput input {{ background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; }}
-    
-    /* TÍTULO DOS CAMPOS (LABELS) */
-    label {{ 
-        color: #2ecc71 !important; 
-        font-weight: bold !important; 
-        font-size: {st.session_state.cfg_label_size}px !important; 
+    div[data-testid="stTextInput"] > div { 
+        min-height: 25px !important; 
+        height: 25px !important;
+        width: 55% !important;
+    }
+
+    label { 
+        color: #2ecc71 !important;
+        font-weight: bold !important;
+        font-size: 15px !important; 
+        padding-right: 2px !important; 
+        height: 25px !important;
         display: flex; 
         align-items: center; 
-        justify-content: flex-end; 
-        padding-right: {st.session_state.cfg_label_padding}px !important; 
-        height: {st.session_state.cfg_input_height}px;
-    }}
+        justify-content: flex-end;
+    }
     
-    .stCheckbox label p {{ color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; white-space: nowrap; }}
+    /* Checkboxes e Botões */
+    .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; white-space: nowrap; }
     
-    div.stButton > button {{
+    div.stButton > button {
         background-color: #2ecc71 !important; color: white !important; font-weight: bold !important;
-        height: 40px !important; width: 100% !important; border: none !important; border-radius: 5px !important;
+        height: 40px !important; border: none !important; border-radius: 5px !important;
         display: flex !important; align-items: center !important; justify-content: center !important;
-        white-space: nowrap !important; font-size: 13px !important;
-    }}
-    
-    header {{visibility: hidden;}} footer {{visibility: hidden;}}
+        white-space: nowrap !important; font-size: 13px !important; padding: 0px 20px !important;
+    }
+
+    /* Esconder elementos desnecessários */
+    header {visibility: hidden;} footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
@@ -97,13 +87,14 @@ def processar_pagto():
     st.session_state.val_pagto = f"{base} | {' | '.join(obs)}" if obs else base
     st.session_state.input_pagto_key = st.session_state.val_pagto
 
-# --- UI ---
-tab_cad, tab_ger, tab_rel, tab_cfg = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "⚙️ AJUSTES"])
+# --- UI - ABAS ---
+tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
 with tab_cad:
     _, col_central, _ = st.columns([0.5, 3, 0.5])
     with col_central:
         st.write("")
+        # Frame de preenchimento (Labels e Inputs com seus novos tamanhos)
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>ID:</label>", unsafe_allow_html=True); c2.text_input("ID", key="f_id", label_visibility="collapsed")
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>ALUNO:</label>", unsafe_allow_html=True); c2.text_input("ALUNO", key="f_nome", label_visibility="collapsed")
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>CIDADE:</label>", unsafe_allow_html=True); c2.text_input("CIDADE", key="f_cid", label_visibility="collapsed")
@@ -113,64 +104,34 @@ with tab_cad:
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>DATA:</label>", unsafe_allow_html=True); c2.text_input("DATA", key="f_data", value=date.today().strftime("%d/%m/%Y"), label_visibility="collapsed")
 
         st.write("")
+        # --- CHECKBOXES (Alinhados ao campo branco com mola lateral) ---
         recuo, area_botoes = st.columns([1.2, 4])
         with area_botoes:
-            s1, s2, s3 = st.columns(3)
-            with s1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
-            with s2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
-            with s3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
+            m_esq, b1, b2, b3, m_dir = st.columns([0.5, 1, 1, 1, 1], gap="small")
+            with b1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
+            with b2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
+            with b3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
 
         st.write("")
+        # --- BOTÕES DE AÇÃO (Alinhados ao centro do campo branco) ---
         recuo_btn, area_acao = st.columns([1.2, 4])
         with area_acao:
-            b1, b2 = st.columns(2)
-            with b1:
+            m_esq, btn_salvar, btn_enviar, m_dir = st.columns([0.8, 1.2, 1.2, 0.8], gap="medium")
+            with btn_salvar:
                 if st.button("💾 SALVAR ALUNO"):
                     if st.session_state.f_nome:
                         aluno = {"ID": st.session_state.f_id.upper(), "Aluno": st.session_state.f_nome.upper(), "Cidade": st.session_state.f_cid.upper(), "Curso": st.session_state.input_curso_key.strip(), "Pagamento": st.session_state.input_pagto_key.upper(), "Vendedor": st.session_state.f_vend.upper(), "Data": st.session_state.f_data}
                         st.session_state.lista_previa.append(aluno); st.session_state.val_curso = ""; st.session_state.val_pagto = ""; st.session_state.f_nome = ""; st.session_state.f_id = ""; st.rerun()
-            with b2:
+            with btn_enviar:
                 if st.button("📤 ENVIAR PLANILHA"):
                     if st.session_state.lista_previa:
                         df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa); conn.update(data=pd.concat([df_old, df_new], ignore_index=True)); st.session_state.lista_previa = []; st.success("Enviado!"); st.rerun()
 
-# --- ABA DE AJUSTES ---
-with tab_cfg:
-    st.subheader("⚙️ Ajustes de Design")
-    
-    col_1, col_2 = st.columns(2)
-    
-    with col_1:
-        st.write("### ⌨️ Campos Brancos")
-        st.session_state.cfg_input_height = st.slider("Altura do Campo (px)", 20, 100, st.session_state.cfg_input_height)
-        st.session_state.cfg_input_width = st.slider("Largura do Campo (%)", 10, 100, st.session_state.cfg_input_width)
-        st.session_state.cfg_margin_bottom = st.slider("Distância entre Linhas (px)", 0, 50, st.session_state.cfg_margin_bottom)
-        
-    with col_2:
-        st.write("### 🏷️ Títulos (Labels)")
-        st.session_state.cfg_label_size = st.slider("Tamanho da Letra (px)", 8, 30, st.session_state.cfg_label_size)
-        st.session_state.cfg_label_padding = st.slider("Distância Título -> Campo (px)", 0, 100, st.session_state.cfg_label_padding)
-    
     st.write("---")
-    st.write("### 📋 COPIE ESTE CÓDIGO E ME ENVIE:")
-    
-    codigo_gerado = f"""
-div[data-testid="stHorizontalBlock"] {{ margin-bottom: {st.session_state.cfg_margin_bottom}px !important; }}
+    if st.session_state.lista_previa:
+        st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
-div[data-testid="stTextInput"] > div {{ 
-    min-height: {st.session_state.cfg_input_height}px !important; 
-    height: {st.session_state.cfg_input_height}px !important;
-    width: {st.session_state.cfg_input_width}% !important;
-}}
-
-label {{ 
-    font-size: {st.session_state.cfg_label_size}px !important; 
-    padding-right: {st.session_state.cfg_label_padding}px !important; 
-    height: {st.session_state.cfg_input_height}px;
-}}
-"""
-    st.code(codigo_gerado, language="css")
-
+# --- ABA GERENCIAMENTO ---
 with tab_ger:
     try:
         dados = conn.read(ttl="0s").fillna("")
