@@ -31,9 +31,9 @@ st.markdown("""
         justify-content: center;
     }
 
-    /* AJUSTE FINO: 24px é a altura do menu. Isso faz o conteúdo encostar na linha azul */
+    /* AJUSTE FINO: 60px é a altura do menu. Isso faz o conteúdo encostar na linha azul */
     .main .block-container { 
-        padding-top: 24px !important; 
+        padding-top: 60px !important; 
         padding-bottom: 0px !important;
     }
 
