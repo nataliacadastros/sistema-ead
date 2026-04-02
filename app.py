@@ -34,11 +34,31 @@ st.markdown("""
     .main .block-container { padding-top: 45px !important; max-width: 1200px !important; margin: 0 auto !important; }
 
     /* ESTILO CADASTRO */
-    div[data-testid="stHorizontalBlock"] { margin-bottom: 3px !important; display: flex; align-items: center; justify-content: center; }
+    div[data-testid="stHorizontalBlock"] { margin-bottom: 5px !important; display: flex; align-items: center; }
     div[data-testid="stTextInput"] > div { min-height: 25px !important; height: 25px !important; }
-    label { color: #00f2ff !important; font-weight: bold !important; font-size: 14px !important; padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end; }
-    .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 25px !important; border-radius: 5px !important; }
+    
+    label { 
+        color: #00f2ff !important; font-weight: bold !important; font-size: 14px !important; 
+        padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end;
+    }
+    
+    .stTextInput input { 
+        background-color: white !important; color: black !important; 
+        text-transform: uppercase !important; font-size: 12px !important; 
+        height: 25px !important; border-radius: 5px !important; 
+    }
+
+    /* Checkboxes Alinhados */
+    .stCheckbox { margin-top: 0px !important; display: flex; justify-content: center; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
+
+    /* Botões de Ação */
+    .stButton > button { 
+        background-color: #00f2ff !important; color: #0b0e1e !important; 
+        font-weight: bold !important; border: none !important; border-radius: 5px !important; 
+        width: 100% !important; height: 35px !important;
+    }
+    .stButton > button:hover { background-color: #39ff14 !important; color: black !important; }
 
     /* CARDS RELATÓRIO HUD */
     .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 100px; display: flex; flex-direction: column; justify-content: center; }
@@ -54,7 +74,6 @@ st.markdown("""
     .hud-label { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); background: #121629; border: 1px solid currentColor; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
     .hud-city-name { position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
 
-    .stButton > button { background-color: #00f2ff !important; color: #0b0e1e !important; font-weight: bold !important; border: none !important; border-radius: 5px !important; width: 100%; }
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
@@ -111,40 +130,66 @@ tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "
 with tab_cad:
     _, centro, _ = st.columns([0.5, 5, 0.5])
     with centro:
-        campos = [("ID:", "f_id", None), ("ALUNO:", "f_nome", None), ("CIDADE:", "f_cid", None), 
-                  ("CURSO:", "input_curso_key", transformar_curso), ("PAGAMENTO:", "input_pagto_key", None), 
-                  ("VENDEDOR:", "f_vend", None), ("DATA MATRÍCULA:", "f_data", None)]
-        for label, key, func in campos:
+        # Formulário de entrada
+        campos = [
+            ("ID:", "f_id"), ("ALUNO:", "f_nome"), ("CIDADE:", "f_cid"), 
+            ("CURSO:", "input_curso_key"), ("PAGAMENTO:", "input_pagto_key"), 
+            ("VENDEDOR:", "f_vend"), ("DATA MATRÍCULA:", "f_data")
+        ]
+        
+        for label, key in campos:
             c_lab, c_inp = st.columns([1.5, 3.5]) 
             c_lab.markdown(f"<label>{label}</label>", unsafe_allow_html=True)
-            if key == "input_curso_key": c_inp.text_input(label, key=key, value=st.session_state.val_curso, on_change=func, label_visibility="collapsed")
-            elif key == "input_pagto_key": c_inp.text_input(label, key=key, value=st.session_state.val_pagto, label_visibility="collapsed")
-            elif key == "f_data": c_inp.text_input(label, key=key, value=date.today().strftime("%d/%m/%Y"), label_visibility="collapsed")
-            else: c_inp.text_input(label, key=key, label_visibility="collapsed")
+            
+            if key == "input_curso_key":
+                c_inp.text_input(label, key=key, value=st.session_state.val_curso, on_change=transformar_curso, label_visibility="collapsed")
+            elif key == "input_pagto_key":
+                c_inp.text_input(label, key=key, value=st.session_state.val_pagto, label_visibility="collapsed")
+            elif key == "f_data":
+                c_inp.text_input(label, key=key, value=date.today().strftime("%d/%m/%Y"), label_visibility="collapsed")
+            else:
+                c_inp.text_input(label, key=key, label_visibility="collapsed")
         
-        _, c_c1, c_c2, c_c3, _ = st.columns([0.8, 1.2, 1.2, 1.2, 0.8])
+        # Checkboxes (S1, S2, S3) Alinhados
+        st.write("")
+        _, c_c1, c_c2, c_c3, _ = st.columns([1.5, 1.1, 1.2, 1.2, 0.1])
         with c_c1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
         with c_c2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
         with c_c3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
         
+        # Botões de Ação
         st.write("")
-        b_l, b_r = st.columns(2)
-        with b_l:
+        _, b_col1, b_col2, _ = st.columns([1.5, 1.75, 1.75, 0.1])
+        with b_col1:
             if st.button("💾 SALVAR ALUNO"):
                 if st.session_state.f_nome:
-                    aluno = {"ID": st.session_state.f_id.upper(), "Aluno": st.session_state.f_nome.upper(), 
-                             "Cidade": st.session_state.f_cid.upper(), "Curso": st.session_state.input_curso_key.strip(), 
-                             "Pagamento": st.session_state.input_pagto_key.upper(), "Vendedor": st.session_state.f_vend.upper(), 
-                             "Data Matrícula": st.session_state.f_data}
+                    aluno = {
+                        "ID": st.session_state.f_id.upper(), 
+                        "Aluno": st.session_state.f_nome.upper(), 
+                        "Cidade": st.session_state.f_cid.upper(), 
+                        "Curso": st.session_state.input_curso_key.strip(), 
+                        "Pagamento": st.session_state.input_pagto_key.upper(), 
+                        "Vendedor": st.session_state.f_vend.upper(), 
+                        "Data Matrícula": st.session_state.f_data,
+                        "STATUS": "ATIVO" # Status padrão para novos cadastros
+                    }
                     st.session_state.lista_previa.append(aluno)
                     st.rerun()
-        with b_r:
+        with b_col2:
             if st.button("📤 ENVIAR PLANILHA"):
                 if st.session_state.lista_previa:
                     df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa)
                     conn.update(data=pd.concat([df_old, df_new], ignore_index=True))
                     st.session_state.lista_previa = []; st.success("Banco de Dados Atualizado!"); st.rerun()
-        st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
+        
+        # Tabela de Pré-visualização com Cabeçalhos
+        st.write("---")
+        st.markdown("<p style='color:#00f2ff; font-weight:bold; text-align:center;'>LISTA DE PRÉ-VISUALIZAÇÃO</p>", unsafe_allow_html=True)
+        if st.session_state.lista_previa:
+            df_previa = pd.DataFrame(st.session_state.lista_previa)
+            st.dataframe(df_previa, use_container_width=True, hide_index=True)
+        else:
+            st.info("Nenhum aluno na lista de espera.")
 
 # --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
@@ -230,25 +275,10 @@ with tab_rel:
                     st.markdown("<small style='color:#64748b'>PERFORMANCE POR DIVULGADOR</small>", unsafe_allow_html=True)
                     df_v = df_f['Vendedor'].value_counts().reset_index()
                     df_v.columns = ['Vendedor', 'Quantidade']
-                    
-                    # Gráfico de linha com Nomes Visíveis (mode='lines+markers+text')
                     fig_v = px.line(df_v.head(5), x='Vendedor', y='Quantidade', markers=True, text='Vendedor')
-                    
-                    fig_v.update_traces(
-                        line_color='#00f2ff', 
-                        marker=dict(size=10, color='#ff007a', line=dict(width=2, color='white')),
-                        textposition="top center", # Nome acima da bolinha
-                        textfont=dict(color="#00f2ff", size=10),
-                        mode='lines+markers+text' # Força o modo texto visível
-                    )
-                    
-                    fig_v.update_layout(
-                        template="plotly_dark", 
-                        paper_bgcolor='rgba(0,0,0,0)', 
-                        plot_bgcolor='rgba(0,0,0,0)', 
-                        height=400,
-                        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False), # Esconde labels do eixo pra não duplicar
-                        yaxis=dict(showgrid=True, gridcolor='#1f295a', zeroline=False)
-                    )
+                    fig_v.update_traces(line_color='#00f2ff', marker=dict(size=10, color='#ff007a', line=dict(width=2, color='white')),
+                                        textposition="top center", mode='lines+markers+text')
+                    fig_v.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
+                                        height=400, xaxis=dict(showgrid=False, showticklabels=False), yaxis=dict(showgrid=True, gridcolor='#1f295a'))
                     st.plotly_chart(fig_v, use_container_width=True)
     except Exception as e: st.error(f"Erro: {e}")
