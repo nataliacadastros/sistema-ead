@@ -102,7 +102,7 @@ with tab_cad:
                 if st.session_state.lista_previa:
                     df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa)
                     conn.update(data=pd.concat([df_old, df_new], ignore_index=True))
-                    st.session_state.lista_previa = []; st.success("Enviado!"); st.rerun()
+                    st.session_state.lista_previa = []; st.success("Enviado com sucesso!"); st.rerun()
         st.write("---") 
         qtd = len(st.session_state.lista_previa)
         st.markdown(f'<div class="contador-estilo">FILA DE ENVIO: {qtd} ALUNO(S)</div>', unsafe_allow_html=True)
@@ -134,26 +134,25 @@ with tab_rel:
                 
                 st.markdown("### 📅 Selecione o Período")
                 
-                # CONFIGURAÇÃO: Inicia sempre com o intervalo de hoje menos 7 dias até hoje.
-                data_inicio_padrao = date.today() - timedelta(days=7)
-                data_fim_padrao = date.today()
+                # Definição do intervalo padrão (últimos 7 dias)
+                data_ini_default = date.today() - timedelta(days=7)
+                data_fim_default = date.today()
                 
-                # Componente único de calendário para intervalo
+                # Componente de calendário formatado para português (formato DD/MM/YYYY)
                 periodo_selecionado = st.date_input(
-                    "Selecione as datas no calendário (início e fim):",
-                    value=(data_inicio_padrao, data_fim_padrao),
+                    "Selecione o intervalo de datas:",
+                    value=(data_ini_default, data_fim_default),
+                    format="DD/MM/YYYY",
                     label_visibility="collapsed"
                 )
                 
-                # Lógica para filtrar: funciona se selecionar um intervalo ou um único dia
+                # Tratamento para garantir que o código só rode quando o intervalo estiver completo ou for data única
                 if isinstance(periodo_selecionado, (list, tuple)):
                     if len(periodo_selecionado) == 2:
                         d_ini, d_fim = periodo_selecionado
                     else:
-                        # Se o usuário clicar apenas uma vez no calendário (ainda não fechou o intervalo)
                         d_ini = d_fim = periodo_selecionado[0]
                 else:
-                    # Fallback para data única
                     d_ini = d_fim = periodo_selecionado
 
                 df_f = df_rel.loc[(df_rel[col_data].dt.date >= d_ini) & (df_rel[col_data].dt.date <= d_fim)]
@@ -165,19 +164,19 @@ with tab_rel:
                     
                     if 'Vendedor' in df_f.columns:
                         v_top = df_f['Vendedor'].value_counts().idxmax()
-                        k2.markdown(f"<div style='background-color:#1a3a5a;padding:15px;border-radius:10px;text-align:center;border-left:5px solid #f1c40f'><small>TOP VENDEDOR</small><h3>{v_top}</h3></div>", unsafe_allow_html=True)
+                        k2.markdown(f"<div style='background-color:#1a3a5a;padding:15px;border-radius:10px;text-align:center;border-left:5px solid #f1c40f'><small>MELHOR VENDEDOR</small><h3>{v_top}</h3></div>", unsafe_allow_html=True)
                     
                     if 'Status' in df_f.columns:
                         ativas = len(df_f[df_f['Status'].str.upper() == 'ATIVO'])
-                        k3.markdown(f"<div style='background-color:#1a3a5a;padding:15px;border-radius:10px;text-align:center;border-left:5px solid #3498db'><small>ATIVAS NO PERÍODO</small><h2>{ativas}</h2></div>", unsafe_allow_html=True)
+                        k3.markdown(f"<div style='background-color:#1a3a5a;padding:15px;border-radius:10px;text-align:center;border-left:5px solid #3498db'><small>MATRÍCULAS ATIVAS</small><h2>{ativas}</h2></div>", unsafe_allow_html=True)
 
                     col_g1, col_g2 = st.columns(2)
                     with col_g1:
                         if 'Cidade' in df_f.columns:
                             st.markdown("<p style='text-align:center;color:#2ecc71;font-weight:bold'>DISTRIBUIÇÃO POR CIDADES</p>", unsafe_allow_html=True)
                             df_cid_plot = df_f['Cidade'].value_counts().reset_index()
-                            df_cid_plot.columns = ['Cidade', 'count']
-                            fig_c = px.bar(df_cid_plot, x='count', y='Cidade', orientation='h', color='count', color_continuous_scale='Viridis')
+                            df_cid_plot.columns = ['Cidade', 'Quantidade']
+                            fig_c = px.bar(df_cid_plot, x='Quantidade', y='Cidade', orientation='h', color='Quantidade', color_continuous_scale='Viridis')
                             fig_c.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=350, showlegend=False)
                             st.plotly_chart(fig_c, use_container_width=True)
                     with col_g2:
@@ -187,8 +186,8 @@ with tab_rel:
                             fig_p.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=350)
                             st.plotly_chart(fig_p, use_container_width=True)
                 else:
-                    st.warning(f"Nenhum registro encontrado entre {d_ini.strftime('%d/%m/%Y')} e {d_fim.strftime('%d/%m/%Y')}.")
+                    st.warning(f"Nenhum registro encontrado para o período: {d_ini.strftime('%d/%m/%Y')} até {d_fim.strftime('%d/%m/%Y')}.")
             else:
-                st.error("Coluna 'Data Matrícula' não encontrada na planilha principal.")
+                st.error("Coluna 'Data Matrícula' não encontrada.")
     except Exception as e:
-        st.error(f"Erro ao processar o Dashboard: {e}")
+        st.error(f"Erro no Dashboard: {e}")
