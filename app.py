@@ -14,12 +14,12 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS DEFINITIVO (REMOÇÃO AGRESSIVA DE ESPAÇOS) ---
+# --- CSS REVISADO (ALINHAMENTO ABAIXO DO MENU) ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
     
-    /* Menu de Navegação */
+    /* Menu de Navegação Fixo */
     .stTabs [data-baseweb="tab-list"] { 
         background-color: #1a3a5a; 
         border-bottom: 2px solid #2c5282;
@@ -30,20 +30,17 @@ st.markdown("""
         z-index: 999;
         justify-content: center;
     }
+    .stTabs [data-baseweb="tab"] { color: #ffffff !important; font-weight: 600; padding: 10px 30px; }
+    .stTabs [aria-selected="true"] { border-bottom: 4px solid #2ecc71 !important; }
     
-    /* REMOÇÃO DE ESPAÇOS DO STREAMLIT (CONTAINERS INTERNOS) */
+    /* BLOCO PRINCIPAL: Espaço exato para aparecer abaixo do menu */
     .main .block-container { 
-        padding-top: 35px !important; 
+        padding-top: 55px !important; 
         margin-top: 0px !important;
     }
-    
-    /* Puxa o bloco central para cima ignorando paddings padrão */
-    div[data-testid="stVerticalBlock"] > div:first-child {
-        margin-top: -35px !important;
-    }
 
-    /* Inputs (Seus Ajustes) */
-    div[data-testid="stHorizontalBlock"] { margin-bottom: 2px !important; }
+    /* Inputs (Configuração que você validou) */
+    div[data-testid="stHorizontalBlock"] { margin-bottom: 3px !important; }
     div[data-testid="stTextInput"] > div { 
         min-height: 25px !important; height: 25px !important;
         width: 55% !important;
@@ -67,16 +64,17 @@ st.markdown("""
         white-space: nowrap !important; font-size: 13px !important; padding: 0px 20px !important;
     }
 
-    /* Lista e Contador */
-    hr { margin-top: 2px !important; margin-bottom: 2px !important; }
+    /* Lista de Prévia */
+    hr { margin-top: 5px !important; margin-bottom: 5px !important; }
     .contador-estilo {
         text-align: right;
         color: #2ecc71;
         font-weight: bold;
         font-size: 14px;
         margin-bottom: 2px;
+        padding-right: 5px;
     }
-    div[data-testid="stDataFrame"] { margin-top: -15px !important; }
+    div[data-testid="stDataFrame"] { margin-top: -10px !important; }
 
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
@@ -119,14 +117,15 @@ with tab_cad:
     _, col_central, _ = st.columns([0.5, 3, 0.5])
     
     with col_central:
-        # Loop do formulário
-        campos = [
+        # Espaçamento manual fixo para garantir que desça do menu
+        st.write(" ") 
+
+        # Formulário de Cadastro
+        for label, key, func in [
             ("ID:", "f_id", None), ("ALUNO:", "f_nome", None), ("CIDADE:", "f_cid", None),
             ("CURSO:", "input_curso_key", transformar_curso), ("PAGAMENTO:", "input_pagto_key", None),
             ("VENDEDOR:", "f_vend", None), ("DATA:", "f_data", None)
-        ]
-        
-        for label, key, func in campos:
+        ]:
             c1, c2 = st.columns([1.2, 4])
             c1.markdown(f"<label>{label}</label>", unsafe_allow_html=True)
             if key == "input_curso_key":
@@ -161,7 +160,7 @@ with tab_cad:
                     if st.session_state.lista_previa:
                         df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa); conn.update(data=pd.concat([df_old, df_new], ignore_index=True)); st.session_state.lista_previa = []; st.success("Enviado!"); st.rerun()
 
-        # Lista de Pré-Visualização
+        # --- LISTA DE PRÉ-VISUALIZAÇÃO IMEDIATA ---
         st.write("---") 
         qtd = len(st.session_state.lista_previa)
         st.markdown(f'<div class="contador-estilo">Alunos Salvos: {qtd}</div>', unsafe_allow_html=True)
