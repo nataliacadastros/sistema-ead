@@ -14,13 +14,16 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- INICIALIZAÇÃO DE VARIÁVEIS DE PERSONALIZAÇÃO ---
+# --- INICIALIZAÇÃO DE VARIÁVEIS DE PERSONALIZAÇÃO (VALORES PADRÃO) ---
 if "cfg_input_height" not in st.session_state: st.session_state.cfg_input_height = 25
 if "cfg_input_width" not in st.session_state: st.session_state.cfg_input_width = 100
 if "cfg_dist_check" not in st.session_state: st.session_state.cfg_dist_check = 2
 if "cfg_dist_btn" not in st.session_state: st.session_state.cfg_dist_btn = 5
+# Novas variáveis de posição (Offset)
+if "cfg_pos_check" not in st.session_state: st.session_state.cfg_pos_check = 0
+if "cfg_pos_btn" not in st.session_state: st.session_state.cfg_pos_btn = 0
 
-# --- CSS DINÂMICO (LÊ O SESSION STATE) ---
+# --- CSS DINÂMICO ---
 st.markdown(f"""
     <style>
     .stApp {{ background-color: #1a2436; color: white; }}
@@ -28,7 +31,6 @@ st.markdown(f"""
     .stTabs [data-baseweb="tab"] {{ color: #ffffff !important; font-weight: 600; padding: 0px 30px; }}
     .stTabs [aria-selected="true"] {{ background-color: #2c5282 !important; border-bottom: 4px solid #2ecc71 !important; }}
     
-    /* Personalização dos Campos de Preenchimento */
     div[data-testid="stTextInput"] > div {{ 
         min-height: {st.session_state.cfg_input_height}px !important; 
         height: {st.session_state.cfg_input_height}px !important;
@@ -43,7 +45,6 @@ st.markdown(f"""
     
     .stCheckbox label p {{ color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; white-space: nowrap; }}
     
-    /* Botões de Ação */
     div.stButton > button {{
         background-color: #2ecc71 !important; color: white !important; font-weight: bold !important;
         height: 40px !important; width: 100% !important; border: none !important; border-radius: 5px !important;
@@ -51,16 +52,20 @@ st.markdown(f"""
         padding: 0px 10px !important; white-space: nowrap !important; font-size: 13px !important;
     }}
     
-    /* Distância dinâmica entre colunas (Checkboxes e Botões) */
+    /* Contêiner dos Checkboxes com Posição Dinâmica */
+    .check-container {{
+        margin-left: {st.session_state.cfg_pos_check}px !important;
+    }}
+    
+    /* Contêiner dos Botões de Ação com Posição Dinâmica */
+    .acao-container {{
+        margin-left: {st.session_state.cfg_pos_btn}px !important;
+    }}
+
+    /* Espaçamento entre colunas */
     div[data-testid="column"] {{ 
         padding-left: {st.session_state.cfg_dist_check}px !important; 
         padding-right: {st.session_state.cfg_dist_check}px !important; 
-    }}
-    
-    /* Distância entre botões de ação específica */
-    .acao-container div[data-testid="column"] {{
-        padding-left: {st.session_state.cfg_dist_btn}px !important;
-        padding-right: {st.session_state.cfg_dist_btn}px !important;
     }}
 
     header {{visibility: hidden;}} footer {{visibility: hidden;}}
@@ -114,16 +119,18 @@ with tab_cad:
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>DATA:</label>", unsafe_allow_html=True); c2.text_input("DATA", key="f_data", value=date.today().strftime("%d/%m/%Y"), label_visibility="collapsed")
 
         st.write("")
-        # Checkboxes
+        # Bloco Checkboxes com Classe CSS para Posição
+        st.markdown('<div class="check-container">', unsafe_allow_html=True)
         recuo, area_botoes = st.columns([1.2, 4])
         with area_botoes:
             mola_esq, b1, b2, b3, mola_dir = st.columns([1.1, 1, 1, 1, 1.1], gap="small")
             with b1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
             with b2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
             with b3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
+        st.markdown('</div>', unsafe_allow_html=True)
 
         st.write("")
-        # Botões de Ação
+        # Bloco Botões de Ação com Classe CSS para Posição
         st.markdown('<div class="acao-container">', unsafe_allow_html=True)
         recuo_btn, area_acao = st.columns([1.2, 4])
         with area_acao:
@@ -139,24 +146,27 @@ with tab_cad:
                         df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa); conn.update(data=pd.concat([df_old, df_new], ignore_index=True)); st.session_state.lista_previa = []; st.success("Enviado!"); st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-# --- NOVA ABA: PERSONALIZAÇÃO ---
+# --- ABA: PERSONALIZAÇÃO ---
 with tab_cfg:
-    st.subheader("⚙️ Ajustes de Interface")
-    st.info("Ajuste os valores abaixo para alterar o layout em tempo real.")
+    st.subheader("⚙️ Ajustes Finos de Interface")
     
     col_a, col_b = st.columns(2)
     
     with col_a:
-        st.write("### ⌨️ Campos de Preenchimento")
-        st.session_state.cfg_input_height = st.slider("Altura dos Campos (px)", 20, 60, st.session_state.cfg_input_height)
+        st.markdown("### ⌨️ Campos de Texto")
+        st.session_state.cfg_input_height = st.slider("Altura dos Campos", 20, 60, st.session_state.cfg_input_height)
         st.session_state.cfg_input_width = st.slider("Largura dos Campos (%)", 50, 100, st.session_state.cfg_input_width)
+        
+        st.markdown("### ↔️ Posição Lateral (Esquerda/Direita)")
+        st.session_state.cfg_pos_check = st.slider("Mover Checkboxes", -200, 200, st.session_state.cfg_pos_check)
+        st.session_state.cfg_pos_btn = st.slider("Mover Botões de Ação", -200, 200, st.session_state.cfg_pos_btn)
     
     with col_b:
-        st.write("### 🔘 Distanciamento")
-        st.session_state.cfg_dist_check = st.slider("Distância Checkboxes (px)", 0, 50, st.session_state.cfg_dist_check)
-        st.session_state.cfg_dist_btn = st.slider("Distância Botões de Ação (px)", 0, 100, st.session_state.cfg_dist_btn)
-    
-    if st.button("🔄 Aplicar e Recarregar"):
+        st.markdown("### 🔘 Distanciamento Interno")
+        st.session_state.cfg_dist_check = st.slider("Espaçamento Checkboxes", 0, 50, st.session_state.cfg_dist_check)
+        st.session_state.cfg_dist_btn = st.slider("Espaçamento Botões de Ação", 0, 100, st.session_state.cfg_dist_btn)
+
+    if st.button("💾 Salvar Ajustes Visuais"):
         st.rerun()
 
 # --- ABA GERENCIAMENTO ---
