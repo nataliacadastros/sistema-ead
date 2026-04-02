@@ -16,7 +16,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS ESTÉTICA HUD NEON (UNIFICADO) ---
+# --- CSS ESTÉTICA HUD NEON (COM VERDE ESCURO) ---
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e1e; color: #e0e0e0; }
@@ -38,12 +38,15 @@ st.markdown("""
     div[data-testid="stTextInput"] > div { min-height: 25px !important; height: 25px !important; }
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 14px !important; padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end; }
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 25px !important; border-radius: 5px !important; }
-    .stCheckbox label p { color: #39ff14 !important; font-weight: bold !important; font-size: 11px !important; }
+    .stCheckbox label p { color: #145a32 !important; font-weight: bold !important; font-size: 11px !important; }
 
     /* CARDS RELATÓRIO HUD */
     .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; }
     .neon-pink { color: #ff007a; text-shadow: 0 0 10px rgba(255, 0, 122, 0.5); border-top: 2px solid #ff007a; }
-    .neon-green { color: #39ff14; text-shadow: 0 0 10px rgba(57, 255, 20, 0.5); border-top: 2px solid #39ff14; }
+    
+    /* VERDE MAIS ESCURO (ESMERALDA DARK) */
+    .neon-green { color: #27ae60; text-shadow: 0 0 8px rgba(39, 174, 96, 0.4); border-top: 3px solid #145a32; }
+    
     .neon-blue { color: #00f2ff; text-shadow: 0 0 10px rgba(0, 242, 255, 0.5); border-top: 2px solid #00f2ff; }
     .neon-purple { color: #bc13fe; text-shadow: 0 0 10px rgba(188, 19, 254, 0.5); border-top: 2px solid #bc13fe; }
 
@@ -194,7 +197,7 @@ with tab_rel:
                 df_cid = df_f['Cidade'].value_counts().head(4)
                 if not df_cid.empty:
                     st.markdown("<small style='color:#00f2ff'>▸ GEOLOCATION ANALYTICS</small>", unsafe_allow_html=True)
-                    total_cid = df_cid.sum(); cores = ["#ff007a", "#39ff14", "#00f2ff", "#bc13fe"]
+                    total_cid = df_cid.sum(); cores = ["#ff007a", "#27ae60", "#00f2ff", "#bc13fe"]
                     seg_html = ""
                     for i, (nome, qtd) in enumerate(df_cid.items()):
                         percent = (qtd / total_cid) * 100; cor = cores[i % 4]
@@ -205,28 +208,19 @@ with tab_rel:
                 with col_g1:
                     st.markdown("<small style='color:#64748b'>QUANTIDADE POR STATUS</small>", unsafe_allow_html=True)
                     counts = df_f['STATUS'].value_counts()
-                    
-                    # Gráfico de Pizza Tech com cores vibrantes/gradientes simulados
                     fig_p = go.Figure(data=[go.Pie(
                         labels=counts.index, 
                         values=counts.values, 
-                        hole=0.5, # Donut moderno
+                        hole=0.5,
                         marker=dict(
-                            colors=['#39ff14', '#ff007a', '#00f2ff', '#bc13fe'],
+                            colors=['#27ae60', '#ff007a', '#00f2ff', '#bc13fe'],
                             line=dict(color='#0b0e1e', width=3)
                         ),
-                        textinfo='label+value', # EXIBE NOME E QUANTIDADE
+                        textinfo='label+value', 
                         textfont=dict(size=14, color="white"),
                         hoverinfo='label+value+percent'
                     )])
-                    
-                    fig_p.update_layout(
-                        template="plotly_dark", 
-                        paper_bgcolor='rgba(0,0,0,0)', 
-                        showlegend=False, 
-                        height=350,
-                        margin=dict(t=20, b=20, l=20, r=20)
-                    )
+                    fig_p.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', showlegend=False, height=350)
                     st.plotly_chart(fig_p, use_container_width=True)
                     
                 with col_g2:
