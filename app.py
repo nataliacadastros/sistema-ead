@@ -40,17 +40,44 @@ st.markdown("""
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 25px !important; border-radius: 5px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
 
-    /* GERENCIAMENTO COM BARRA DE ROLAGEM HORIZONTAL */
-    .custom-table-container { 
-        width: 100%; 
-        overflow-x: auto; 
-        background-color: #121629; 
-        border-radius: 8px;
+    /* GERENCIAMENTO - FORÇANDO BARRAS DE ROLAGEM */
+    .custom-table-wrapper {
+        width: 100%;
+        overflow-x: auto !important; /* Força scroll horizontal */
+        overflow-y: auto !important; /* Força scroll vertical se necessário */
+        background-color: #121629;
         border: 1px solid #1f295a;
+        border-radius: 8px;
+        margin-top: 15px;
+        display: block;
     }
-    .custom-table { width: 100%; border-collapse: collapse; min-width: 1800px; } /* Força largura para scroll */
-    .custom-table th { background-color: #1f295a; color: #00f2ff; text-align: left; padding: 12px; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; }
-    .custom-table td { padding: 10px 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: nowrap; }
+    
+    .custom-table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        min-width: 2200px !important; /* Força a tabela a ser larga para ativar o scroll */
+    }
+    
+    .custom-table th { 
+        background-color: #1f295a; 
+        color: #00f2ff; 
+        text-align: left; 
+        padding: 12px; 
+        font-size: 11px; 
+        text-transform: uppercase; 
+        position: sticky; 
+        top: 0; 
+        z-index: 10;
+    }
+    
+    .custom-table td { 
+        padding: 10px 12px; 
+        border-bottom: 1px solid #1f295a; 
+        font-size: 11px; 
+        color: #e0e0e0; 
+        white-space: nowrap; /* Impede que o texto quebre linha e force o scroll */
+    }
+    
     .custom-table tr:hover { background-color: rgba(0, 242, 255, 0.05); }
 
     .status-badge { padding: 3px 10px; border-radius: 12px; font-size: 9px; font-weight: bold; text-transform: uppercase; }
@@ -72,11 +99,11 @@ st.markdown("""
     .stButton > button { background-color: #00f2ff !important; color: #0b0e1e !important; font-weight: bold !important; border: none !important; border-radius: 5px !important; width: 100%; height: 35px !important; }
     header {visibility: hidden;} footer {visibility: hidden;}
     
-    /* Scrollbar estilizada */
-    .custom-table-container::-webkit-scrollbar { height: 8px; }
-    .custom-table-container::-webkit-scrollbar-track { background: #0b0e1e; }
-    .custom-table-container::-webkit-scrollbar-thumb { background: #1f295a; border-radius: 10px; }
-    .custom-table-container::-webkit-scrollbar-thumb:hover { background: #00f2ff; }
+    /* Scrollbar Estilizada */
+    .custom-table-wrapper::-webkit-scrollbar { height: 10px; width: 8px; }
+    .custom-table-wrapper::-webkit-scrollbar-track { background: #0b0e1e; }
+    .custom-table-wrapper::-webkit-scrollbar-thumb { background: #1f295a; border-radius: 10px; border: 2px solid #0b0e1e; }
+    .custom-table-wrapper::-webkit-scrollbar-thumb:hover { background: #00f2ff; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -180,7 +207,19 @@ with tab_ger:
             sc = "status-ativo" if r['STATUS'] == "ATIVO" else "status-cancelado"
             rows += f"<tr><td><span class='status-badge {sc}'>{r['STATUS']}</span></td><td>{r['UNID.']}</td><td>{r['TURMA']}</td><td>{r['10C']}</td><td>{r['ING']}</td><td>{r['DT_CAD']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ID']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ALUNO']}</td><td>{r['TEL_RESP']}</td><td>{r['TEL_ALU']}</td><td>{r['CPF']}</td><td>{r['CIDADE']}</td><td>{r['CURSO']}</td><td>{r['PAGTO']}</td><td>{r['VEND.']}</td><td>{r['DT_MAT']}</td></tr>"
         
-        st.markdown(f"<div class='custom-table-container'><table class='custom-table'><thead><tr>{''.join([f'<th>{h}</th>' for h in hd])}</tr></thead><tbody>{rows}</tbody></table></div>", unsafe_allow_html=True)
+        # Estrutura com Wrapper para forçar Scroll
+        st.markdown(f"""
+            <div class="custom-table-wrapper">
+                <table class="custom-table">
+                    <thead>
+                        <tr>{''.join([f'<th>{h}</th>' for h in hd])}</tr>
+                    </thead>
+                    <tbody>
+                        {rows}
+                    </tbody>
+                </table>
+            </div>
+        """, unsafe_allow_html=True)
     except Exception as e: st.error(f"Erro: {e}")
 
 # --- ABA 3: RELATÓRIOS ---
