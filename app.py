@@ -183,7 +183,7 @@ with tab_rel:
                 # Cards KPI
                 st.write("")
                 c1, c2, c3, c4, c5 = st.columns([1, 1, 1.2, 1.8, 1.2])
-                with c1: st.markdown(f'<div class="card-hud neon-pink"><small>Mats</small><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
+                with c1: st.markdown(f'<div class="card-hud neon-pink"><small>Matrículas</small><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
                 with c2: 
                     atv = len(df_f[df_f['STATUS'].str.upper() == 'ATIVO']) if 'STATUS' in df_f.columns else 0
                     st.markdown(f'<div class="card-hud neon-green"><small>Ativos</small><h2>{atv}</h2></div>', unsafe_allow_html=True)
