@@ -7,7 +7,7 @@ from streamlit_gsheets import GSheetsConnection
 # --- CONFIGURAÇÕES DA PÁGINA ---
 st.set_page_config(page_title="SISTEMA ADM | PROFISSIONALIZA", layout="wide", initial_sidebar_state="collapsed")
 
-# --- DICIONÁRIO DE CURSOS ---
+# --- DICIONÁRIO DE CURSOS (MANTIDO INTACTO) ---
 DIC_CURSOS = {
     "00": "COLÉGIO COMBO", 
     "1": "PREPARATÓRIO JOVEM BANCÁRIO", 
@@ -22,7 +22,7 @@ DIC_CURSOS = {
     "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS DEFINITIVO (ESTILO DARK + LABELS VERDES) ---
+# --- CSS DEFINITIVO (ATUALIZADO PARA LETRAS VERDES NOS CHECKBOXES) ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
@@ -37,13 +37,19 @@ st.markdown("""
         text-transform: uppercase !important; font-size: 12px !important; 
     }
     
-    /* Labels Verdes */
+    /* Labels Verdes dos campos de input */
     label { 
         color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; 
         display: flex; align-items: center; justify-content: flex-end; padding-right: 15px; height: 25px;
     }
     
-    /* Botões */
+    /* --- ALTERAÇÃO AQUI: Cor das letras dos botões selecionáveis (Checkboxes) --- */
+    .stCheckbox label p {
+        color: #2ecc71 !important;
+        font-weight: bold !important;
+    }
+    
+    /* Botões de Ação */
     div.stButton > button {
         background-color: #2ecc71 !important; color: white !important; font-weight: bold !important;
         height: 40px !important; width: 100% !important; border: none !important;
@@ -54,14 +60,14 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- CONEXÃO E ESTADOS ---
+# --- CONEXÃO E ESTADOS (MANTIDOS INTACTOS) ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "val_curso" not in st.session_state: st.session_state.val_curso = ""
 if "val_pagto" not in st.session_state: st.session_state.val_pagto = ""
 
-# --- LÓGICA DO CAMPO CURSO (SUBSTITUIÇÃO INTELIGENTE) ---
+# --- LÓGICA DO CAMPO CURSO (MANTIDA INTACTA) ---
 def transformar_curso():
     entrada = st.session_state.input_curso_key.strip()
     
@@ -70,7 +76,6 @@ def transformar_curso():
         st.session_state.input_curso_key = ""
         return
 
-    # Busca código numérico no final da string para substituição
     match = re.search(r'(\d+)$', entrada)
     
     if match:
@@ -91,11 +96,10 @@ def transformar_curso():
     else:
         st.session_state.val_curso = entrada.upper()
     
-    # Formatação Final: Espaço no final e Uppercase
     st.session_state.val_curso = st.session_state.val_curso.upper().replace("++", "+").strip() + " "
     st.session_state.input_curso_key = st.session_state.val_curso
 
-# --- LÓGICA DO PAGAMENTO (BOTÕES SELECIONÁVEIS) ---
+# --- LÓGICA DO PAGAMENTO (MANTIDA INTACTA) ---
 def processar_pagto():
     base = st.session_state.input_pagto_key.split(" | ")[0].strip().upper()
     obs = []
@@ -118,16 +122,13 @@ with tab_cad:
     _, col, _ = st.columns([0.5, 3, 0.5])
     with col:
         st.write("")
-        # Linhas do Formulário
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>ID:</label>", unsafe_allow_html=True); c2.text_input("ID", key="f_id", label_visibility="collapsed")
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>ALUNO:</label>", unsafe_allow_html=True); c2.text_input("ALUNO", key="f_nome", label_visibility="collapsed")
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>CIDADE:</label>", unsafe_allow_html=True); c2.text_input("CIDADE", key="f_cid", label_visibility="collapsed")
         
-        # Campo Curso
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>CURSO:</label>", unsafe_allow_html=True)
         c2.text_input("CURSO", key="input_curso_key", value=st.session_state.val_curso, on_change=transformar_curso, label_visibility="collapsed")
         
-        # Campo Pagamento
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>PAGAMENTO:</label>", unsafe_allow_html=True)
         c2.text_input("PAGAMENTO", key="input_pagto_key", value=st.session_state.val_pagto, label_visibility="collapsed")
         
@@ -135,13 +136,12 @@ with tab_cad:
         c1, c2 = st.columns([1.2, 4]); c1.markdown("<label>DATA:</label>", unsafe_allow_html=True); c2.text_input("DATA", key="f_data", value=date.today().strftime("%d/%m/%Y"), label_visibility="collapsed")
 
         st.write("")
-        # Checkboxes (Botões Selecionáveis)
+        # Checkboxes (Botões Selecionáveis) - Agora com letras verdes
         s1, s2, s3 = st.columns(3)
         with s1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
         with s2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
         with s3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
 
-        # Botões de Ação
         b1, b2 = st.columns(2)
         with b1:
             if st.button("💾 SALVAR ALUNO"):
@@ -156,7 +156,6 @@ with tab_cad:
                         "Data": st.session_state.f_data
                     }
                     st.session_state.lista_previa.append(aluno)
-                    # Reset dos campos para novo aluno
                     st.session_state.val_curso = ""; st.session_state.val_pagto = ""
                     st.session_state.f_nome = ""; st.session_state.f_id = ""
                     st.rerun()
@@ -170,7 +169,6 @@ with tab_cad:
                     st.success("Dados enviados com sucesso!")
                     st.rerun()
 
-    # Lista de Pré-visualização
     st.write("---")
     if st.session_state.lista_previa:
         st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
@@ -180,9 +178,7 @@ with tab_ger:
     try:
         dados = conn.read(ttl="0s").fillna("")
         if "ID" in dados.columns:
-            # Limpeza do ID .0 vindo do Excel/Sheets
             dados["ID"] = dados["ID"].astype(str).str.replace(r'\.0$', '', regex=True)
-        # Exibe os dados invertidos (mais recentes no topo)
         st.dataframe(dados.iloc[::-1], use_container_width=True, hide_index=True, height=600)
     except:
-        st.error("Erro ao carregar o banco de dados. Verifique a conexão com a planilha.")
+        st.error("Erro ao carregar o banco de dados.")
