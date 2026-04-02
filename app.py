@@ -5,6 +5,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import date, timedelta
 from streamlit_gsheets import GSheetsConnection
+import gspread
+from google.oauth2.service_account import Credentials
 
 # --- CONFIGURAÇÕES DA PÁGINA ---
 st.set_page_config(page_title="SISTEMA ADM | PROFISSIONALIZA", layout="wide", initial_sidebar_state="collapsed")
@@ -143,18 +145,21 @@ with tab_cad:
             if st.button("📤 ENVIAR PLANILHA"):
                 if st.session_state.lista_previa:
                     try:
-                        # ACESSO DIRETO VIA GSPREAD PARA EVITAR ERRO DE ATUALIZAÇÃO
-                        sh = conn._instance.client.open_by_url(st.secrets["connections"]["gsheets"]["spreadsheet"])
+                        # --- CORREÇÃO DO ERRO APLICADA AQUI ---
+                        creds_info = st.secrets["connections"]["gsheets"]
+                        scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+                        credentials = Credentials.from_service_account_info(creds_info, scopes=scopes)
+                        client = gspread.authorize(credentials)
+                        
+                        sh = client.open_by_url(creds_info["spreadsheet"])
                         worksheet = sh.get_worksheet(0)
                         
                         df_new = pd.DataFrame(st.session_state.lista_previa)
                         novos_dados = df_new.values.tolist()
                         
-                        # Localiza última linha preenchida na Coluna A
                         col_a_values = worksheet.col_values(1)
                         ultima_linha_real = len(col_a_values)
                         
-                        # Regra: Localizar última > Pular uma > Adicionar
                         linha_inicio = ultima_linha_real + 2 if ultima_linha_real > 0 else 2
                         
                         worksheet.insert_rows(novos_dados, row=linha_inicio)
