@@ -138,7 +138,7 @@ with tab_rel:
                 data_ini_default = date.today() - timedelta(days=7)
                 data_fim_default = date.today()
                 
-                # Componente de calendário formatado para português (formato DD/MM/YYYY)
+                # TRADUÇÃO APLICADA AQUI: label em PT-BR e formato brasileiro
                 periodo_selecionado = st.date_input(
                     "Selecione o intervalo de datas:",
                     value=(data_ini_default, data_fim_default),
@@ -146,7 +146,7 @@ with tab_rel:
                     label_visibility="collapsed"
                 )
                 
-                # Tratamento para garantir que o código só rode quando o intervalo estiver completo ou for data única
+                # Lógica para garantir o processamento apenas com intervalo válido
                 if isinstance(periodo_selecionado, (list, tuple)):
                     if len(periodo_selecionado) == 2:
                         d_ini, d_fim = periodo_selecionado
