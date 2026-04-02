@@ -33,20 +33,19 @@ st.markdown("""
         background-color: rgba(0, 242, 255, 0.05) !important;
     }
     .main .block-container { padding-top: 45px !important; max-width: 1200px !important; margin: 0 auto !important; }
-    
-    /* ESTILO FORMULÁRIO */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 5px !important; display: flex; align-items: center; }
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 13px !important; padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end; }
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 28px !important; border-radius: 5px !important; }
-    
-    /* CARDS RELATÓRIO */
     .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 100px; display: flex; flex-direction: column; justify-content: center; }
     .neon-pink { color: #ff007a; text-shadow: 0 0 10px rgba(255, 0, 122, 0.5); border-top: 2px solid #ff007a; }
     .neon-green { color: #2ecc71; text-shadow: 0 0 10px rgba(46, 204, 113, 0.5); border-top: 2px solid #2ecc71; }
     .neon-blue { color: #00f2ff; text-shadow: 0 0 10px rgba(0, 242, 255, 0.5); border-top: 2px solid #00f2ff; }
     .neon-purple { color: #bc13fe; text-shadow: 0 0 10px rgba(188, 19, 254, 0.5); border-top: 2px solid #bc13fe; }
     .neon-red { color: #ff4b4b; text-shadow: 0 0 10px rgba(255, 75, 75, 0.5); border-top: 2px solid #ff4b4b; }
-
+    .hud-bar-container { background: rgba(31, 41, 90, 0.3); height: 14px; border-radius: 20px; width: 100%; position: relative; margin: 50px 0 40px 0; border: 1px solid #1f295a; }
+    .hud-segment { height: 100%; float: left; position: relative; }
+    .hud-label { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); background: #121629; border: 1px solid currentColor; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+    .hud-city-name { position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
     .stButton > button { background-color: #00f2ff !important; color: #0b0e1e !important; font-weight: bold !important; border: none !important; border-radius: 5px !important; width: 100%; height: 35px !important; }
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
@@ -125,7 +124,6 @@ with tab_cad:
                         "Vendedor": st.session_state.f_vend.upper(), "Data_Mat": st.session_state.f_data
                     }
                     st.session_state.lista_previa.append(aluno)
-                    # Limpa campos pessoais, mantém Cidade, Vendedor e Data
                     for k in ["f_id", "f_nome", "f_tel_resp", "f_tel_aluno", "f_cpf", "input_curso_key", "f_pagto"]:
                         st.session_state[k] = ""
                     st.rerun()
@@ -162,10 +160,6 @@ with tab_cad:
                         st.cache_data.clear(); st.rerun()
                     except Exception as e: st.error(f"Erro: {e}")
 
-        st.write("---")
-        if st.session_state.lista_previa:
-            st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
-
 # --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
     st.markdown("<h3 style='text-align: center; color: #00f2ff;'>🖥️ DATABASE MONITOR</h3>", unsafe_allow_html=True)
@@ -175,29 +169,23 @@ with tab_ger:
         if st.button("🔄 REFRESH"): st.cache_data.clear(); st.rerun()
     except: st.error("Erro ao carregar dados.")
 
-# --- ABA 3: RELATÓRIOS (ATUALIZADO) ---
+# --- ABA 3: RELATÓRIOS ---
 with tab_rel:
     try:
-        # Lê a planilha e define os nomes das colunas baseados na sua regra A-P
         df_raw = conn.read(ttl="0s").dropna(how='all')
         if not df_raw.empty:
-            # Mapeia as colunas por posição para garantir precisão
             df_rel = df_raw.copy()
+            # Mapeamento para as 16 colunas A-P
             col_names = ['STATUS', 'UNIDADE', 'TURMA', '10_CURSOS', 'INGLES_STATUS', 'DATA_CADASTRO', 
                          'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALUNO', 'CPF', 'CIDADE', 'CURSO', 'PAGAMENTO', 'VENDEDOR', 'DATA_MATRICULA']
             df_rel.columns = col_names[:len(df_rel.columns)]
 
-            # Tratamento de Datas
             df_rel['DATA_MATRICULA'] = pd.to_datetime(df_rel['DATA_MATRICULA'], dayfirst=True, errors='coerce')
-            
-            # Filtro HUD
-            intervalo = st.date_input("Período de Análise", value=(date.today()-timedelta(days=7), date.today()), format="DD/MM/YYYY")
+            intervalo = st.date_input("Período", value=(date.today()-timedelta(days=7), date.today()), format="DD/MM/YYYY")
             
             if len(intervalo) == 2:
-                mask = (df_rel['DATA_MATRICULA'].dt.date >= intervalo[0]) & (df_rel['DATA_MATRICULA'].dt.date <= intervalo[1])
-                df_f = df_rel.loc[mask].copy()
+                df_f = df_rel.loc[(df_rel['DATA_MATRICULA'].dt.date >= intervalo[0]) & (df_rel['DATA_MATRICULA'].dt.date <= intervalo[1])].copy()
                 
-                # Cálculos Financeiros (Coluna N - PAGAMENTO)
                 df_f['Valor_Rec'] = df_f['PAGAMENTO'].apply(extrair_valor_recebido)
                 df_f['Valor_Ticket'] = df_f['PAGAMENTO'].apply(extrair_valor_geral)
                 
@@ -205,30 +193,34 @@ with tab_rel:
                 tm_bol = df_f[df_f['PAGAMENTO'].str.contains('BOLETO', na=False, case=False)]['Valor_Ticket'].mean() or 0.0
                 tm_car = df_f[df_f['PAGAMENTO'].str.contains('CARTÃO|LINK|CREDITO', na=False, case=False)]['Valor_Ticket'].mean() or 0.0
 
-                # Layout de Cards HUD
-                c1, c2, c3, c4, c5 = st.columns(5)
-                with c1: st.markdown(f'<div class="card-hud neon-pink"><small>MATRÍCULAS</small><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
-                with c2: 
-                    atv = len(df_f[df_f['STATUS'] == 'ATIVO'])
-                    st.markdown(f'<div class="card-hud neon-green"><small>ATIVOS</small><h2>{atv}</h2></div>', unsafe_allow_html=True)
-                with c3:
-                    cnc = len(df_f[df_f['STATUS'] == 'CANCELADO'])
-                    st.markdown(f'<div class="card-hud neon-red"><small>CANCELADOS</small><h2>{cnc}</h2></div>', unsafe_allow_html=True)
-                with c4: st.markdown(f'<div class="card-hud neon-blue"><small>RECEBIDO</small><h2 style="font-size:18px">R${total_rec:,.2f}</h2></div>', unsafe_allow_html=True)
-                with c5: st.markdown(f'<div class="card-hud neon-purple"><small>TICKET MÉDIO</small><div style="font-size:11px">🎫 Bol: R${tm_bol:.2f}<br>💳 Car: R${tm_car:.2f}</div></div>', unsafe_allow_html=True)
+                c1, c2, c3, c4, c5, c6 = st.columns(6)
+                with c1: st.markdown(f'<div class="card-hud neon-pink"><small>Mats</small><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
+                with c2: st.markdown(f'<div class="card-hud neon-green"><small>Ativos</small><h2>{len(df_f[df_f["STATUS"]=="ATIVO"])}</h2></div>', unsafe_allow_html=True)
+                with c3: st.markdown(f'<div class="card-hud neon-red"><small>Canc.</small><h2>{len(df_f[df_f["STATUS"]=="CANCELADO"])}</h2></div>', unsafe_allow_html=True)
+                with c4: st.markdown(f'<div class="card-hud neon-blue"><small>Recebido</small><h2 style="font-size:16px">R${total_rec:,.2f}</h2></div>', unsafe_allow_html=True)
+                with c5: st.markdown(f'<div class="card-hud neon-purple"><small>T. Médio</small><div style="font-size:10px">Bol: R${tm_bol:.0f} | Car: R${tm_car:.0f}</div></div>', unsafe_allow_html=True)
+                with c6:
+                    top = df_f['VENDEDOR'].value_counts().idxmax() if not df_f.empty else "N/A"
+                    st.markdown(f'<div class="card-hud neon-blue"><small>Top</small><h2 style="font-size:14px">{top}</h2></div>', unsafe_allow_html=True)
 
                 st.write("---")
+                # Gráficos e Geolocation Analytics (Mantidos do seu original, mas com os novos nomes de coluna)
+                df_cid_v = df_f['CIDADE'].value_counts().head(4)
+                if not df_cid_v.empty:
+                    st.markdown("<small style='color:#00f2ff'>▸ GEOLOCATION ANALYTICS</small>", unsafe_allow_html=True)
+                    total_c = df_cid_v.sum(); cores = ["#ff007a", "#2ecc71", "#00f2ff", "#bc13fe"]
+                    seg_html = "".join([f'<div class="hud-segment" style="width:{(q/total_c)*100}%; background:{cores[i%4]};"><div class="hud-label" style="color:{cores[i%4]};">{q}</div><div class="hud-city-name" style="color:{cores[i%4]};">{n}</div></div>' for i, (n, q) in enumerate(df_cid_v.items())])
+                    st.markdown(f'<div class="hud-bar-container">{seg_html}</div>', unsafe_allow_html=True)
+                
                 col_g1, col_g2 = st.columns(2)
                 with col_g1:
-                    # Gráfico de Status
-                    fig_p = px.pie(df_f, names='STATUS', hole=0.5, color_discrete_map={'ATIVO':'#2ecc71', 'CANCELADO':'#ff4b4b'})
+                    fig_p = go.Figure(data=[go.Pie(labels=df_f['STATUS'].value_counts().index, values=df_f['STATUS'].value_counts().values, hole=0.5, marker=dict(colors=['#2ecc71', '#ff4b4b']))])
                     fig_p.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', showlegend=False, height=350)
                     st.plotly_chart(fig_p, use_container_width=True)
                 with col_g2:
-                    # Ranking Vendedores
                     df_v = df_f['VENDEDOR'].value_counts().reset_index().head(5)
-                    fig_v = px.bar(df_v, x='VENDEDOR', y='count', text_auto=True)
-                    fig_v.update_traces(marker_color='#00f2ff')
+                    fig_v = px.line(df_v, x='VENDEDOR', y='count', markers=True)
+                    fig_v.update_traces(line_color='#00f2ff')
                     fig_v.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=350)
                     st.plotly_chart(fig_v, use_container_width=True)
-    except Exception as e: st.error(f"Erro no Relatório: {e}")
+    except Exception as e: st.error(f"Erro: {e}")
