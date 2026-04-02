@@ -14,12 +14,12 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS AJUSTADO: TOPO COLADO + ESPAÇAMENTO INTERNO ---
+# --- CSS COM SUAS MEDIDAS EXATAS ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
     
-    /* MENU SLIM */
+    /* MENU SLIM NO TOPO */
     .stTabs [data-baseweb="tab-list"] { 
         background-color: #1a3a5a; 
         border-bottom: 2px solid #2c5282;
@@ -37,7 +37,7 @@ st.markdown("""
     }
     .stTabs [aria-selected="true"] { border-bottom: 3px solid #2ecc71 !important; }
     
-    /* CONTEÚDO NO TOPO */
+    /* CONTEÚDO COLADO NO TOPO */
     .main .block-container { 
         padding-top: 30px !important; 
         margin-top: 0px !important;
@@ -46,26 +46,32 @@ st.markdown("""
         margin-top: -20px !important;
     }
 
-    /* ESPAÇAMENTO ENTRE LINHAS (De volta aos 3px que você gostou) */
+    /* --- SUAS MEDIDAS APLICADAS --- */
     div[data-testid="stHorizontalBlock"] { 
         margin-bottom: 3px !important; 
     }
 
-    /* INPUTS */
     div[data-testid="stTextInput"] > div { 
-        min-height: 25px !important; height: 25px !important;
+        min-height: 25px !important; 
+        height: 25px !important;
         width: 55% !important;
     }
+
+    label { 
+        color: #2ecc71 !important; 
+        font-weight: bold !important; 
+        font-size: 15px !important; 
+        padding-right: 2px !important; 
+        height: 25px !important;
+        display: flex; 
+        align-items: center; 
+        justify-content: flex-end;
+    }
+    /* ------------------------------ */
+
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; }
 
-    /* LABELS */
-    label { 
-        color: #2ecc71 !important; font-weight: bold !important; font-size: 15px !important; 
-        padding-right: 2px !important; height: 25px !important;
-        display: flex; align-items: center; justify-content: flex-end;
-    }
-    
-    /* CHECKBOXES E BOTÕES (Espaçamento superior para não colar nos campos) */
+    /* Checkboxes e Botões */
     .stCheckbox { margin-top: 5px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; white-space: nowrap; }
     
@@ -77,7 +83,7 @@ st.markdown("""
         white-space: nowrap !important; font-size: 13px !important; padding: 0px 20px !important;
     }
 
-    /* LISTA E CONTADOR */
+    /* Lista e Contador */
     hr { margin-top: 10px !important; margin-bottom: 5px !important; }
     .contador-estilo {
         text-align: right;
@@ -86,8 +92,7 @@ st.markdown("""
         font-size: 14px;
         margin-bottom: 5px;
     }
-    div[data-testid="stDataFrame"] { margin-top: 0px !important; }
-
+    
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
@@ -129,7 +134,7 @@ with tab_cad:
     _, col_central, _ = st.columns([0.5, 3, 0.5])
     
     with col_central:
-        # Loop do formulário
+        # Formulário
         campos = [
             ("ID:", "f_id", None), ("ALUNO:", "f_nome", None), ("CIDADE:", "f_cid", None),
             ("CURSO:", "input_curso_key", transformar_curso), ("PAGAMENTO:", "input_pagto_key", None),
@@ -171,7 +176,7 @@ with tab_cad:
                     if st.session_state.lista_previa:
                         df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa); conn.update(data=pd.concat([df_old, df_new], ignore_index=True)); st.session_state.lista_previa = []; st.success("Enviado!"); st.rerun()
 
-        # Lista de Pré-Visualização
+        # Lista de Prévia
         st.write("---") 
         qtd = len(st.session_state.lista_previa)
         st.markdown(f'<div class="contador-estilo">Alunos Salvos: {qtd}</div>', unsafe_allow_html=True)
