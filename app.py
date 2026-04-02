@@ -14,7 +14,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS FINAL ---
+# --- CSS FINAL (REDUÇÃO DE ESPAÇOS SUPERIORES) ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
@@ -34,8 +34,11 @@ st.markdown("""
     .stTabs [data-baseweb="tab"] { color: #ffffff !important; font-weight: 600; padding: 10px 30px; }
     .stTabs [aria-selected="true"] { border-bottom: 4px solid #2ecc71 !important; }
     
-    /* Ajuste de conteúdo para menu fixo */
-    .main .block-container { padding-top: 80px; }
+    /* REDUÇÃO DO ESPAÇO NO TOPO: De 80px para 50px para subir tudo */
+    .main .block-container { 
+        padding-top: 50px !important; 
+        margin-top: 0px !important;
+    }
 
     /* Inputs */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 3px !important; }
@@ -115,7 +118,7 @@ with tab_cad:
     _, col_central, _ = st.columns([0.5, 3, 0.5])
     
     with col_central:
-        st.write("")
+        # Removi o st.write("") inicial para subir mais o conteúdo
         # Form de Cadastro
         for label, key, func in [
             ("ID:", "f_id", None), ("ALUNO:", "f_nome", None), ("CIDADE:", "f_cid", None),
@@ -157,7 +160,7 @@ with tab_cad:
                         df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa); conn.update(data=pd.concat([df_old, df_new], ignore_index=True)); st.session_state.lista_previa = []; st.success("Enviado!"); st.rerun()
 
         # --- LISTA DE PRÉ-VISUALIZAÇÃO IMEDIATA ---
-        st.write("---") # Linha divisória com margem reduzida pelo CSS
+        st.write("---") 
         
         qtd = len(st.session_state.lista_previa)
         st.markdown(f'<div class="contador-estilo">Alunos Salvos: {qtd}</div>', unsafe_allow_html=True)
