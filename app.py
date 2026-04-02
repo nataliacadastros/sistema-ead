@@ -77,7 +77,7 @@ tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "
 with tab_cad:
     _, centro, _ = st.columns([0.5, 5, 0.5])
     with centro:
-        campos = [("ID:", "f_id", None), ("ALUNO:", "f_nome", None), ("CIDADE:", "f_cid", None), ("CURSO:", "input_curso_key", transformar_curso), ("PAGAMENTO:", "input_pagto_key", None), ("VENDEDOR:", "f_vend", None), ("DATA:", "f_data", None)]
+        campos = [("ID:", "f_id", None), ("ALUNO:", "f_nome", None), ("CIDADE:", "f_cid", None), ("CURSO:", "input_curso_key", transformar_curso), ("PAGAMENTO:", "input_pagto_key", None), ("VENDEDOR:", "f_vend", None), ("DATA MATRÍCULA:", "f_data", None)]
         for label, key, func in campos:
             c_lab, c_inp = st.columns([1.5, 3.5]) 
             c_lab.markdown(f"<label>{label}</label>", unsafe_allow_html=True)
@@ -126,42 +126,49 @@ with tab_rel:
     try:
         df_rel = conn.read(ttl="0s").fillna("")
         if not df_rel.empty:
-            # --- AJUSTE PARA "DATA MATRÍCULA" ---
             col_data = "Data Matrícula" if "Data Matrícula" in df_rel.columns else next((c for c in df_rel.columns if 'DATA' in c.upper()), None)
             
             if col_data:
                 df_rel[col_data] = pd.to_datetime(df_rel[col_data], dayfirst=True, errors='coerce')
                 df_rel = df_rel.dropna(subset=[col_data])
                 
-                st.markdown("### 📅 Período de Análise")
-                c_d1, c_d2 = st.columns(2)
-                d_ini = c_d1.date_input("Início", date.today() - timedelta(days=7))
-                d_fim = c_d2.date_input("Fim", date.today())
+                # --- NOVO FILTRO DE PERÍODO ÚNICO ---
+                st.markdown("### 📅 Selecione o Período")
+                periodo = st.date_input(
+                    "Clique para selecionar início e fim (ou clique duas vezes no mesmo dia para um dia único):",
+                    value=[date.today() - timedelta(days=7), date.today()],
+                    label_visibility="collapsed"
+                )
                 
-                df_f = df_rel.loc[(df_rel[col_data].dt.date >= d_ini) & (df_rel[col_data].dt.date <= d_fim)]
-                
-                if not df_f.empty:
-                    st.write("---")
-                    k1, k2, k3 = st.columns(3)
-                    k1.markdown(f"<div style='background-color:#1a3a5a;padding:15px;border-radius:10px;text-align:center;border-left:5px solid #2ecc71'><small>MATRÍCULAS</small><h2>{len(df_f)}</h2></div>", unsafe_allow_html=True)
+                # Só processa se o usuário selecionou as duas datas (início e fim)
+                if isinstance(periodo, list) and len(periodo) == 2:
+                    d_ini, d_fim = periodo
+                    df_f = df_rel.loc[(df_rel[col_data].dt.date >= d_ini) & (df_rel[col_data].dt.date <= d_fim)]
                     
-                    if 'Vendedor' in df_f.columns:
-                        v_top = df_f['Vendedor'].value_counts().idxmax()
-                        k2.markdown(f"<div style='background-color:#1a3a5a;padding:15px;border-radius:10px;text-align:center;border-left:5px solid #f1c40f'><small>TOP VENDEDOR</small><h3>{v_top}</h3></div>", unsafe_allow_html=True)
-                    
-                    col_g1, col_g2 = st.columns(2)
-                    with col_g1:
-                        if 'Cidade' in df_f.columns:
-                            st.markdown("<p style='text-align:center;color:#2ecc71'>CIDADES</p>", unsafe_allow_html=True)
-                            fig_c = px.bar(df_f['Cidade'].value_counts().reset_index(), x='count', y='Cidade', orientation='h', color='count', color_continuous_scale='Viridis')
-                            fig_c.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=300, showlegend=False)
-                            st.plotly_chart(fig_c, use_container_width=True)
-                    with col_g2:
-                        if 'Status' in df_f.columns:
-                            st.markdown("<p style='text-align:center;color:#2ecc71'>STATUS</p>", unsafe_allow_html=True)
-                            fig_p = px.pie(df_f, names='Status', hole=0.7, color_discrete_sequence=['#2ecc71', '#e74c3c'])
-                            fig_p.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=300)
-                            st.plotly_chart(fig_p, use_container_width=True)
-                else: st.warning("Sem dados no período.")
+                    if not df_f.empty:
+                        st.write("---")
+                        k1, k2, k3 = st.columns(3)
+                        k1.markdown(f"<div style='background-color:#1a3a5a;padding:15px;border-radius:10px;text-align:center;border-left:5px solid #2ecc71'><small>MATRÍCULAS</small><h2>{len(df_f)}</h2></div>", unsafe_allow_html=True)
+                        
+                        if 'Vendedor' in df_f.columns:
+                            v_top = df_f['Vendedor'].value_counts().idxmax()
+                            k2.markdown(f"<div style='background-color:#1a3a5a;padding:15px;border-radius:10px;text-align:center;border-left:5px solid #f1c40f'><small>TOP VENDEDOR</small><h3>{v_top}</h3></div>", unsafe_allow_html=True)
+                        
+                        col_g1, col_g2 = st.columns(2)
+                        with col_g1:
+                            if 'Cidade' in df_f.columns:
+                                st.markdown("<p style='text-align:center;color:#2ecc71'>CIDADES</p>", unsafe_allow_html=True)
+                                fig_c = px.bar(df_f['Cidade'].value_counts().reset_index(), x='count', y='Cidade', orientation='h', color='count', color_continuous_scale='Viridis')
+                                fig_c.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=300, showlegend=False)
+                                st.plotly_chart(fig_c, use_container_width=True)
+                        with col_g2:
+                            if 'Status' in df_f.columns:
+                                st.markdown("<p style='text-align:center;color:#2ecc71'>STATUS</p>", unsafe_allow_html=True)
+                                fig_p = px.pie(df_f, names='Status', hole=0.7, color_discrete_sequence=['#2ecc71', '#e74c3c'])
+                                fig_p.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=300)
+                                st.plotly_chart(fig_p, use_container_width=True)
+                    else: st.warning("Sem dados no período selecionado.")
+                else:
+                    st.info("Selecione a data final no calendário para atualizar o relatório.")
             else: st.error("Coluna 'Data Matrícula' não encontrada na planilha.")
     except Exception as e: st.error(f"Erro no dashboard: {e}")
