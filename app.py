@@ -14,7 +14,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS PARA ELIMINAR O ESPAÇO AMARELO ---
+# --- CSS PARA COLAR NO MENU SEM SUMIR ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
@@ -30,19 +30,20 @@ st.markdown("""
         z-index: 999;
         justify-content: center;
     }
-    
-    /* ZERANDO ESPAÇOS DO CONTAINER */
+
+    /* AJUSTE FINO: 48px é a altura do menu. Isso faz o conteúdo encostar na linha azul */
     .main .block-container { 
-        padding-top: 45px !important; /* Altura exata do menu */
+        padding-top: 48px !important; 
+        padding-bottom: 0px !important;
     }
 
-    /* PUXANDO O CONTEÚDO PARA CIMA (Elimina o espaço amarelo) */
-    div[data-testid="stVerticalBlock"] > div:first-child {
-        margin-top: -40px !important;
+    /* Remove espaços extras entre widgets que o Streamlit cria */
+    [data-testid="stVerticalBlock"] > div {
+        gap: 0rem !important;
     }
 
     /* Inputs (Seus Ajustes) */
-    div[data-testid="stHorizontalBlock"] { margin-bottom: 3px !important; }
+    div[data-testid="stHorizontalBlock"] { margin-bottom: 2px !important; }
     div[data-testid="stTextInput"] > div { 
         min-height: 25px !important; height: 25px !important;
         width: 55% !important;
@@ -165,3 +166,10 @@ with tab_cad:
         st.markdown(f'<div class="contador-estilo">Alunos Salvos: {qtd}</div>', unsafe_allow_html=True)
         df_previa = pd.DataFrame(st.session_state.lista_previa) if st.session_state.lista_previa else pd.DataFrame(columns=["ID", "Aluno", "Cidade", "Curso", "Pagamento", "Vendedor", "Data"])
         st.dataframe(df_previa, use_container_width=True, hide_index=True)
+
+with tab_ger:
+    try:
+        dados = conn.read(ttl="0s").fillna("")
+        if "ID" in dados.columns: dados["ID"] = dados["ID"].astype(str).str.replace(r'\.0$', '', regex=True)
+        st.dataframe(dados.iloc[::-1], use_container_width=True, hide_index=True, height=600)
+    except: st.error("Erro ao carregar banco de dados.")
