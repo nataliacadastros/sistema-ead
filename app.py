@@ -44,10 +44,6 @@ st.markdown("""
     .neon-blue { color: #00f2ff; text-shadow: 0 0 10px rgba(0, 242, 255, 0.5); border-top: 2px solid #00f2ff; }
     .neon-purple { color: #bc13fe; text-shadow: 0 0 10px rgba(188, 19, 254, 0.5); border-top: 2px solid #bc13fe; }
     .neon-red { color: #ff4b4b; text-shadow: 0 0 10px rgba(255, 75, 75, 0.5); border-top: 2px solid #ff4b4b; }
-    .hud-bar-container { background: rgba(31, 41, 90, 0.3); height: 14px; border-radius: 20px; width: 100%; position: relative; margin: 50px 0 40px 0; border: 1px solid #1f295a; }
-    .hud-segment { height: 100%; float: left; position: relative; }
-    .hud-label { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); background: #121629; border: 1px solid currentColor; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
-    .hud-city-name { position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
     .stButton > button { background-color: #00f2ff !important; color: #0b0e1e !important; font-weight: bold !important; border: none !important; border-radius: 5px !important; width: 100%; height: 35px !important; }
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
@@ -57,6 +53,9 @@ st.markdown("""
 conn = st.connection("gsheets", type=GSheetsConnection)
 if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "val_curso" not in st.session_state: st.session_state.val_curso = ""
+# Contador para forçar o reset dos campos vinculados a chaves
+if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
+if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
 
 # --- FUNÇÕES AUXILIARES ---
 def extrair_valor_recebido(texto):
@@ -75,7 +74,9 @@ def extrair_valor_geral(texto):
     except: return 0.0
 
 def transformar_curso():
-    entrada = st.session_state.input_curso_key.strip()
+    # Pega o valor atual do widget usando a chave dinâmica
+    chave = f"input_curso_key_{st.session_state.reset_geral}"
+    entrada = st.session_state[chave].strip()
     if not entrada: st.session_state.val_curso = ""; return
     match = re.search(r'(\d+)$', entrada)
     if match:
@@ -86,90 +87,89 @@ def transformar_curso():
         else: st.session_state.val_curso = entrada.upper()
     else: st.session_state.val_curso = entrada.upper()
     st.session_state.val_curso = st.session_state.val_curso.upper().strip()
-    st.session_state.input_curso_key = st.session_state.val_curso
-
-def processar_pagto():
-    base = st.session_state.f_pagto.split(" | ")[0].strip().upper()
-    obs = []
-    if st.session_state.get('chk_1'): obs.append("LIBERAÇÃO IN-GLÊS")
-    if st.session_state.get('chk_2'): obs.append("CURSO BÔNUS")
-    if st.session_state.get('chk_3'): obs.append("CONFIRMAÇÃO MATRÍCULA")
-    st.session_state.f_pagto = f"{base} | {' | '.join(obs)}" if obs else base
+    # Atualiza o widget com o nome transformado
+    st.session_state[chave] = st.session_state.val_curso
 
 # --- ABAS ---
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
-# --- ABA 1: CADASTRO ---
 with tab_cad:
     _, centro, _ = st.columns([0.5, 5, 0.5])
     with centro:
+        # Geramos chaves dinâmicas baseadas nos contadores de reset
+        # Se reset_aluno ou reset_geral mudam, o Streamlit recria o widget vazio
+        suffix_aluno = f"{st.session_state.reset_aluno}_{st.session_state.reset_geral}"
+        suffix_geral = f"{st.session_state.reset_geral}"
+
         c_id_lab, c_id_inp = st.columns([1.5, 3.5])
         c_id_lab.markdown("<label>ID:</label>", unsafe_allow_html=True)
-        f_id = c_id_inp.text_input("ID", key="f_id", label_visibility="collapsed")
+        f_id = c_id_inp.text_input("ID", key=f"f_id_{suffix_aluno}", label_visibility="collapsed")
 
         c_nom_lab, c_nom_inp = st.columns([1.5, 3.5])
         c_nom_lab.markdown("<label>ALUNO:</label>", unsafe_allow_html=True)
-        f_nome = c_nom_inp.text_input("ALUNO", key="f_nome", label_visibility="collapsed")
+        f_nome = c_nom_inp.text_input("ALUNO", key=f"f_nome_{suffix_aluno}", label_visibility="collapsed")
 
         c_tr_lab, c_tr_inp = st.columns([1.5, 3.5])
         c_tr_lab.markdown("<label>TEL. RESPONSÁVEL:</label>", unsafe_allow_html=True)
-        f_tel_resp = c_tr_inp.text_input("TEL. RESP", key="f_tel_resp", label_visibility="collapsed")
+        f_tel_resp = c_tr_inp.text_input("TEL. RESP", key=f"f_tel_resp_{suffix_aluno}", label_visibility="collapsed")
 
         c_ta_lab, c_ta_inp = st.columns([1.5, 3.5])
         c_ta_lab.markdown("<label>TEL. ALUNO:</label>", unsafe_allow_html=True)
-        f_tel_aluno = c_ta_inp.text_input("TEL. ALUNO", key="f_tel_aluno", label_visibility="collapsed")
+        f_tel_aluno = c_ta_inp.text_input("TEL. ALUNO", key=f"f_tel_aluno_{suffix_aluno}", label_visibility="collapsed")
 
         c_cpf_lab, c_cpf_inp = st.columns([1.5, 3.5])
         c_cpf_lab.markdown("<label>CPF RESPONSÁVEL:</label>", unsafe_allow_html=True)
-        f_cpf = c_cpf_inp.text_input("CPF", key="f_cpf", label_visibility="collapsed")
+        f_cpf = c_cpf_inp.text_input("CPF", key=f"f_cpf_{suffix_aluno}", label_visibility="collapsed")
 
         c_cid_lab, c_cid_inp = st.columns([1.5, 3.5])
         c_cid_lab.markdown("<label>CIDADE:</label>", unsafe_allow_html=True)
-        f_cid = c_cid_inp.text_input("CIDADE", key="f_cid", label_visibility="collapsed")
+        f_cid = c_cid_inp.text_input("CIDADE", key=f"f_cid_{suffix_geral}", label_visibility="collapsed")
 
         c_cur_lab, c_cur_inp = st.columns([1.5, 3.5])
         c_cur_lab.markdown("<label>CURSO CONTRATADO:</label>", unsafe_allow_html=True)
-        f_curso = c_cur_inp.text_input("CURSO", key="input_curso_key", on_change=transformar_curso, label_visibility="collapsed")
+        f_curso = c_cur_inp.text_input("CURSO", key=f"input_curso_key_{suffix_geral}", on_change=transformar_curso, label_visibility="collapsed")
 
         c_pag_lab, c_pag_inp = st.columns([1.5, 3.5])
         c_pag_lab.markdown("<label>FORMA DE PAGAMENTO:</label>", unsafe_allow_html=True)
-        f_pagto = c_pag_inp.text_input("PAGAMENTO", key="f_pagto", label_visibility="collapsed")
+        f_pagto = c_pag_inp.text_input("PAGAMENTO", key=f"f_pagto_{suffix_aluno}", label_visibility="collapsed")
 
         c_ven_lab, c_ven_inp = st.columns([1.5, 3.5])
         c_ven_lab.markdown("<label>VENDEDOR:</label>", unsafe_allow_html=True)
-        f_vend = c_ven_inp.text_input("VENDEDOR", key="f_vend", label_visibility="collapsed")
+        f_vend = c_ven_inp.text_input("VENDEDOR", key=f"f_vend_{suffix_geral}", label_visibility="collapsed")
 
         c_dat_lab, c_dat_inp = st.columns([1.5, 3.5])
         c_dat_lab.markdown("<label>DATA DA MATRÍCULA:</label>", unsafe_allow_html=True)
-        # Inicializa data se não existir
-        if "f_data" not in st.session_state: st.session_state.f_data = date.today().strftime("%d/%m/%Y")
-        f_data = c_dat_inp.text_input("DATA", key="f_data", label_visibility="collapsed")
+        data_default = date.today().strftime("%d/%m/%Y")
+        f_data = c_dat_inp.text_input("DATA", key=f"f_data_{suffix_geral}", value=data_default, label_visibility="collapsed")
 
         st.write("")
         _, c_c1, c_c2, c_c3, _ = st.columns([1.5, 1.1, 1.2, 1.2, 0.1])
-        with c_c1: st.checkbox("LIB. IN-GLÊS", key="chk_1", on_change=processar_pagto)
-        with c_c2: st.checkbox("CURSO BÔNUS", key="chk_2", on_change=processar_pagto)
-        with c_c3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
+        chk_1 = c_c1.checkbox("LIB. IN-GLÊS", key=f"chk_1_{suffix_aluno}")
+        chk_2 = c_c2.checkbox("CURSO BÔNUS", key=f"chk_2_{suffix_aluno}")
+        chk_3 = c_c3.checkbox("CONFIRMAÇÃO", key=f"chk_3_{suffix_aluno}")
 
         st.write("")
         _, b_col1, b_col2, _ = st.columns([1.5, 1.75, 1.75, 0.1])
+        
         with b_col1:
             if st.button("💾 SALVAR ALUNO"):
                 if f_nome:
+                    # Lógica de observações para o pagamento
+                    obs = []
+                    if chk_1: obs.append("LIBERAÇÃO IN-GLÊS")
+                    if chk_2: obs.append("CURSO BÔNUS")
+                    if chk_3: obs.append("CONFIRMAÇÃO MATRÍCULA")
+                    pag_final = f"{f_pagto} | {' | '.join(obs)}" if obs else f_pagto
+
                     aluno = {
                         "ID": f_id.upper(), "Aluno": f_nome.upper(), "Tel_Resp": f_tel_resp,
                         "Tel_Aluno": f_tel_aluno, "CPF": f_cpf, "Cidade": f_cid.upper(),
-                        "Curso": st.session_state.input_curso_key.strip(), "Pagto": f_pagto.upper(),
+                        "Curso": f_curso.upper(), "Pagto": pag_final.upper(),
                         "Vendedor": f_vend.upper(), "Data_Mat": f_data
                     }
                     st.session_state.lista_previa.append(aluno)
-                    
-                    # LIMPEZA SELETIVA: Mantém Cidade, Curso, Vendedor e Data
-                    limpar = ["f_id", "f_nome", "f_tel_resp", "f_tel_aluno", "f_cpf", "f_pagto", "chk_1", "chk_2", "chk_3"]
-                    for k in limpar:
-                        if k in st.session_state:
-                            # Para checkboxes, resetar para False. Para texto, para vazio.
-                            st.session_state[k] = False if "chk" in k else ""
+                    # Incrementa apenas o reset do aluno: Limpa ID, Nome, Tel, CPF, Pagto e Checks
+                    st.session_state.reset_aluno += 1
                     st.rerun()
 
         with b_col2:
@@ -197,14 +197,8 @@ with tab_cad:
                         worksheet.insert_rows(dados_finais, row=linha_ini)
                         
                         st.session_state.lista_previa = []
-                        
-                        # LIMPEZA TOTAL: Zera absolutamente tudo
-                        todas = ["f_id", "f_nome", "f_tel_resp", "f_tel_aluno", "f_cpf", "f_cid", 
-                                 "input_curso_key", "f_pagto", "f_vend", "f_data", "chk_1", "chk_2", "chk_3"]
-                        for k in todas:
-                            if k in st.session_state:
-                                st.session_state[k] = False if "chk" in k else ""
-                        
+                        # Incrementa o reset geral: Zera absolutamente tudo
+                        st.session_state.reset_geral += 1
                         st.success("Enviado com sucesso!")
                         st.cache_data.clear(); st.rerun()
                     except Exception as e: st.error(f"Erro: {e}")
@@ -231,7 +225,6 @@ with tab_rel:
             df_rel = df_raw.copy()
             col_names = ['STATUS', 'UNIDADE', 'TURMA', '10_CURSOS', 'INGLES', 'DATA_CAD', 'ID', 'ALUNO', 'T1', 'T2', 'CPF', 'CIDADE', 'CURSO', 'PAGAMENTO', 'VENDEDOR', 'DATA_MATRICULA']
             df_rel.columns = col_names[:len(df_rel.columns)]
-            
             df_rel['DATA_MATRICULA'] = pd.to_datetime(df_rel['DATA_MATRICULA'], dayfirst=True, errors='coerce')
             intervalo = st.date_input("Filtro", value=(date.today()-timedelta(days=7), date.today()), format="DD/MM/YYYY")
             
@@ -251,23 +244,4 @@ with tab_rel:
                 with c6:
                     top_v = df_f['VENDEDOR'].value_counts().idxmax() if not df_f.empty else "N/A"
                     st.markdown(f'<div class="card-hud neon-blue"><small>Top</small><h2 style="font-size:14px">{top_v}</h2></div>', unsafe_allow_html=True)
-
-                st.write("---")
-                df_cid_v = df_f['CIDADE'].value_counts().head(4)
-                if not df_cid_v.empty:
-                    st.markdown("<small style='color:#00f2ff'>▸ GEOLOCATION ANALYTICS</small>", unsafe_allow_html=True)
-                    total_c = df_cid_v.sum(); cores = ["#ff007a", "#2ecc71", "#00f2ff", "#bc13fe"]
-                    seg_html = "".join([f'<div class="hud-segment" style="width:{(q/total_c)*100}%; background:{cores[i%4]};"><div class="hud-label" style="color:{cores[i%4]};">{q}</div><div class="hud-city-name" style="color:{cores[i%4]};">{n}</div></div>' for i, (n, q) in enumerate(df_cid_v.items())])
-                    st.markdown(f'<div class="hud-bar-container">{seg_html}</div>', unsafe_allow_html=True)
-
-                col_g1, col_g2 = st.columns(2)
-                with col_g1:
-                    fig_p = go.Figure(data=[go.Pie(labels=df_f['STATUS'].value_counts().index, values=df_f['STATUS'].value_counts().values, hole=0.5, marker=dict(colors=['#2ecc71', '#ff4b4b']))])
-                    fig_p.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', showlegend=False, height=350)
-                    st.plotly_chart(fig_p, use_container_width=True)
-                with col_g2:
-                    df_v = df_f['VENDEDOR'].value_counts().reset_index().head(5)
-                    fig_v = px.line(df_v, x='VENDEDOR', y='count', markers=True); fig_v.update_traces(line_color='#00f2ff')
-                    fig_v.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=350)
-                    st.plotly_chart(fig_v, use_container_width=True)
     except Exception as e: st.error(f"Erro: {e}")
