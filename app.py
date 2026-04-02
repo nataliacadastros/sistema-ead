@@ -17,6 +17,9 @@ DIC_CURSOS = {
 # --- INICIALIZAÇÃO DE VARIÁVEIS DE PERSONALIZAÇÃO ---
 if "cfg_input_height" not in st.session_state: st.session_state.cfg_input_height = 25
 if "cfg_input_width" not in st.session_state: st.session_state.cfg_input_width = 100
+if "cfg_margin_bottom" not in st.session_state: st.session_state.cfg_margin_bottom = 10 # Distância entre campos
+if "cfg_label_padding" not in st.session_state: st.session_state.cfg_label_padding = 15 # Distância Título -> Campo
+if "cfg_label_size" not in st.session_state: st.session_state.cfg_label_size = 11      # Tamanho da Fonte
 
 # --- CSS DINÂMICO ---
 st.markdown(f"""
@@ -26,7 +29,12 @@ st.markdown(f"""
     .stTabs [data-baseweb="tab"] {{ color: #ffffff !important; font-weight: 600; padding: 0px 30px; }}
     .stTabs [aria-selected="true"] {{ background-color: #2c5282 !important; border-bottom: 4px solid #2ecc71 !important; }}
     
-    /* ESTE É O BLOCO QUE VOCÊ ESTÁ AJUSTANDO */
+    /* DISTÂNCIA ENTRE UM CAMPO E OUTRO */
+    div[data-testid="stHorizontalBlock"] {{
+        margin-bottom: {st.session_state.cfg_margin_bottom}px !important;
+    }}
+
+    /* ALTURA E LARGURA DOS CAMPOS */
     div[data-testid="stTextInput"] > div {{ 
         min-height: {st.session_state.cfg_input_height}px !important; 
         height: {st.session_state.cfg_input_height}px !important;
@@ -34,9 +42,16 @@ st.markdown(f"""
     }}
     .stTextInput input {{ background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; }}
     
+    /* TÍTULO DOS CAMPOS (LABELS) */
     label {{ 
-        color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; 
-        display: flex; align-items: center; justify-content: flex-end; padding-right: 15px; height: {st.session_state.cfg_input_height}px;
+        color: #2ecc71 !important; 
+        font-weight: bold !important; 
+        font-size: {st.session_state.cfg_label_size}px !important; 
+        display: flex; 
+        align-items: center; 
+        justify-content: flex-end; 
+        padding-right: {st.session_state.cfg_label_padding}px !important; 
+        height: {st.session_state.cfg_input_height}px;
     }}
     
     .stCheckbox label p {{ color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; white-space: nowrap; }}
@@ -121,20 +136,37 @@ with tab_cad:
 
 # --- ABA DE AJUSTES ---
 with tab_cfg:
-    st.subheader("⚙️ Ajustes dos Campos de Texto")
+    st.subheader("⚙️ Ajustes de Design")
     
-    st.session_state.cfg_input_height = st.slider("Altura (px)", 20, 100, st.session_state.cfg_input_height)
-    st.session_state.cfg_input_width = st.slider("Largura (%)", 10, 100, st.session_state.cfg_input_width)
+    col_1, col_2 = st.columns(2)
+    
+    with col_1:
+        st.write("### ⌨️ Campos Brancos")
+        st.session_state.cfg_input_height = st.slider("Altura do Campo (px)", 20, 100, st.session_state.cfg_input_height)
+        st.session_state.cfg_input_width = st.slider("Largura do Campo (%)", 10, 100, st.session_state.cfg_input_width)
+        st.session_state.cfg_margin_bottom = st.slider("Distância entre Linhas (px)", 0, 50, st.session_state.cfg_margin_bottom)
+        
+    with col_2:
+        st.write("### 🏷️ Títulos (Labels)")
+        st.session_state.cfg_label_size = st.slider("Tamanho da Letra (px)", 8, 30, st.session_state.cfg_label_size)
+        st.session_state.cfg_label_padding = st.slider("Distância Título -> Campo (px)", 0, 100, st.session_state.cfg_label_padding)
     
     st.write("---")
-    st.write("### 📋 COPIE O CÓDIGO ABAIXO E ME ENVIE:")
+    st.write("### 📋 COPIE ESTE CÓDIGO E ME ENVIE:")
     
-    # Gera o texto do código para você me enviar
     codigo_gerado = f"""
+div[data-testid="stHorizontalBlock"] {{ margin-bottom: {st.session_state.cfg_margin_bottom}px !important; }}
+
 div[data-testid="stTextInput"] > div {{ 
     min-height: {st.session_state.cfg_input_height}px !important; 
     height: {st.session_state.cfg_input_height}px !important;
     width: {st.session_state.cfg_input_width}% !important;
+}}
+
+label {{ 
+    font-size: {st.session_state.cfg_label_size}px !important; 
+    padding-right: {st.session_state.cfg_label_padding}px !important; 
+    height: {st.session_state.cfg_input_height}px;
 }}
 """
     st.code(codigo_gerado, language="css")
