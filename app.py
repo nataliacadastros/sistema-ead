@@ -14,7 +14,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS FINAL AJUSTADO ---
+# --- CSS FINAL ---
 st.markdown("""
     <style>
     .stApp { background-color: #1a2436; color: white; }
@@ -37,7 +37,7 @@ st.markdown("""
     /* Ajuste de conteúdo para menu fixo */
     .main .block-container { padding-top: 80px; }
 
-    /* Inputs (Seus Ajustes: 55% de largura e 25px de altura) */
+    /* Inputs (Seus Ajustes) */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 3px !important; }
     div[data-testid="stTextInput"] > div { 
         min-height: 25px !important; height: 25px !important;
@@ -45,7 +45,7 @@ st.markdown("""
     }
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; }
 
-    /* Labels (Seus Ajustes: 15px fonte) */
+    /* Labels */
     label { 
         color: #2ecc71 !important; font-weight: bold !important; font-size: 15px !important; 
         padding-right: 2px !important; height: 25px !important;
@@ -60,6 +60,15 @@ st.markdown("""
         height: 40px !important; border: none !important; border-radius: 5px !important;
         display: flex !important; align-items: center !important; justify-content: center !important;
         white-space: nowrap !important; font-size: 13px !important; padding: 0px 20px !important;
+    }
+
+    /* Contador lateral direito */
+    .contador-estilo {
+        text-align: right;
+        color: #2ecc71;
+        font-weight: bold;
+        font-size: 14px;
+        margin-bottom: -10px;
     }
 
     header {visibility: hidden;} footer {visibility: hidden;}
@@ -100,12 +109,11 @@ def processar_pagto():
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
 with tab_cad:
-    # Centralização do Bloco (1:2:1)
     _, col_central, _ = st.columns([0.5, 3, 0.5])
     
     with col_central:
         st.write("")
-        # Campos de Preenchimento (1.2 : 4 para alinhar label com input)
+        # Form de Cadastro
         for label, key, func in [
             ("ID:", "f_id", None), ("ALUNO:", "f_nome", None), ("CIDADE:", "f_cid", None),
             ("CURSO:", "input_curso_key", transformar_curso), ("PAGAMENTO:", "input_pagto_key", None),
@@ -123,8 +131,6 @@ with tab_cad:
                 c2.text_input(label, key=key, label_visibility="collapsed")
 
         st.write("")
-        # --- CHECKBOXES ALINHADOS AO BLOCO BRANCO ---
-        # Usamos o mesmo recuo (1.2) das labels para começar exatamente onde os inputs começam
         recuo, area_checks = st.columns([1.2, 4])
         with area_checks:
             s1, s2, s3 = st.columns(3)
@@ -133,7 +139,6 @@ with tab_cad:
             with s3: st.checkbox("CONFIRMAÇÃO", key="chk_3", on_change=processar_pagto)
 
         st.write("")
-        # --- BOTÕES DE AÇÃO ALINHADOS AO BLOCO BRANCO ---
         recuo_btn, area_btns = st.columns([1.2, 4])
         with area_btns:
             b1, b2 = st.columns(2)
@@ -141,18 +146,23 @@ with tab_cad:
                 if st.button("💾 SALVAR ALUNO"):
                     if st.session_state.f_nome:
                         aluno = {"ID": st.session_state.f_id.upper(), "Aluno": st.session_state.f_nome.upper(), "Cidade": st.session_state.f_cid.upper(), "Curso": st.session_state.input_curso_key.strip(), "Pagamento": st.session_state.input_pagto_key.upper(), "Vendedor": st.session_state.f_vend.upper(), "Data": st.session_state.f_data}
-                        st.session_state.lista_previa.insert(0, aluno) # Adiciona no topo da lista
+                        st.session_state.lista_previa.insert(0, aluno)
                         st.rerun()
             with b2:
                 if st.button("📤 ENVIAR PLANILHA"):
                     if st.session_state.lista_previa:
                         df_old = conn.read(ttl="0s").fillna(""); df_new = pd.DataFrame(st.session_state.lista_previa); conn.update(data=pd.concat([df_old, df_new], ignore_index=True)); st.session_state.lista_previa = []; st.success("Enviado!"); st.rerun()
 
-        # --- LISTA DE PRÉ-VISUALIZAÇÃO IMEDIATA ---
-        if st.session_state.lista_previa:
-            st.write("---")
-            st.markdown("<h5 style='text-align: center; color: #2ecc71;'>ALUNOS AGUARDANDO ENVIO</h5>", unsafe_allow_html=True)
-            st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
+        # --- LISTA DE PRÉ-VISUALIZAÇÃO PERMANENTE ---
+        st.write("---")
+        
+        # Contador no canto direito
+        qtd = len(st.session_state.lista_previa)
+        st.markdown(f'<div class="contador-estilo">Alunos Salvos: {qtd}</div>', unsafe_allow_html=True)
+        
+        # Tabela (se vazia, exibe colunas vazias)
+        df_previa = pd.DataFrame(st.session_state.lista_previa) if st.session_state.lista_previa else pd.DataFrame(columns=["ID", "Aluno", "Cidade", "Curso", "Pagamento", "Vendedor", "Data"])
+        st.dataframe(df_previa, use_container_width=True, hide_index=True)
 
 with tab_ger:
     try:
