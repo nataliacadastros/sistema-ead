@@ -40,7 +40,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS HUD NEON COMPLETO ---
+# --- CSS HUD NEON ---
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e1e; color: #e0e0e0; }
@@ -87,7 +87,9 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- ESTADOS DE SESSÃO ---
+# --- ESTADOS E CONEXÃO ---
+conn = st.connection("gsheets", type=GSheetsConnection)
+
 if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
 if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
@@ -95,17 +97,12 @@ if "processou" not in st.session_state: st.session_state.processou = False
 if "finalizado" not in st.session_state: st.session_state.finalizado = False
 if "excel_pronto" not in st.session_state: st.session_state.excel_pronto = None
 
-# --- CONEXÃO ---
-conn = st.connection("gsheets", type=GSheetsConnection)
-
 # --- FUNÇÕES ---
 def reset_campos_subir():
-    chaves = ["in_user", "in_nome", "in_cell", "in_doc", "in_city", "in_cour", "in_pay", "in_sell", "in_date"]
-    for c in chaves: 
+    for c in ["in_user", "in_nome", "in_cell", "in_doc", "in_city", "in_cour", "in_pay", "in_sell", "in_date"]:
         if c in st.session_state: st.session_state[c] = ""
     st.session_state.processou = False
     st.session_state.finalizado = False
-    st.session_state.excel_pronto = None
 
 def transformar_curso(chave):
     entrada = st.session_state[chave].strip()
@@ -145,11 +142,11 @@ with tab_cad:
     _, centro, _ = st.columns([0.5, 5, 0.5])
     with centro:
         s_al = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"; s_ge = f"g_{st.session_state.reset_geral}"
-        c_fields = [("ID:", f"f_id_{s_al}"), ("ALUNO:", f"f_nome_{s_al}"), ("TEL. RESPONSÁVEL:", f"f_tel_resp_{s_al}"),
+        c = [("ID:", f"f_id_{s_al}"), ("ALUNO:", f"f_nome_{s_al}"), ("TEL. RESPONSÁVEL:", f"f_tel_resp_{s_al}"),
              ("TEL. ALUNO:", f"f_tel_aluno_{s_al}"), ("CPF RESPONSÁVEL:", f"f_cpf_{s_al}"), ("CIDADE:", f"f_cid_{s_ge}"),
              ("CURSO CONTRATADO:", f"input_curso_key_{s_al}"), ("FORMA DE PAGAMENTO:", f"f_pagto_{s_al}"),
              ("VENDEDOR:", f"f_vend_{s_ge}"), ("DATA DA MATRÍCULA:", f"f_data_{s_ge}")]
-        for l, k in c_fields:
+        for l, k in c:
             cl, ci = st.columns([1.5, 3.5])
             cl.markdown(f"<label>{l}</label>", unsafe_allow_html=True)
             if "curso" in k: ci.text_input(l, key=k, on_change=transformar_curso, args=(k,), label_visibility="collapsed")
@@ -197,7 +194,7 @@ with tab_ger:
             sc = "status-ativo" if r['STATUS'] == "ATIVO" else "status-cancelado"
             rows += f"<tr><td><span class='status-badge {sc}'>{r['STATUS']}</span></td><td>{r['UNID.']}</td><td>{r['TURMA']}</td><td>{r['10C']}</td><td>{r['ING']}</td><td>{r['DT_CAD']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ID']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ALUNO']}</td><td>{r['TEL_RESP']}</td><td>{r['TEL_ALU']}</td><td>{r['CPF']}</td><td>{r['CIDADE']}</td><td>{r['CURSO']}</td><td>{r['PAGTO']}</td><td>{r['VEND.']}</td><td>{r['DT_MAT']}</td></tr>"
         st.markdown(f'<div class="custom-table-wrapper"><table class="custom-table"><thead><tr>' + ''.join([f'<th>{h}</th>' for h in df_g.columns]) + f'</tr></thead><tbody>{rows}</tbody></table></div>', unsafe_allow_html=True)
-    except Exception as e: st.error(f"Erro no Gerenciamento")
+    except Exception as e: st.error("Erro ao carregar dados.")
 
 # --- ABA 3: RELATÓRIOS ---
 with tab_rel:
@@ -237,7 +234,7 @@ with tab_rel:
                     dfv = df_f[v_col].value_counts().reset_index().head(5)
                     figv = px.line(dfv, x=v_col, y='count', markers=True, text='count')
                     figv.update_traces(line_color='#00f2ff'); figv.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=400); st.plotly_chart(figv, use_container_width=True)
-    except Exception as e: st.error("Erro nos Relatórios")
+    except Exception as e: st.error("Erro ao carregar relatórios.")
 
 # --- ABA 4: SUBIR ALUNOS ---
 with tab_subir:
@@ -245,7 +242,7 @@ with tab_subir:
     modo = st.radio("Método:", ["MANUAL", "AUTOMÁTICO"], horizontal=True, label_visibility="collapsed")
     st.write("---")
 
-    df_mestre = None # Inicializa para evitar NameError
+    df_mestre = None
     cidades_sel = []
 
     if modo == "MANUAL":
@@ -275,22 +272,19 @@ with tab_subir:
     else:
         st.markdown("<h4 style='color:#00f2ff'>FILTRAR POR DATA</h4>")
         try:
-            # TTL=300 (5 min) evita o erro 429 de cota excedida
             df_mestre = conn.read(ttl=300).dropna(how='all')
             df_mestre.columns = [c.strip().upper() for c in df_mestre.columns]
             col_data = next((c for c in df_mestre.columns if 'DATA MAT' in c or 'DT_MAT' in c), None)
             col_cid = next((c for c in df_mestre.columns if 'CIDADE' in c), None)
-
             if col_data and col_cid:
                 df_mestre[col_data] = pd.to_datetime(df_mestre[col_data], dayfirst=True, errors='coerce')
                 data_sel = st.date_input("Dia:", value=date.today(), format="DD/MM/YYYY")
                 df_f_auto = df_mestre[df_mestre[col_data].dt.date == data_sel]
                 if not df_f_auto.empty:
                     cids_l = sorted(df_f_auto[col_cid].unique())
-                    cidades_sel = st.multiselect("Cidades:", cids_l, key="auto_cids_sel")
-                    st.info(f"{len(df_f_auto[df_f_auto[col_cid].isin(cidades_sel)])} alunos encontrados.")
-                else: st.warning("Nenhum cadastro nesta data.")
-        except Exception: st.error("Erro de Cota (Google): Aguarde 1 minuto.")
+                    cidades_sel = st.multiselect("Cidades:", cids_l, key="auto_cids")
+                else: st.warning("Sem cadastros nesta data.")
+        except: st.error("Erro na leitura da planilha.")
 
     # --- TAGS ---
     st.write("---")
@@ -309,7 +303,7 @@ with tab_subir:
             selected_tags[curso] = final_t
             if final_t: st.session_state[f"last_tag_{curso}"] = final_t
 
-    # --- PROCESSAMENTO FINAL ---
+    # --- PROCESSAMENTO ---
     st.write("---")
     if st.button("🚀 PROCESSAR PLANILHA", use_container_width=True):
         if not os.path.exists(ARQUIVO_CIDADES): st.error("cidades.xlsx ausente.")
@@ -332,13 +326,14 @@ with tab_subir:
                 c_alu = next((c for c in df_mestre.columns if 'ALUNO' in c), 'ALUNO')
                 c_pag = next((c for c in df_mestre.columns if 'PAGTO' in c or 'PAGAMENTO' in c), 'PAGTO')
                 c_cur = next((c for c in df_mestre.columns if 'CURSO' in c), 'CURSO')
-                c_tel = next((c for c in df_mestre.columns if 'TEL' in c), 'TEL_ALU')
+                c_tel = next((c for c in df_mestre.columns if 'TEL_ALU' in c), 'TEL_ALU')
                 c_doc = next((c for c in df_mestre.columns if 'CPF' in c), 'CPF')
                 c_ven = next((c for c in df_mestre.columns if 'VEND' in c), 'VENDEDOR')
                 c_cid = next((c for c in df_mestre.columns if 'CIDADE' in c), 'CIDADE')
                 c_dat = next((c for c in df_mestre.columns if 'DATA MAT' in c or 'DT_MAT' in c), 'DT_MAT')
                 df_final = df_f_auto[df_f_auto[c_cid].isin(cidades_sel)]
-                for _, r in df_final.iterrows(): raw.append({"User": r[c_id], "Nome": r[c_alu], "Pay": r[c_pag], "Cour": r[c_cur], "Cell": r[c_tel], "Doc": r[c_doc], "City": r[c_cid], "Sell": r[c_ven], "Date": r[c_dat]})
+                for _, r in df_final.iterrows():
+                    raw.append({"User": r[c_id], "Nome": r[c_alu], "Pay": r[c_pag], "Cour": r[c_cur], "Cell": r[c_tel], "Doc": r[c_doc], "City": r[c_cid], "Sell": r[c_ven], "Date": r[c_dat]})
 
             processed, pends = [], []
             for i, item in enumerate(raw):
