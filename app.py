@@ -58,24 +58,18 @@ st.markdown("""
     }
     .main .block-container { padding-top: 45px !important; max-width: 100% !important; margin: 0 auto !important; }
     
-    /* CADASTRO */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 0px !important; display: flex; align-items: center; }
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end; }
     div[data-testid="stTextInput"] { width: 55% !important; }
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 18px !important; border-radius: 5px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
 
-    /* GERENCIAMENTO */
     .custom-table-wrapper { width: 100%; max-height: 600px; overflow: auto; background-color: #121629; border: 2px solid #1f295a; border-radius: 10px; margin-top: 15px; }
     .custom-table { width: 100%; border-collapse: collapse; min-width: 2500px !important; }
     .custom-table th { background-color: #1f295a; color: #00f2ff; text-align: left; padding: 15px; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; z-index: 99; }
     .custom-table td { padding: 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: nowrap; }
     .custom-table tr:hover { background-color: rgba(0, 242, 255, 0.1); }
-    .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }
-    .status-ativo { background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
-    .status-cancelado { background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
 
-    /* SUBIR ALUNOS */
     .subir-label { color: #e0e6ed !important; font-size: 14px !important; margin-bottom: 2px !important; font-weight: bold; }
     .stTextArea textarea { background-color: white !important; color: black !important; text-transform: uppercase !important; border-radius: 0px !important; }
     .contador-label { color: #00f2ff !important; font-size: 10px !important; margin-top: -10px; margin-bottom: 10px; text-align: right; }
@@ -83,17 +77,12 @@ st.markdown("""
         background-color: #805dca !important; color: white !important; font-weight: bold !important; width: 100% !important; border-radius: 0px !important; height: 45px !important;
     }
 
-    /* RELATÓRIO */
     .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 100px; display: flex; flex-direction: column; justify-content: center; }
     .neon-pink { color: #ff007a; border-top: 2px solid #ff007a; }
     .neon-green { color: #2ecc71; border-top: 2px solid #2ecc71; }
     .neon-blue { color: #00f2ff; border-top: 2px solid #00f2ff; }
     .neon-purple { color: #bc13fe; border-top: 2px solid #bc13fe; }
     .neon-red { color: #ff4b4b; border-top: 2px solid #ff4b4b; }
-    .hud-bar-container { background: rgba(31, 41, 90, 0.3); height: 14px; border-radius: 20px; width: 100%; position: relative; margin: 50px 0 40px 0; border: 1px solid #1f295a; }
-    .hud-segment { height: 100%; float: left; position: relative; }
-    .hud-label { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); background: #121629; border: 1px solid currentColor; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
-    .hud-city-name { position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
 
     .stButton > button { background-color: #00f2ff !important; color: #0b0e1e !important; font-weight: bold !important; border: none !important; border-radius: 5px !important; width: 100%; height: 35px !important; }
     header {visibility: hidden;} footer {visibility: hidden;}
@@ -106,7 +95,7 @@ if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
 if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
 
-# --- FUNÇÕES DE CONTROLE ---
+# --- FUNÇÕES ORIGINAIS ---
 def atualizar_pagamento():
     suffix = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"
     base = st.session_state.get(f"f_pagto_{suffix}", "").split('|')[0].strip()
@@ -140,7 +129,7 @@ def extrair_valor_geral(texto):
 # --- NAVEGAÇÃO ---
 tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
 
-# --- ABA 1: CADASTRO ---
+# --- ABA 1: CADASTRO (ORIGINAL) ---
 with tab_cad:
     _, centro, _ = st.columns([0.5, 5, 0.5])
     with centro:
@@ -178,7 +167,7 @@ with tab_cad:
                     except Exception as e: st.error(f"Erro: {e}")
         if st.session_state.lista_previa: st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
-# --- ABA 2: GERENCIAMENTO ---
+# --- ABA 2: GERENCIAMENTO (ORIGINAL) ---
 with tab_ger:
     cf1, cf2, cf3, cf4 = st.columns([2.5, 1.5, 1.5, 0.5])
     with cf1: bu = st.text_input("🔍 Buscar...", key="busca_ger", placeholder="Nome ou ID", label_visibility="collapsed")
@@ -200,7 +189,7 @@ with tab_ger:
         st.markdown(f'<div class="custom-table-wrapper"><table class="custom-table"><thead><tr>' + ''.join([f'<th>{h}</th>' for h in hd]) + f'</tr></thead><tbody>{rows}</tbody></table></div>', unsafe_allow_html=True)
     except Exception as e: st.error(f"Erro: {e}")
 
-# --- ABA 3: RELATÓRIOS ---
+# --- ABA 3: RELATÓRIOS (ORIGINAL) ---
 with tab_rel:
     try:
         df_r = conn.read(ttl="0s").dropna(how='all')
@@ -239,10 +228,17 @@ with tab_rel:
                     figv.update_traces(line_color='#00f2ff'); figv.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=400); st.plotly_chart(figv, use_container_width=True)
     except Exception as e: st.error(f"Erro: {e}")
 
-# --- ABA 4: SUBIR ALUNOS (VERSÃO OTIMIZADA) ---
+# --- ABA 4: SUBIR ALUNOS (ATUALIZADA COM AUTO-RESET) ---
 with tab_subir:
     def contar_itens(texto):
         return len([i for i in texto.strip().split('\n') if i.strip()]) if texto else 0
+
+    def reset_campos_subir():
+        chaves_para_limpar = ["in_user", "in_nome", "in_cell", "in_doc", "in_city", "in_cour", "in_pay", "in_sell", "in_date"]
+        for chave in chaves_para_limpar:
+            st.session_state[chave] = ""
+        st.session_state.processou = False
+        st.session_state.finalizado = False
 
     col_esq, col_dir = st.columns(2)
     with col_esq:
@@ -352,5 +348,8 @@ with tab_subir:
                 out = BytesIO(); wb = Workbook(); ws = wb.active; cols = ["username", "email2", "name", "lastname", "cellphone2", "document", "city2", "courses", "payment", "observation", "ouro", "password", "role", "secretary", "seller", "contract_date", "active"]
                 ws.append(cols); [ws.append([d[c] for c in cols]) for d in st.session_state.dados_brutos]; wb.save(out)
                 excel_data = out.getvalue()
-            st.download_button("📥 Baixar Excel", excel_data, f"ead_final_{date.today()}.xlsx")
+            
+            # Botão de download com a função de reset acoplada
+            if st.download_button("📥 Baixar Excel", excel_data, f"ead_final_{date.today()}.xlsx", on_click=reset_campos_subir):
+                st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
