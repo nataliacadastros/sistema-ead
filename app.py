@@ -24,8 +24,7 @@ def carregar_tags():
         try:
             with open(ARQUIVO_TAGS, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
-            return {}
+        except: return {}
     return {}
 
 def salvar_tags(tags):
@@ -35,14 +34,13 @@ def salvar_tags(tags):
 if "tags_salvas" not in st.session_state:
     st.session_state.tags_salvas = carregar_tags()
 
-# --- DICIONÁRIO DE CURSOS ---
 DIC_CURSOS = {
     "00": "COLÉGIO COMBO", "1": "PREPARATÓRIO JOVEM BANCÁRIO", "2": "10 CURSOS PROFISSIONALIZANTES",
     "3": "PREPARATÓRIO AGRO", "4": "INGLÊS", "5": "JOVEM NO DIREITO", "6": "PRÉ MILITAR",
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS ESTÉTICA HUD NEON & GERENCIAMENTO ---
+# --- CSS HUD NEON & LAYOUT ORIGINAL ---
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e1e; color: #e0e0e0; }
@@ -52,47 +50,25 @@ st.markdown("""
         z-index: 999; justify-content: center; height: 35px !important;
     }
     .stTabs [data-baseweb="tab"] { color: #64748b !important; font-size: 11px !important; padding: 0 30px !important; }
-    .stTabs [aria-selected="true"] { 
-        color: #00f2ff !important; border-bottom: 2px solid #00f2ff !important;
-        background-color: rgba(0, 242, 255, 0.05) !important;
-    }
+    .stTabs [aria-selected="true"] { color: #00f2ff !important; border-bottom: 2px solid #00f2ff !important; background-color: rgba(0, 242, 255, 0.05) !important; }
     .main .block-container { padding-top: 45px !important; max-width: 100% !important; margin: 0 auto !important; }
     
-    /* ESTILO CADASTRO */
+    /* CADASTRO */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 0px !important; display: flex; align-items: center; }
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end; }
-    
     div[data-testid="stTextInput"] { width: 55% !important; }
-    .stTextInput input { 
-        background-color: white !important; color: black !important; text-transform: uppercase !important; 
-        font-size: 12px !important; height: 18px !important; border-radius: 5px !important; 
-    }
-    
+    .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 18px !important; border-radius: 5px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
 
-    /* GERENCIAMENTO - BOX COM SCROLL FORÇADO */
-    .custom-table-wrapper {
-        width: 100%; max-height: 600px; overflow-x: auto !important; overflow-y: auto !important;
-        background-color: #121629; border: 2px solid #1f295a; border-radius: 10px; margin-top: 15px;
-    }
+    /* GERENCIAMENTO */
+    .custom-table-wrapper { width: 100%; max-height: 600px; overflow: auto; background-color: #121629; border: 2px solid #1f295a; border-radius: 10px; margin-top: 15px; }
     .custom-table { width: 100%; border-collapse: collapse; min-width: 2500px !important; }
-    .custom-table th { 
-        background-color: #1f295a; color: #00f2ff; text-align: left; padding: 15px; 
-        font-size: 11px; text-transform: uppercase; position: sticky; top: 0; z-index: 99;
-    }
+    .custom-table th { background-color: #1f295a; color: #00f2ff; text-align: left; padding: 15px; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; z-index: 99; }
     .custom-table td { padding: 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: nowrap; }
     .custom-table tr:hover { background-color: rgba(0, 242, 255, 0.1); }
     .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }
     .status-ativo { background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
     .status-cancelado { background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
-
-    /* SUBIR ALUNOS - LABELS E CONTADORES */
-    .subir-label { color: #e0e6ed !important; font-size: 14px !important; margin-bottom: 2px !important; font-weight: bold; }
-    .stTextArea textarea { background-color: white !important; color: black !important; text-transform: uppercase !important; border-radius: 0px !important; }
-    .contador-label { color: #00f2ff !important; font-size: 10px !important; margin-top: -10px; margin-bottom: 10px; text-align: right; }
-    .btn-salvar-planilha > div [data-testid="stButton"] button {
-        background-color: #805dca !important; color: white !important; font-weight: bold !important; width: 100% !important; border-radius: 0px !important; height: 45px !important;
-    }
 
     /* RELATÓRIO HUD */
     .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 100px; display: flex; flex-direction: column; justify-content: center; }
@@ -106,26 +82,25 @@ st.markdown("""
     .hud-label { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); background: #121629; border: 1px solid currentColor; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
     .hud-city-name { position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
 
+    /* SUBIR ALUNOS */
+    .subir-label { color: #e0e6ed !important; font-size: 14px !important; margin-bottom: 2px !important; font-weight: bold; }
+    .stTextArea textarea { background-color: white !important; color: black !important; text-transform: uppercase !important; border-radius: 0px !important; }
+    .contador-label { color: #00f2ff !important; font-size: 10px !important; margin-top: -10px; margin-bottom: 10px; text-align: right; }
+    .btn-salvar-planilha > div [data-testid="stButton"] button { background-color: #805dca !important; color: white !important; font-weight: bold !important; width: 100% !important; border-radius: 0px !important; height: 45px !important; }
+
     .stButton > button { background-color: #00f2ff !important; color: #0b0e1e !important; font-weight: bold !important; border: none !important; border-radius: 5px !important; width: 100%; height: 35px !important; }
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
-# --- CONEXÃO E ESTADOS ---
+# --- CONEXÃO E FUNÇÕES ---
 conn = st.connection("gsheets", type=GSheetsConnection)
-if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
-if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
-if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
 
-# --- FUNÇÕES ORIGINAIS ---
-def atualizar_pagamento():
-    suffix = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"
-    base = st.session_state.get(f"f_pagto_{suffix}", "").split('|')[0].strip()
-    novo = base
-    if st.session_state.get(f"chk_1_{suffix}"): novo += " | Após pagamento link cartão, avisar Natália para liberação In-glês"
-    if st.session_state.get(f"chk_2_{suffix}"): novo += " | Caso pague via link cartão, avisar Natália para liberação curso bônus a escolha"
-    if st.session_state.get(f"chk_3_{suffix}"): novo += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
-    st.session_state[f"f_pagto_{suffix}"] = novo.upper()
+def reset_campos_subir():
+    for c in ["in_user", "in_nome", "in_cell", "in_doc", "in_city", "in_cour", "in_pay", "in_sell", "in_date"]:
+        if c in st.session_state: st.session_state[c] = ""
+    st.session_state.processou = False
+    st.session_state.finalizado = False
 
 def transformar_curso(chave):
     entrada = st.session_state[chave].strip()
@@ -138,6 +113,15 @@ def transformar_curso(chave):
             st.session_state[chave] = (f"{base} + {nome}" if base and nome.upper() not in base.upper() else (base if base else nome)).upper()
     else: st.session_state[chave] = entrada.upper()
 
+def atualizar_pagamento():
+    suffix = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"
+    base = st.session_state.get(f"f_pagto_{suffix}", "").split('|')[0].strip()
+    novo = base
+    if st.session_state.get(f"chk_1_{suffix}"): novo += " | Após pagamento link cartão, avisar Natália para liberação In-glês"
+    if st.session_state.get(f"chk_2_{suffix}"): novo += " | Caso pague via link cartão, avisar Natália para liberação curso bônus a escolha"
+    if st.session_state.get(f"chk_3_{suffix}"): novo += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
+    st.session_state[f"f_pagto_{suffix}"] = novo.upper()
+
 def extrair_valor_recebido(texto):
     match = re.search(r'PAG[OA]S?\s*(?:R\$)?\s*([\d\.,]+)', str(texto).upper())
     return float(match.group(1).replace('.', '').replace(',', '.')) if match else 0.0
@@ -148,7 +132,7 @@ def extrair_valor_geral(texto):
         return float(v[0]) if v else 0.0
     except: return 0.0
 
-# --- NAVEGAÇÃO ---
+# --- ABAS ---
 tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
 
 # --- ABA 1: CADASTRO (RESTAURADA 100%) ---
@@ -197,7 +181,6 @@ with tab_ger:
     with cf3: fu = st.selectbox("Unidade", ["Todos", "MGA"], key="filtro_unid", label_visibility="collapsed")
     with cf4: 
         if st.button("🔄", key="btn_refresh"): st.cache_data.clear(); st.rerun()
-
     try:
         df_g = conn.read(ttl="0s").fillna("")
         hd = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
@@ -205,12 +188,10 @@ with tab_ger:
         if bu: df_g = df_g[df_g['ALUNO'].str.contains(bu, case=False) | df_g['ID'].str.contains(bu, case=False)]
         if fs != "Todos": df_g = df_g[df_g['STATUS'] == fs]
         if fu != "Todos": df_g = df_g[df_g['UNID.'] == fu]
-
         rows = ""
         for _, r in df_g.iloc[::-1].iterrows():
             sc = "status-ativo" if r['STATUS'] == "ATIVO" else "status-cancelado"
             rows += f"<tr><td><span class='status-badge {sc}'>{r['STATUS']}</span></td><td>{r['UNID.']}</td><td>{r['TURMA']}</td><td>{r['10C']}</td><td>{r['ING']}</td><td>{r['DT_CAD']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ID']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ALUNO']}</td><td>{r['TEL_RESP']}</td><td>{r['TEL_ALU']}</td><td>{r['CPF']}</td><td>{r['CIDADE']}</td><td>{r['CURSO']}</td><td>{r['PAGTO']}</td><td>{r['VEND.']}</td><td>{r['DT_MAT']}</td></tr>"
-        
         st.markdown(f'<div class="custom-table-wrapper"><table class="custom-table"><thead><tr>' + ''.join([f'<th>{h}</th>' for h in hd]) + f'</tr></thead><tbody>{rows}</tbody></table></div>', unsafe_allow_html=True)
     except Exception as e: st.error(f"Erro: {e}")
 
@@ -246,58 +227,65 @@ with tab_rel:
                 colg1, colg2 = st.columns(2)
                 with colg1:
                     figp = go.Figure(data=[go.Pie(labels=df_f['STATUS'].value_counts().index, values=df_f['STATUS'].value_counts().values, hole=0.5, marker=dict(colors=['#2ecc71', '#ff4b4b']))])
-                    figp.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', showlegend=False, height=400); st.plotly_chart(figp, use_container_width=True)
+                    figp.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=400); st.plotly_chart(figp, use_container_width=True)
                 with colg2:
                     dfv = df_f[v_col].value_counts().reset_index().head(5)
                     figv = px.line(dfv, x=v_col, y='count', markers=True, text='count')
                     figv.update_traces(line_color='#00f2ff'); figv.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=400); st.plotly_chart(figv, use_container_width=True)
     except Exception as e: st.error(f"Erro: {e}")
 
-# --- ABA 4: SUBIR ALUNOS (SISTEMA MELHORADO) ---
+# --- ABA 4: SUBIR ALUNOS (SISTEMA MANUAL E AUTOMÁTICO) ---
 with tab_subir:
-    def contar_itens(texto):
-        return len([i for i in texto.strip().split('\n') if i.strip()]) if texto else 0
+    st.markdown("### 📤 MODO DE IMPORTAÇÃO")
+    modo = st.radio("Selecione o método:", ["MANUAL", "AUTOMÁTICO"], horizontal=True, label_visibility="collapsed")
+    st.write("---")
 
-    def reset_campos_subir():
-        chaves = ["in_user", "in_nome", "in_cell", "in_doc", "in_city", "in_cour", "in_pay", "in_sell", "in_date"]
-        for c in chaves: st.session_state[c] = ""
-        st.session_state.processou = False
-        st.session_state.finalizado = False
+    if modo == "MANUAL":
+        def contar_itens(texto): return len([i for i in texto.strip().split('\n') if i.strip()]) if texto else 0
+        col_esq, col_dir = st.columns(2)
+        with col_esq:
+            st.markdown("<p class='subir-label'>Usuários</p>", unsafe_allow_html=True)
+            u_user = st.text_area("User", height=80, label_visibility="collapsed", key="in_user")
+            st.markdown(f"<p class='contador-label'>Itens: {contar_itens(u_user)}</p>", unsafe_allow_html=True)
+            st.markdown("<p class='subir-label'>Celular</p>", unsafe_allow_html=True)
+            u_cell = st.text_area("Cel", height=80, label_visibility="collapsed", key="in_cell")
+            st.markdown(f"<p class='contador-label'>Itens: {contar_itens(u_cell)}</p>", unsafe_allow_html=True)
+            st.markdown("<p class='subir-label'>Cidade</p>", unsafe_allow_html=True)
+            u_city = st.text_area("Cid", height=80, label_visibility="collapsed", key="in_city")
+            st.markdown(f"<p class='contador-label'>Itens: {contar_itens(u_city)}</p>", unsafe_allow_html=True)
+            st.markdown("<p class='subir-label'>Pagamento</p>", unsafe_allow_html=True)
+            u_pay = st.text_area("Pay", height=80, label_visibility="collapsed", key="in_pay")
+            st.markdown(f"<p class='contador-label'>Itens: {contar_itens(u_pay)}</p>", unsafe_allow_html=True)
+        with col_dir:
+            st.markdown("<p class='subir-label'>Nome completo</p>", unsafe_allow_html=True)
+            u_nome = st.text_area("Nome", height=80, label_visibility="collapsed", key="in_nome")
+            st.markdown(f"<p class='contador-label'>Itens: {contar_itens(u_nome)}</p>", unsafe_allow_html=True)
+            st.markdown("<p class='subir-label'>Documento</p>", unsafe_allow_html=True)
+            u_doc = st.text_area("Doc", height=80, label_visibility="collapsed", key="in_doc")
+            st.markdown(f"<p class='contador-label'>Itens: {contar_itens(u_doc)}</p>", unsafe_allow_html=True)
+            st.markdown("<p class='subir-label'>Cursos</p>", unsafe_allow_html=True)
+            u_cour = st.text_area("Cour", height=80, label_visibility="collapsed", key="in_cour")
+            st.markdown(f"<p class='contador-label'>Itens: {contar_itens(u_cour)}</p>", unsafe_allow_html=True)
+            st.markdown("<p class='subir-label'>Vendedor</p>", unsafe_allow_html=True)
+            u_sell = st.text_area("Sell", height=80, label_visibility="collapsed", key="in_sell")
+            st.markdown(f"<p class='contador-label'>Itens: {contar_itens(u_sell)}</p>", unsafe_allow_html=True)
+        st.markdown("<p class='subir-label'>Data contrato</p>", unsafe_allow_html=True)
+        u_date = st.text_area("Date", height=80, label_visibility="collapsed", key="in_date")
+        st.markdown(f"<p class='contador-label'>Itens: {contar_itens(u_date)}</p>", unsafe_allow_html=True)
 
-    # Layout de Inputs
-    col_esq, col_dir = st.columns(2)
-    with col_esq:
-        st.markdown("<p class='subir-label'>Usuários</p>", unsafe_allow_html=True)
-        u_user = st.text_area("User", height=80, label_visibility="collapsed", key="in_user")
-        st.markdown(f"<p class='contador-label'>Itens: {contar_itens(u_user)}</p>", unsafe_allow_html=True)
-        st.markdown("<p class='subir-label'>Celular</p>", unsafe_allow_html=True)
-        u_cell = st.text_area("Cel", height=80, label_visibility="collapsed", key="in_cell")
-        st.markdown(f"<p class='contador-label'>Itens: {contar_itens(u_cell)}</p>", unsafe_allow_html=True)
-        st.markdown("<p class='subir-label'>Cidade</p>", unsafe_allow_html=True)
-        u_city = st.text_area("Cid", height=80, label_visibility="collapsed", key="in_city")
-        st.markdown(f"<p class='contador-label'>Itens: {contar_itens(u_city)}</p>", unsafe_allow_html=True)
-        st.markdown("<p class='subir-label'>Pagamento</p>", unsafe_allow_html=True)
-        u_pay = st.text_area("Pay", height=80, label_visibility="collapsed", key="in_pay")
-        st.markdown(f"<p class='contador-label'>Itens: {contar_itens(u_pay)}</p>", unsafe_allow_html=True)
-    with col_dir:
-        st.markdown("<p class='subir-label'>Nome completo</p>", unsafe_allow_html=True)
-        u_nome = st.text_area("Nome", height=80, label_visibility="collapsed", key="in_nome")
-        st.markdown(f"<p class='contador-label'>Itens: {contar_itens(u_nome)}</p>", unsafe_allow_html=True)
-        st.markdown("<p class='subir-label'>Documento</p>", unsafe_allow_html=True)
-        u_doc = st.text_area("Doc", height=80, label_visibility="collapsed", key="in_doc")
-        st.markdown(f"<p class='contador-label'>Itens: {contar_itens(u_doc)}</p>", unsafe_allow_html=True)
-        st.markdown("<p class='subir-label'>Cursos</p>", unsafe_allow_html=True)
-        u_cour = st.text_area("Cour", height=80, label_visibility="collapsed", key="in_cour")
-        st.markdown(f"<p class='contador-label'>Itens: {contar_itens(u_cour)}</p>", unsafe_allow_html=True)
-        st.markdown("<p class='subir-label'>Vendedor</p>", unsafe_allow_html=True)
-        u_sell = st.text_area("Sell", height=80, label_visibility="collapsed", key="in_sell")
-        st.markdown(f"<p class='contador-label'>Itens: {contar_itens(u_sell)}</p>", unsafe_allow_html=True)
+    else:
+        st.markdown("<h4 style='color:#00f2ff'>FILTRAR POR DATA DE MATRÍCULA</h4>", unsafe_allow_html=True)
+        df_auto = conn.read(ttl="0s").dropna(how='all')
+        df_auto['DT_MAT_AUTO'] = pd.to_datetime(df_auto['DT_MAT'], dayfirst=True, errors='coerce')
+        data_sel = st.date_input("Selecione o dia:", value=date.today(), format="DD/MM/YYYY")
+        df_filtrado_auto = df_auto[df_auto['DT_MAT_AUTO'].dt.date == data_sel]
+        if not df_filtrado_auto.empty:
+            cidades_disponiveis = sorted(df_filtrado_auto['CIDADE'].unique())
+            cidades_sel = st.multiselect("Selecione as cidades cadastradas no dia:", cidades_disponiveis)
+            st.info(f"{len(df_filtrado_auto[df_filtrado_auto['CIDADE'].isin(cidades_sel)])} alunos encontrados.")
+        else: st.warning("Nenhum cadastro encontrado nesta data.")
 
-    st.markdown("<p class='subir-label'>Data contrato</p>", unsafe_allow_html=True)
-    u_date = st.text_area("Date", height=80, label_visibility="collapsed", key="in_date")
-    st.markdown(f"<p class='contador-label'>Itens: {contar_itens(u_date)}</p>", unsafe_allow_html=True)
-
-    # Área de Tags
+    # --- TAGS (RODAPÉ) ---
     st.write("---")
     st.markdown("<h4 style='color:#bc13fe; font-size:16px;'>CONFIGURAÇÃO DE TAGS</h4>", unsafe_allow_html=True)
     cursos_tag_list = ['PREPARATÓRIO JOVEM BANCÁRIO', 'PREPARATÓRIO AGRO', 'JOVEM NO DIREITO', 'INGLÊS', 'PRÉ MILITAR', 'ADMINISTRATIVO', 'INFORMÁTICA', 'PREPARATÓRIO ENCCEJA', 'JOVEM NA AVIAÇÃO', 'TECNOLOGIA']
@@ -317,51 +305,57 @@ with tab_subir:
             selected_tags[curso] = final_t
             if st.button("🗑️", key=f"del_{curso}"):
                 if current_t in st.session_state.tags_salvas.get(curso, []):
-                    st.session_state.tags_salvas[curso].remove(current_t)
-                    salvar_tags(st.session_state.tags_salvas); st.rerun()
+                    st.session_state.tags_salvas[curso].remove(current_t); salvar_tags(st.session_state.tags_salvas); st.rerun()
 
-    # Processamento
     st.write("---")
     st.markdown('<div class="btn-salvar-planilha">', unsafe_allow_html=True)
     if st.button("Salvar planilha", use_container_width=True):
-        if not os.path.exists(ARQUIVO_CIDADES): st.error("Arquivo cidades.xlsx não encontrado no GitHub.")
-        elif not u_user: st.error("Insira os dados.")
+        if not os.path.exists(ARQUIVO_CIDADES): st.error("Arquivo cidades.xlsx não encontrado.")
         else:
             wb_c = load_workbook(ARQUIVO_CIDADES); ws_c = wb_c.active
             cid_map = {str(r[1]).strip().upper(): str(r[2]) for r in ws_c.iter_rows(min_row=2, values_only=True) if r[1]}
-            l_u = u_user.strip().split('\n'); l_n = u_nome.strip().split('\n'); l_p = u_pay.strip().split('\n')
-            l_co = u_cour.strip().split('\n'); l_ce = u_cell.strip().split('\n'); l_d = u_doc.strip().split('\n')
-            l_ci = u_city.strip().split('\n'); l_s = u_sell.strip().split('\n'); l_dt = u_date.strip().split('\n')
-
             for k, v in selected_tags.items():
                 if v and v not in st.session_state.tags_salvas.get(k, []):
                     if k not in st.session_state.tags_salvas: st.session_state.tags_salvas[k] = []
                     st.session_state.tags_salvas[k].append(v.upper())
             salvar_tags(st.session_state.tags_salvas)
 
+            raw_data = []
+            if modo == "MANUAL":
+                l_u = u_user.strip().split('\n'); l_n = u_nome.strip().split('\n'); l_p = u_pay.strip().split('\n')
+                l_co = u_cour.strip().split('\n'); l_ce = u_cell.strip().split('\n'); l_d = u_doc.strip().split('\n')
+                l_ci = u_city.strip().split('\n'); l_s = u_sell.strip().split('\n'); l_dt = u_date.strip().split('\n')
+                for i in range(len(l_u)):
+                    try: raw_data.append({"User": l_u[i], "Nome": l_n[i], "Pay": l_p[i], "Cour": l_co[i], "Cell": l_ce[i], "Doc": l_d[i], "City": l_ci[i], "Sell": l_s[i], "Date": l_dt[i]})
+                    except: continue
+            else:
+                df_final_auto = df_filtrado_auto[df_filtrado_auto['CIDADE'].isin(cidades_sel)]
+                for _, r in df_final_auto.iterrows():
+                    raw_data.append({"User": r['ID'], "Nome": r['ALUNO'], "Pay": r['PAGTO'], "Cour": r['CURSO'], "Cell": r['TEL_ALU'], "Doc": r['CPF'], "City": r['CIDADE'], "Sell": r['VEND.'], "Date": r['DT_MAT']})
+
             processed, pendentes = [], []
-            for i in range(len(l_u)):
+            for i, item in enumerate(raw_data):
                 try:
-                    n_up = l_n[i].strip().upper()
-                    fname = n_up.split(" ")[0]; lname = " ".join(n_up.split(" ")[1:]) if " " in n_up else ""
-                    c_o = l_co[i].strip().upper(); p_o = l_p[i].strip().upper()
+                    n_up = str(item['Nome']).strip().upper()
+                    c_o = str(item['Cour']).strip().upper(); p_o = str(item['Pay']).strip().upper()
                     t_a = [selected_tags[k].upper() for k in cursos_tag_list if k in c_o and selected_tags.get(k)]
                     courses_col = ",".join(t_a).upper() if t_a else c_o.upper()
                     obs = f"{','.join(t_a) if t_a else 'SEM TAG'} | {c_o} | {p_o}".upper()
                     p_f = "BOLETO" if ("BOLETO" in p_o or "SEM FORMA" in p_o) else ("CARTÃO" if "BOLSA 100%" in p_o else p_o)
                     if "CARTÃO" in p_o: pendentes.append({"Index": i, "Aluno": n_up, "Orig": p_o, "Opção": "CARTÃO"})
                     processed.append({
-                        "username": l_u[i], "email2": f"{l_u[i]}@profissionalizaead.com.br", "name": fname, "lastname": lname,
-                        "cellphone2": l_ce[i], "document": l_d[i], "city2": cid_map.get(l_ci[i].strip().upper(), l_ci[i]),
+                        "username": item['User'], "email2": f"{item['User']}@profissionalizaead.com.br", 
+                        "name": n_up.split(" ")[0], "lastname": " ".join(n_up.split(" ")[1:]) if " " in n_up else "",
+                        "cellphone2": item['Cell'], "document": item['Doc'], "city2": cid_map.get(str(item['City']).strip().upper(), item['City']),
                         "courses": courses_col, "payment": p_f, "observation": obs, "ouro": "1" if "+ 10" in obs else "0",
-                        "password": "futuro", "role": "1", "secretary": "MGA", "seller": l_s[i], "contract_date": l_dt[i], "active": "1"
+                        "password": "futuro", "role": "1", "secretary": "MGA", "seller": item['Sell'], "contract_date": item['Date'], "active": "1"
                     })
                 except: continue
             st.session_state.dados_brutos, st.session_state.pendentes, st.session_state.processou = processed, pendentes, True
 
     if st.session_state.get("processou"):
         if st.session_state.pendentes:
-            st.warning("⚠️ Confirme as formas de pagamento para os itens com CARTÃO:")
+            st.warning("⚠️ Confirme os pagamentos em CARTÃO:")
             ed_df = st.data_editor(pd.DataFrame(st.session_state.pendentes), column_config={"Opção": st.column_config.SelectboxColumn("Opção", options=["CARTÃO", "BOLETO"], required=True)}, disabled=["Index", "Aluno", "Orig"], hide_index=True, key="ed_pag_final")
             if st.button("Gerar Planilha Final"):
                 for _, row in ed_df.iterrows(): st.session_state.dados_brutos[row["Index"]]["payment"] = row["Opção"]
