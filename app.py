@@ -53,12 +53,14 @@ st.markdown("""
     .stTabs [aria-selected="true"] { color: #00f2ff !important; border-bottom: 2px solid #00f2ff !important; background-color: rgba(0, 242, 255, 0.05) !important; }
     .main .block-container { padding-top: 45px !important; max-width: 100% !important; margin: 0 auto !important; }
     
+    /* CADASTRO */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 0px !important; display: flex; align-items: center; }
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end; }
     div[data-testid="stTextInput"] { width: 55% !important; }
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 18px !important; border-radius: 5px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
 
+    /* GERENCIAMENTO */
     .custom-table-wrapper { width: 100%; max-height: 600px; overflow: auto; background-color: #121629; border: 2px solid #1f295a; border-radius: 10px; margin-top: 15px; }
     .custom-table { width: 100%; border-collapse: collapse; min-width: 2500px !important; }
     .custom-table th { background-color: #1f295a; color: #00f2ff; text-align: left; padding: 15px; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; z-index: 99; }
@@ -67,6 +69,7 @@ st.markdown("""
     .status-ativo { background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
     .status-cancelado { background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
 
+    /* RELATÓRIO */
     .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 100px; display: flex; flex-direction: column; justify-content: center; }
     .neon-pink { color: #ff007a; border-top: 2px solid #ff007a; }
     .neon-green { color: #2ecc71; border-top: 2px solid #2ecc71; }
@@ -78,6 +81,7 @@ st.markdown("""
     .hud-label { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); background: #121629; border: 1px solid currentColor; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
     .hud-city-name { position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
 
+    /* SUBIR ALUNOS */
     .subir-label { color: #e0e6ed !important; font-size: 14px !important; margin-bottom: 2px !important; font-weight: bold; }
     .stTextArea textarea { background-color: white !important; color: black !important; text-transform: uppercase !important; border-radius: 0px !important; }
     .contador-label { color: #00f2ff !important; font-size: 10px !important; margin-top: -10px; margin-bottom: 10px; text-align: right; }
@@ -88,9 +92,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- INICIALIZAÇÃO DE ESTADOS ---
-conn = st.connection("gsheets", type=GSheetsConnection)
-
+# --- ESTADOS DE SESSÃO ---
 if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
 if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
@@ -98,13 +100,15 @@ if "processou" not in st.session_state: st.session_state.processou = False
 if "finalizado" not in st.session_state: st.session_state.finalizado = False
 if "excel_pronto" not in st.session_state: st.session_state.excel_pronto = None
 
+# --- CONEXÃO ---
+conn = st.connection("gsheets", type=GSheetsConnection)
+
 # --- FUNÇÕES ---
 def reset_campos_subir():
     for c in ["in_user", "in_nome", "in_cell", "in_doc", "in_city", "in_cour", "in_pay", "in_sell", "in_date"]:
         if c in st.session_state: st.session_state[c] = ""
     st.session_state.processou = False
     st.session_state.finalizado = False
-    st.session_state.excel_pronto = None
 
 def transformar_curso(chave):
     entrada = st.session_state[chave].strip()
@@ -136,10 +140,10 @@ def extrair_valor_geral(texto):
         return float(v[0]) if v else 0.0
     except: return 0.0
 
-# --- ABAS ---
+# --- NAVEGAÇÃO ---
 tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
 
-# --- ABA 1: CADASTRO (ORIGINAL) ---
+# --- ABA 1: CADASTRO ---
 with tab_cad:
     _, centro, _ = st.columns([0.5, 5, 0.5])
     with centro:
@@ -177,7 +181,7 @@ with tab_cad:
                     except Exception as e: st.error(f"Erro: {e}")
         if st.session_state.lista_previa: st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
-# --- ABA 2: GERENCIAMENTO (ORIGINAL) ---
+# --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
     cf1, cf2, cf3, cf4 = st.columns([2.5, 1.5, 1.5, 0.5])
     with cf1: bu = st.text_input("🔍 Buscar...", key="busca_ger", placeholder="Nome ou ID", label_visibility="collapsed")
@@ -196,9 +200,9 @@ with tab_ger:
             sc = "status-ativo" if r['STATUS'] == "ATIVO" else "status-cancelado"
             rows += f"<tr><td><span class='status-badge {sc}'>{r['STATUS']}</span></td><td>{r['UNID.']}</td><td>{r['TURMA']}</td><td>{r['10C']}</td><td>{r['ING']}</td><td>{r['DT_CAD']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ID']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ALUNO']}</td><td>{r['TEL_RESP']}</td><td>{r['TEL_ALU']}</td><td>{r['CPF']}</td><td>{r['CIDADE']}</td><td>{r['CURSO']}</td><td>{r['PAGTO']}</td><td>{r['VEND.']}</td><td>{r['DT_MAT']}</td></tr>"
         st.markdown(f'<div class="custom-table-wrapper"><table class="custom-table"><thead><tr>' + ''.join([f'<th>{h}</th>' for h in df_g.columns]) + f'</tr></thead><tbody>{rows}</tbody></table></div>', unsafe_allow_html=True)
-    except Exception as e: st.error(f"Erro no Gerenciamento")
+    except Exception as e: st.error(f"Erro no Gerenciamento: {e}")
 
-# --- ABA 3: RELATÓRIOS (ORIGINAL) ---
+# --- ABA 3: RELATÓRIOS ---
 with tab_rel:
     try:
         df_r = conn.read(ttl="0s").dropna(how='all')
@@ -231,18 +235,20 @@ with tab_rel:
                 colg1, colg2 = st.columns(2)
                 with colg1:
                     figp = go.Figure(data=[go.Pie(labels=df_f['STATUS'].value_counts().index, values=df_f['STATUS'].value_counts().values, hole=0.5, marker=dict(colors=['#2ecc71', '#ff4b4b']))])
-                    figp.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', showlegend=False, height=400); st.plotly_chart(figp, use_container_width=True)
+                    figp.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=400); st.plotly_chart(figp, use_container_width=True)
                 with colg2:
                     dfv = df_f[v_col].value_counts().reset_index().head(5)
                     figv = px.line(dfv, x=v_col, y='count', markers=True, text='count')
                     figv.update_traces(line_color='#00f2ff'); figv.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=400); st.plotly_chart(figv, use_container_width=True)
-    except Exception as e: st.error("Erro nos Relatórios")
+    except Exception as e: st.error(f"Erro nos Relatórios: {e}")
 
 # --- ABA 4: SUBIR ALUNOS ---
 with tab_subir:
     st.markdown("### 📤 MODO DE IMPORTAÇÃO")
     modo = st.radio("Método:", ["MANUAL", "AUTOMÁTICO"], horizontal=True, label_visibility="collapsed")
     st.write("---")
+
+    cidades_sel = [] 
 
     if modo == "MANUAL":
         def contar_itens(texto): return len([i for i in texto.strip().split('\n') if i.strip()]) if texto else 0
@@ -281,11 +287,11 @@ with tab_subir:
                 df_f_auto = df_mestre[df_mestre[col_data].dt.date == data_sel]
                 if not df_f_auto.empty:
                     cids_l = sorted(df_f_auto[col_cidade].unique())
-                    cids_sel = st.multiselect("Cidades:", cids_l, key="auto_cids")
-                    st.info(f"{len(df_f_auto[df_f_auto[col_cidade].isin(cids_sel)])} alunos encontrados.")
-                else: st.warning("Nenhum cadastro."); cids_sel = []
-            else: st.error("Colunas não encontradas."); cids_sel = []
-        except: st.error("Erro na leitura."); cids_sel = []
+                    cidades_sel = st.multiselect("Cidades:", cids_l, key="auto_cids")
+                    st.info(f"{len(df_f_auto[df_f_auto[col_cidade].isin(cidades_sel)])} alunos encontrados.")
+                else: st.warning("Nenhum cadastro nesta data."); cidades_sel = []
+            else: st.error("Colunas essenciais não encontradas na planilha."); cidades_sel = []
+        except Exception as e: st.error(f"Erro na leitura mestre: {e}"); cidades_sel = []
 
     # --- TAGS ---
     st.write("---")
@@ -334,7 +340,7 @@ with tab_subir:
                 col_tel = next((c for c in df_mestre.columns if 'TEL' in c), 'TEL_ALU')
                 col_cpf = next((c for c in df_mestre.columns if 'CPF' in c), 'CPF')
                 col_vend = next((c for c in df_mestre.columns if 'VEND' in c), 'VENDEDOR')
-                df_f_sel = df_f_auto[df_f_auto[col_cidade].isin(cids_sel)]
+                df_f_sel = df_f_auto[df_f_auto[col_cidade].isin(cidades_sel)]
                 for _, r in df_f_sel.iterrows():
                     raw.append({"User": r[col_id], "Nome": r[col_aluno], "Pay": r[col_pay], "Cour": r[col_curso], "Cell": r[col_tel], "Doc": r[col_cpf], "City": r[col_cidade], "Sell": r[col_vend], "Date": r[col_data]})
 
@@ -353,7 +359,7 @@ with tab_subir:
         if st.session_state.pendentes:
             st.warning("Confirme pagamentos CARTÃO:")
             ed = st.data_editor(pd.DataFrame(st.session_state.pendentes), column_config={"Opção": st.column_config.SelectboxColumn("Opção", options=["CARTÃO", "BOLETO"])}, hide_index=True)
-            if st.button("Gerar Excel"):
+            if st.button("Gerar Excel Final"):
                 for _, r in ed.iterrows(): st.session_state.dados_brutos[r["Index"]]["payment"] = r["Opção"]
                 out = BytesIO(); wb = Workbook(); ws = wb.active; cols = list(st.session_state.dados_brutos[0].keys()); ws.append(cols)
                 for d in st.session_state.dados_brutos: ws.append([d[c] for c in cols])
@@ -366,3 +372,4 @@ with tab_subir:
                 for d in st.session_state.dados_brutos: ws.append([d[c] for c in cols])
                 wb.save(out); data = out.getvalue()
             st.download_button("📥 Baixar Excel", data, f"ead_{date.today()}.xlsx", on_click=reset_campos_subir)
+    st.markdown('</div>', unsafe_allow_html=True)
