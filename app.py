@@ -15,7 +15,7 @@ from io import BytesIO
 # --- CONFIGURAÇÕES DA PÁGINA ---
 st.set_page_config(page_title="SISTEMA ADM | PROFISSIONALIZA", layout="wide", initial_sidebar_state="collapsed")
 
-# --- ARQUIVO DE TAGS E PERSISTÊNCIA ---
+# --- PERSISTÊNCIA DE TAGS ---
 ARQUIVO_TAGS = "tags_salvas.json"
 
 def carregar_tags():
@@ -57,9 +57,9 @@ st.markdown("""
     }
     .main .block-container { padding-top: 45px !important; max-width: 100% !important; margin: 0 auto !important; }
     
-    /* ESTILO CADASTRO */
+    /* CADASTRO */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 0px !important; display: flex; align-items: center; }
-    label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; padding-right: 15px !important; }
+    label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; }
     
     /* CAMPOS DE TEXTO */
     .stTextInput input, .stTextArea textarea { 
@@ -69,15 +69,22 @@ st.markdown("""
         border-radius: 5px !important; 
     }
 
-    /* ESTILO ABA SUBIR ALUNOS (Cores Tkinter solicitadas) */
-    .subir-container { background-color: #1C2526; padding: 20px; border-radius: 10px; }
-    .stButton > button { background-color: #805dca !important; color: white !important; font-weight: bold !important; border: none !important; }
+    /* ESTILO ABA SUBIR ALUNOS */
+    .subir-container { background-color: #1C2526; padding: 20px; border-radius: 10px; border: 1px solid #333; }
+    .btn-salvar > div [data-testid="stButton"] button {
+        background-color: #805dca !important; color: white !important; font-weight: bold !important; height: 50px !important;
+    }
     
     /* GERENCIAMENTO */
     .custom-table-wrapper { width: 100%; max-height: 600px; overflow: auto; background-color: #121629; border: 2px solid #1f295a; border-radius: 10px; }
     .custom-table { width: 100%; border-collapse: collapse; min-width: 2500px !important; }
     .custom-table th { background-color: #1f295a; color: #00f2ff; text-align: left; padding: 15px; font-size: 11px; position: sticky; top: 0; }
     .custom-table td { padding: 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: nowrap; }
+
+    /* HUD CARDS */
+    .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; }
+    .neon-pink { color: #ff007a; border-top: 2px solid #ff007a; }
+    .neon-blue { color: #00f2ff; border-top: 2px solid #00f2ff; }
 
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
@@ -89,7 +96,7 @@ if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
 if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
 
-# --- FUNÇÕES AUXILIARES ---
+# --- FUNÇÕES ORIGINAIS DE CONTROLE ---
 def atualizar_pagamento():
     suffix = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"
     base = st.session_state.get(f"f_pagto_{suffix}", "").split('|')[0].strip()
@@ -178,7 +185,7 @@ with tab_ger:
         rows = ""
         for _, r in df_g.iloc[::-1].iterrows():
             sc = "status-ativo" if r['STATUS'] == "ATIVO" else "status-cancelado"
-            rows += f"<tr><td><span class='status-badge {sc}'>{r['STATUS']}</span></td><td>{r['UNID.']}</td><td>{r['TURMA']}</td><td>{r['10C']}</td><td>{r['ING']}</td><td>{r['DT_CAD']}</td><td>{r['ID']}</td><td>{r['ALUNO']}</td><td>{r['TEL_RESP']}</td><td>{r['TEL_ALU']}</td><td>{r['CPF']}</td><td>{r['CIDADE']}</td><td>{r['CURSO']}</td><td>{r['PAGTO']}</td><td>{r['VEND.']}</td><td>{r['DT_MAT']}</td></tr>"
+            rows += f"<tr><td><span class='status-badge {sc}'>{r['STATUS']}</span></td><td>{r['UNID.']}</td><td>{r['TURMA']}</td><td>{r['10C']}</td><td>{r['ING']}</td><td>{r['DT_CAD']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ID']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ALUNO']}</td><td>{r['TEL_RESP']}</td><td>{r['TEL_ALU']}</td><td>{r['CPF']}</td><td>{r['CIDADE']}</td><td>{r['CURSO']}</td><td>{r['PAGTO']}</td><td>{r['VEND.']}</td><td>{r['DT_MAT']}</td></tr>"
         st.markdown(f'<div class="custom-table-wrapper"><table class="custom-table"><thead><tr>' + ''.join([f'<th>{h}</th>' for h in hd]) + f'</tr></thead><tbody>{rows}</tbody></table></div>', unsafe_allow_html=True)
     except Exception as e: st.error(f"Erro: {e}")
 
@@ -193,30 +200,29 @@ with tab_rel:
             if len(iv) == 2:
                 df_f = df_r.loc[(df_r[dt_col].dt.date >= iv[0]) & (df_r[dt_col].dt.date <= iv[1])].copy()
                 df_f['v_rec'] = df_f['Pagamento'].apply(extrair_valor_recebido); df_f['v_tic'] = df_f['Pagamento'].apply(extrair_valor_geral)
-                c1, c2, c3, c4, c5, c6 = st.columns(6)
+                c1, c2, c3, c4 = st.columns(4)
                 with c1: st.markdown(f'<div class="card-hud neon-pink"><small>Mats</small><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
                 with c4: st.markdown(f'<div class="card-hud neon-blue"><small>Recebido</small><h2 style="font-size:18px">R${df_f["v_rec"].sum():,.2f}</h2></div>', unsafe_allow_html=True)
     except Exception as e: st.error(f"Erro: {e}")
 
-# --- ABA 4: SUBIR ALUNOS (ADICIONADA) ---
+# --- ABA 4: SUBIR ALUNOS ---
 with tab_subir:
     st.markdown('<div class="subir-container">', unsafe_allow_html=True)
     
     col_input, col_tags = st.columns([3, 2])
     
     with col_input:
-        st.markdown("<h4 style='color:#e0e6ed'>CAMPOS DE IMPORTAÇÃO</h4>", unsafe_allow_html=True)
-        # 9 campos de texto conforme solicitado
+        st.markdown("<h4 style='color:#e0e6ed'>PROCESSAMENTO DE DADOS</h4>", unsafe_allow_html=True)
         sub_c1, sub_c2 = st.columns(2)
-        u_user = sub_c1.text_area("Usuários", height=100)
-        u_nome = sub_c2.text_area("Nome Completo", height=100)
-        u_cell = sub_c1.text_area("Celular", height=100)
-        u_doc = sub_c2.text_area("Documento", height=100)
-        u_city = sub_c1.text_area("Cidade", height=100)
-        u_course = sub_c2.text_area("Cursos", height=100)
-        u_pay = sub_c1.text_area("Pagamento", height=100)
-        u_sell = sub_c2.text_area("Vendedor", height=100)
-        u_date = sub_c1.text_area("Data Contrato", height=100)
+        u_user = sub_c1.text_area("Usuários", height=120)
+        u_nome = sub_c2.text_area("Nome completo", height=120)
+        u_cell = sub_c1.text_area("Celular", height=120)
+        u_doc = sub_c2.text_area("Documento", height=120)
+        u_city = sub_c1.text_area("Cidade", height=120)
+        u_course = sub_c2.text_area("Cursos", height=120)
+        u_pay = sub_c1.text_area("Pagamento", height=120)
+        u_sell = sub_c2.text_area("Vendedor", height=120)
+        u_date = sub_c1.text_area("Data contrato", height=120)
 
     with col_tags:
         st.markdown("<h4 style='color:#e0e6ed'>TAGS POR CURSO</h4>", unsafe_allow_html=True)
@@ -227,87 +233,92 @@ with tab_subir:
             tag_options = st.session_state.tags_salvas.get(curso, [])
             c_t1, c_t2 = st.columns([3, 1])
             with c_t1:
-                # Permite digitar nova tag ou selecionar existente
                 current_tag = st.selectbox(f"{curso}", options=[""] + tag_options, key=f"sel_{curso}")
-                new_tag = st.text_input(f"Nova tag para {curso}", key=f"new_{curso}", label_visibility="collapsed", placeholder="Add nova tag...")
-                
+                new_tag = st.text_input(f"Add tag para {curso}", key=f"new_{curso}", label_visibility="collapsed", placeholder="Nova tag...")
                 final_tag = new_tag if new_tag else current_tag
                 selected_tags[curso] = final_tag
-                
             with c_t2:
-                st.write("") # Alinhamento
+                st.write(""); st.write("")
                 if st.button("🗑️", key=f"del_{curso}"):
                     if current_tag in st.session_state.tags_salvas.get(curso, []):
-                        st.session_state.tags_salvas[curso].remove(current_tag)
-                        salvar_tags(st.session_state.tags_salvas)
-                        st.rerun()
+                        st.session_state.tags_salvas[curso].remove(current_tag); salvar_tags(st.session_state.tags_salvas); st.rerun()
 
     st.write("---")
     u_file_cidades = st.file_uploader("Selecione a planilha de códigos de cidades", type=["xlsx"])
     
+    st.markdown('<div class="btn-salvar">', unsafe_allow_html=True)
     if st.button("🚀 SALVAR PLANILHA", use_container_width=True):
         if not u_file_cidades:
-            st.error("Por favor, selecione a planilha de cidades primeiro.")
+            st.error("Selecione a planilha de cidades primeiro.")
         else:
-            # LÓGICA DE PROCESSAMENTO (IGUAL AO TKINTER)
-            wb_cid = load_workbook(u_file_cidades)
-            ws_cid = wb_cid.active
-            codigos_cidades = {}
-            for row in ws_cid.iter_rows(min_row=2, values_only=True):
-                if row[1] and row[2]:
-                    c_key = str(row[1]).strip().upper()
-                    if c_key not in codigos_cidades: codigos_cidades[c_key] = []
-                    codigos_cidades[c_key].append(f"{row[2]} - {c_key} ({row[0]})")
+            try:
+                # Carregar cidades
+                wb_cid = load_workbook(u_file_cidades)
+                ws_cid = wb_cid.active
+                codigos_cidades = {}
+                for row in ws_cid.iter_rows(min_row=2, values_only=True):
+                    if row[1] and row[2]:
+                        c_key = str(row[1]).strip().upper()
+                        if c_key not in codigos_cidades: codigos_cidades[c_key] = []
+                        codigos_cidades[c_key].append(f"{row[2]}")
 
-            # Preparar dados
-            l_user = u_user.strip().split('\n'); l_nome = u_nome.strip().split('\n')
-            l_cell = u_cell.strip().split('\n'); l_doc = u_doc.strip().split('\n')
-            l_city = u_city.strip().split('\n'); l_cour = u_course.strip().split('\n')
-            l_pay = u_pay.strip().split('\n'); l_sell = u_sell.strip().split('\n')
-            l_date = u_date.strip().split('\n')
+                # Listas
+                l_user = u_user.strip().split('\n'); l_nome = u_nome.strip().split('\n')
+                l_cell = u_cell.strip().split('\n'); l_doc = u_doc.strip().split('\n')
+                l_city = u_city.strip().split('\n'); l_cour = u_course.strip().split('\n')
+                l_pay = u_pay.strip().split('\n'); l_sell = u_sell.strip().split('\n')
+                l_date = u_date.strip().split('\n')
 
-            # Salvar tags novas no JSON
-            for c_name, val in selected_tags.items():
-                if val:
-                    if c_name not in st.session_state.tags_salvas: st.session_state.tags_salvas[c_name] = []
-                    if val not in st.session_state.tags_salvas[c_name]:
+                # Persistir novas tags
+                for c_name, val in selected_tags.items():
+                    if val and val not in st.session_state.tags_salvas.get(c_name, []):
+                        if c_name not in st.session_state.tags_salvas: st.session_state.tags_salvas[c_name] = []
                         st.session_state.tags_salvas[c_name].append(val)
-            salvar_tags(st.session_state.tags_salvas)
+                salvar_tags(st.session_state.tags_salvas)
 
-            linhas_final = []
-            for i in range(len(l_user)):
-                try:
-                    nome_full = l_nome[i].strip()
-                    partes = nome_full.split(" ")
-                    fname = partes[0]; lname = " ".join(partes[1:]) if len(partes) > 1 else ""
-                    email = f"{l_user[i].strip()}@profissionalizaead.com.br"
-                    
-                    # Pagamento
-                    p_raw = l_pay[i].strip().upper()
-                    if "BOLETO" in p_raw or "SEM FORMA" in p_raw: p_proc = "BOLETO"
-                    elif "CARTÃO PAGO" in p_raw or "BOLSA 100%" in p_raw: p_proc = "CARTÃO"
-                    else: p_proc = p_raw # Em Streamlit, o tratamento manual pode ser feito via st.data_editor se necessário
+                linhas_final = []
+                for i in range(len(l_user)):
+                    try:
+                        c_orig = l_cour[i].strip().upper()
+                        p_orig = l_pay[i].strip().upper()
+                        
+                        # 1. Coluna Courses (Substituição por Tag)
+                        tags_aluno = []
+                        for chave_curso in cursos_tag_list:
+                            if chave_curso in c_orig and selected_tags.get(chave_curso):
+                                tags_aluno.append(selected_tags[chave_curso])
+                        
+                        course_final_val = ",".join(tags_aluno) if tags_aluno else c_orig
+                        
+                        # 2. Coluna Observation: [Tags] | [Curso Original] | [Pagto Original]
+                        tags_str = ",".join(tags_aluno) if tags_aluno else "SEM TAG"
+                        obs_final = f"{tags_str} | {c_orig} | {p_orig}"
+                        
+                        # 3. Coluna Ouro (+ 10 na obs)
+                        ouro_val = "1" if "+ 10" in obs_final else "0"
 
-                    # Cidade
-                    c_raw = l_city[i].strip().upper()
-                    opcoes = codigos_cidades.get(c_raw, [])
-                    c_proc = opcoes[0].split(" - ")[0] if len(opcoes) == 1 else c_raw
+                        # Nome/Email
+                        fname = l_nome[i].split(" ")[0]
+                        lname = " ".join(l_nome[i].split(" ")[1:]) if " " in l_nome[i] else ""
+                        email_val = f"{l_user[i].strip()}@profissionalizaead.com.br"
 
-                    # Obs e Ouro
-                    curso_tag = selected_tags.get(l_cour[i].strip(), "")
-                    obs = f"{curso_tag} | {l_cour[i]} | {l_pay[i]}"
-                    ouro = "1" if "+ 10" in obs else "0"
+                        # Pagamento
+                        if "BOLETO" in p_orig or "SEM FORMA" in p_orig: p_proc = "BOLETO"
+                        elif "CARTÃO PAGO" in p_orig or "BOLSA 100%" in p_orig: p_proc = "CARTÃO"
+                        else: p_proc = p_orig
 
-                    linhas_final.append([l_user[i], email, fname, lname, l_cell[i], l_doc[i], c_proc, curso_tag, p_proc, obs, ouro, "futuro", "1", "MGA", l_sell[i], l_date[i], "1"])
-                except: continue
+                        # Cidade
+                        c_key = l_city[i].strip().upper()
+                        city_proc = codigos_cidades.get(c_key, [l_city[i]])[0]
 
-            # Gerar Excel para Download
-            output = BytesIO()
-            wb_out = Workbook(); ws_out = wb_out.active
-            ws_out.append(["username", "email2", "name", "lastname", "cellphone2", "document", "city2", "courses", "payment", "observation", "ouro", "password", "role", "secretary", "seller", "contract_date", "active"])
-            for r in linhas_final: ws_out.append(r)
-            wb_out.save(output)
-            
-            st.download_button(label="📥 CLIQUE PARA BAIXAR PLANILHA", data=output.getvalue(), file_name=f"alunos_processados_{date.today()}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+                        linhas_final.append([l_user[i], email_val, fname, lname, l_cell[i], l_doc[i], city_proc, course_final_val, p_proc, obs_final, ouro_val, "futuro", "1", "MGA", l_sell[i], l_date[i], "1"])
+                    except: continue
+
+                # Excel
+                output = BytesIO(); wb_out = Workbook(); ws_out = wb_out.active
+                ws_out.append(["username", "email2", "name", "lastname", "cellphone2", "document", "city2", "courses", "payment", "observation", "ouro", "password", "role", "secretary", "seller", "contract_date", "active"])
+                for r in linhas_final: ws_out.append(r)
+                wb_out.save(output)
+                st.download_button(label="📥 CLIQUE PARA BAIXAR PLANILHA", data=output.getvalue(), file_name=f"export_{date.today()}.xlsx")
+            except Exception as e: st.error(f"Erro no processamento: {e}")
+    st.markdown('</div></div>', unsafe_allow_html=True)
