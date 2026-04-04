@@ -42,7 +42,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS ESTÉTICA HUD NEON & LAYOUT ---
+# --- CSS ESTÉTICA HUD NEON & GERENCIAMENTO ---
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e1e; color: #e0e0e0; }
@@ -58,24 +58,35 @@ st.markdown("""
     }
     .main .block-container { padding-top: 45px !important; max-width: 100% !important; margin: 0 auto !important; }
     
-    /* CADASTRO */
+    /* ESTILO CADASTRO */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 0px !important; display: flex; align-items: center; }
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end; }
+    
     div[data-testid="stTextInput"] { width: 55% !important; }
-    .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 18px !important; border-radius: 5px !important; }
+    .stTextInput input { 
+        background-color: white !important; color: black !important; text-transform: uppercase !important; 
+        font-size: 12px !important; height: 18px !important; border-radius: 5px !important; 
+    }
+    
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
 
-    /* GERENCIAMENTO */
-    .custom-table-wrapper { width: 100%; max-height: 600px; overflow: auto; background-color: #121629; border: 2px solid #1f295a; border-radius: 10px; margin-top: 15px; }
+    /* GERENCIAMENTO - BOX COM SCROLL FORÇADO */
+    .custom-table-wrapper {
+        width: 100%; max-height: 600px; overflow-x: auto !important; overflow-y: auto !important;
+        background-color: #121629; border: 2px solid #1f295a; border-radius: 10px; margin-top: 15px;
+    }
     .custom-table { width: 100%; border-collapse: collapse; min-width: 2500px !important; }
-    .custom-table th { background-color: #1f295a; color: #00f2ff; text-align: left; padding: 15px; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; z-index: 99; }
+    .custom-table th { 
+        background-color: #1f295a; color: #00f2ff; text-align: left; padding: 15px; 
+        font-size: 11px; text-transform: uppercase; position: sticky; top: 0; z-index: 99;
+    }
     .custom-table td { padding: 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: nowrap; }
     .custom-table tr:hover { background-color: rgba(0, 242, 255, 0.1); }
     .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }
     .status-ativo { background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
     .status-cancelado { background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
 
-    /* SUBIR ALUNOS */
+    /* SUBIR ALUNOS - LABELS E CONTADORES */
     .subir-label { color: #e0e6ed !important; font-size: 14px !important; margin-bottom: 2px !important; font-weight: bold; }
     .stTextArea textarea { background-color: white !important; color: black !important; text-transform: uppercase !important; border-radius: 0px !important; }
     .contador-label { color: #00f2ff !important; font-size: 10px !important; margin-top: -10px; margin-bottom: 10px; text-align: right; }
@@ -83,7 +94,7 @@ st.markdown("""
         background-color: #805dca !important; color: white !important; font-weight: bold !important; width: 100% !important; border-radius: 0px !important; height: 45px !important;
     }
 
-    /* RELATÓRIO */
+    /* RELATÓRIO HUD */
     .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 100px; display: flex; flex-direction: column; justify-content: center; }
     .neon-pink { color: #ff007a; border-top: 2px solid #ff007a; }
     .neon-green { color: #2ecc71; border-top: 2px solid #2ecc71; }
@@ -106,7 +117,7 @@ if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
 if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
 
-# --- FUNÇÕES ORIGINAIS DE CONTROLE ---
+# --- FUNÇÕES ORIGINAIS ---
 def atualizar_pagamento():
     suffix = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"
     base = st.session_state.get(f"f_pagto_{suffix}", "").split('|')[0].strip()
@@ -242,7 +253,7 @@ with tab_rel:
                     figv.update_traces(line_color='#00f2ff'); figv.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=400); st.plotly_chart(figv, use_container_width=True)
     except Exception as e: st.error(f"Erro: {e}")
 
-# --- ABA 4: SUBIR ALUNOS (SISTEMA DE PROCESSAMENTO) ---
+# --- ABA 4: SUBIR ALUNOS (SISTEMA MELHORADO) ---
 with tab_subir:
     def contar_itens(texto):
         return len([i for i in texto.strip().split('\n') if i.strip()]) if texto else 0
@@ -253,6 +264,7 @@ with tab_subir:
         st.session_state.processou = False
         st.session_state.finalizado = False
 
+    # Layout de Inputs
     col_esq, col_dir = st.columns(2)
     with col_esq:
         st.markdown("<p class='subir-label'>Usuários</p>", unsafe_allow_html=True)
@@ -285,6 +297,7 @@ with tab_subir:
     u_date = st.text_area("Date", height=80, label_visibility="collapsed", key="in_date")
     st.markdown(f"<p class='contador-label'>Itens: {contar_itens(u_date)}</p>", unsafe_allow_html=True)
 
+    # Área de Tags
     st.write("---")
     st.markdown("<h4 style='color:#bc13fe; font-size:16px;'>CONFIGURAÇÃO DE TAGS</h4>", unsafe_allow_html=True)
     cursos_tag_list = ['PREPARATÓRIO JOVEM BANCÁRIO', 'PREPARATÓRIO AGRO', 'JOVEM NO DIREITO', 'INGLÊS', 'PRÉ MILITAR', 'ADMINISTRATIVO', 'INFORMÁTICA', 'PREPARATÓRIO ENCCEJA', 'JOVEM NA AVIAÇÃO', 'TECNOLOGIA']
@@ -307,10 +320,11 @@ with tab_subir:
                     st.session_state.tags_salvas[curso].remove(current_t)
                     salvar_tags(st.session_state.tags_salvas); st.rerun()
 
+    # Processamento
     st.write("---")
     st.markdown('<div class="btn-salvar-planilha">', unsafe_allow_html=True)
     if st.button("Salvar planilha", use_container_width=True):
-        if not os.path.exists(ARQUIVO_CIDADES): st.error("Arquivo cidades.xlsx não encontrado.")
+        if not os.path.exists(ARQUIVO_CIDADES): st.error("Arquivo cidades.xlsx não encontrado no GitHub.")
         elif not u_user: st.error("Insira os dados.")
         else:
             wb_c = load_workbook(ARQUIVO_CIDADES); ws_c = wb_c.active
@@ -347,7 +361,7 @@ with tab_subir:
 
     if st.session_state.get("processou"):
         if st.session_state.pendentes:
-            st.warning("⚠️ Confirme os pagamentos em CARTÃO:")
+            st.warning("⚠️ Confirme as formas de pagamento para os itens com CARTÃO:")
             ed_df = st.data_editor(pd.DataFrame(st.session_state.pendentes), column_config={"Opção": st.column_config.SelectboxColumn("Opção", options=["CARTÃO", "BOLETO"], required=True)}, disabled=["Index", "Aluno", "Orig"], hide_index=True, key="ed_pag_final")
             if st.button("Gerar Planilha Final"):
                 for _, row in ed_df.iterrows(): st.session_state.dados_brutos[row["Index"]]["payment"] = row["Opção"]
