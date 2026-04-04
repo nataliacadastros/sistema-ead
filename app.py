@@ -15,8 +15,9 @@ from io import BytesIO
 # --- CONFIGURAÇÕES DA PÁGINA ---
 st.set_page_config(page_title="SISTEMA ADM | PROFISSIONALIZA", layout="wide", initial_sidebar_state="collapsed")
 
-# --- PERSISTÊNCIA DE TAGS ---
+# --- ARQUIVO DE TAGS E PERSISTÊNCIA ---
 ARQUIVO_TAGS = "tags_salvas.json"
+ARQUIVO_CIDADES = "cidades.xlsx"
 
 def carregar_tags():
     if os.path.exists(ARQUIVO_TAGS):
@@ -57,11 +58,11 @@ st.markdown("""
     }
     .main .block-container { padding-top: 45px !important; max-width: 100% !important; margin: 0 auto !important; }
     
-    /* CSS CADASTRO ORIGINAL */
+    /* CADASTRO ORIGINAL */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 0px !important; }
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; border-radius: 5px !important; }
     
-    /* CSS GERENCIAMENTO ORIGINAL */
+    /* GERENCIAMENTO ORIGINAL */
     .custom-table-wrapper { width: 100%; max-height: 600px; overflow: auto; background-color: #121629; border: 2px solid #1f295a; border-radius: 10px; }
     .custom-table { width: 100%; border-collapse: collapse; min-width: 2500px !important; }
     .custom-table th { background-color: #1f295a; color: #00f2ff; text-align: left; padding: 15px; font-size: 11px; position: sticky; top: 0; z-index: 99; }
@@ -70,14 +71,13 @@ st.markdown("""
     .status-ativo { background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
     .status-cancelado { background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
 
-    /* CSS SUBIR ALUNOS - LAYOUT DO PRINT */
-    .subir-label { color: #e0e6ed !important; font-size: 14px !important; margin-bottom: 5px !important; }
+    /* SUBIR ALUNOS - LAYOUT DO PRINT */
+    .subir-label { color: #e0e6ed !important; font-size: 14px !important; margin-bottom: 5px !important; font-weight: bold; }
     .stTextArea textarea { background-color: white !important; color: black !important; text-transform: uppercase !important; border-radius: 0px !important; }
     .btn-salvar-planilha > div [data-testid="stButton"] button {
         background-color: #805dca !important; color: white !important; font-weight: bold !important; width: 100% !important; border-radius: 0px !important; height: 45px !important;
     }
     
-    /* HUD CARDS RELATORIO */
     .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; }
     .neon-pink { color: #ff007a; border-top: 2px solid #ff007a; }
     .neon-blue { color: #00f2ff; border-top: 2px solid #00f2ff; }
@@ -126,7 +126,7 @@ def extrair_valor_geral(texto):
 # --- NAVEGAÇÃO ---
 tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
 
-# --- ABA 1: CADASTRO (RESTAURADA) ---
+# --- ABA 1: CADASTRO (RESTAURADA ORIGINAL) ---
 with tab_cad:
     _, centro, _ = st.columns([0.5, 5, 0.5])
     with centro:
@@ -164,7 +164,7 @@ with tab_cad:
                     except Exception as e: st.error(f"Erro: {e}")
         if st.session_state.lista_previa: st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
-# --- ABA 2: GERENCIAMENTO (RESTAURADA) ---
+# --- ABA 2: GERENCIAMENTO (RESTAURADA ORIGINAL) ---
 with tab_ger:
     cf1, cf2, cf3, cf4 = st.columns([2.5, 1.5, 1.5, 0.5])
     with cf1: bu = st.text_input("🔍 Buscar...", key="busca_ger", placeholder="Nome ou ID", label_visibility="collapsed")
@@ -186,7 +186,7 @@ with tab_ger:
         st.markdown(f'<div class="custom-table-wrapper"><table class="custom-table"><thead><tr>' + ''.join([f'<th>{h}</th>' for h in hd]) + f'</tr></thead><tbody>{rows}</tbody></table></div>', unsafe_allow_html=True)
     except Exception as e: st.error(f"Erro: {e}")
 
-# --- ABA 3: RELATÓRIOS (RESTAURADA) ---
+# --- ABA 3: RELATÓRIOS (RESTAURADA ORIGINAL) ---
 with tab_rel:
     try:
         df_r = conn.read(ttl="0s").dropna(how='all')
@@ -201,43 +201,38 @@ with tab_rel:
                 c1, c2, c3, c4, c5, c6 = st.columns(6)
                 with c1: st.markdown(f'<div class="card-hud neon-pink"><small>Mats</small><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
                 with c4: st.markdown(f'<div class="card-hud neon-blue"><small>Recebido</small><h2 style="font-size:18px">R${df_f["v_rec"].sum():,.2f}</h2></div>', unsafe_allow_html=True)
-                # ... [Restante do código original de relatórios mantido internamente]
     except Exception as e: st.error(f"Erro: {e}")
 
-# --- ABA 4: SUBIR ALUNOS (LAYOUT FIEL AO PRINT) ---
+# --- ABA 4: SUBIR ALUNOS (LAYOUT FINAL + CIDADES AUTO) ---
 with tab_subir:
     col_campos, col_tags = st.columns([3, 2])
     
     with col_campos:
-        # Linha 1: Usuários e Nome completo
+        # Grade de inputs conforme o print
         l1_c1, l1_c2 = st.columns(2)
         l1_c1.markdown("<p class='subir-label'>Usuários</p>", unsafe_allow_html=True)
         u_user = l1_c1.text_area("Usuários", height=100, label_visibility="collapsed", key="in_user")
         l1_c2.markdown("<p class='subir-label'>Nome completo</p>", unsafe_allow_html=True)
         u_nome = l1_c2.text_area("Nome completo", height=100, label_visibility="collapsed", key="in_nome")
         
-        # Linha 2: Celular e Documento
         l2_c1, l2_c2 = st.columns(2)
         l2_c1.markdown("<p class='subir-label'>Celular</p>", unsafe_allow_html=True)
         u_cell = l2_c1.text_area("Celular", height=100, label_visibility="collapsed", key="in_cell")
         l2_c2.markdown("<p class='subir-label'>Documento</p>", unsafe_allow_html=True)
         u_doc = l2_c2.text_area("Documento", height=100, label_visibility="collapsed", key="in_doc")
 
-        # Linha 3: Cidade e Cursos
         l3_c1, l3_c2 = st.columns(2)
         l3_c1.markdown("<p class='subir-label'>Cidade</p>", unsafe_allow_html=True)
         u_city = l3_c1.text_area("Cidade", height=100, label_visibility="collapsed", key="in_city")
         l3_c2.markdown("<p class='subir-label'>Cursos</p>", unsafe_allow_html=True)
         u_cour = l3_c2.text_area("Cursos", height=100, label_visibility="collapsed", key="in_cour")
 
-        # Linha 4: Pagamento e Vendedor
         l4_c1, l4_c2 = st.columns(2)
         l4_c1.markdown("<p class='subir-label'>Pagamento</p>", unsafe_allow_html=True)
         u_pay = l4_c1.text_area("Pagamento", height=100, label_visibility="collapsed", key="in_pay")
         l4_c2.markdown("<p class='subir-label'>Vendedor</p>", unsafe_allow_html=True)
         u_sell = l4_c2.text_area("Vendedor", height=100, label_visibility="collapsed", key="in_sell")
 
-        # Linha 5: Data contrato
         l5_c1, _ = st.columns(2)
         l5_c1.markdown("<p class='subir-label'>Data contrato</p>", unsafe_allow_html=True)
         u_date = l5_c1.text_area("Data contrato", height=100, label_visibility="collapsed", key="in_date")
@@ -245,7 +240,6 @@ with tab_subir:
     with col_tags:
         st.markdown("<p style='font-weight:bold; color:white; font-size:16px;'>Tags por curso:</p>", unsafe_allow_html=True)
         cursos_tag_list = ['PREPARATÓRIO JOVEM BANCÁRIO', 'PREPARATÓRIO AGRO', 'JOVEM NO DIREITO', 'INGLÊS', 'PRÉ MILITAR', 'ADMINISTRATIVO', 'INFORMÁTICA', 'PREPARATÓRIO ENCCEJA', 'JOVEM NA AVIAÇÃO']
-        
         selected_tags = {}
         for curso in cursos_tag_list:
             tag_options = st.session_state.tags_salvas.get(curso, [])
@@ -261,21 +255,23 @@ with tab_subir:
                         st.session_state.tags_salvas[curso].remove(current_tag); salvar_tags(st.session_state.tags_salvas); st.rerun()
 
     st.write("---")
-    u_f_cid = st.file_uploader("Arraste aqui a planilha de cidades", type=["xlsx"], label_visibility="collapsed")
     
     st.markdown('<div class="btn-salvar-planilha">', unsafe_allow_html=True)
     if st.button("Salvar planilha", use_container_width=True):
-        if not u_f_cid or not u_user: st.error("Faltam dados")
+        if not os.path.exists(ARQUIVO_CIDADES):
+            st.error("Erro: O arquivo 'cidades.xlsx' não foi encontrado no servidor.")
+        elif not u_user:
+            st.error("Erro: Preencha os campos de usuários.")
         else:
-            # LÓGICA DE PROCESSAMENTO (MAIÚSCULAS / TAGS / CARTÃO)
-            wb_c = load_workbook(u_f_cid); ws_c = wb_c.active
+            # Processamento automático de cidades
+            wb_c = load_workbook(ARQUIVO_CIDADES); ws_c = wb_c.active
             cid_map = {str(r[1]).strip().upper(): str(r[2]) for r in ws_c.iter_rows(min_row=2, values_only=True) if r[1]}
             
             l_u = u_user.strip().split('\n'); l_n = u_nome.strip().split('\n'); l_p = u_pay.strip().split('\n')
             l_co = u_cour.strip().split('\n'); l_ce = u_cell.strip().split('\n'); l_d = u_doc.strip().split('\n')
             l_ci = u_city.strip().split('\n'); l_s = u_sell.strip().split('\n'); l_dt = u_date.strip().split('\n')
 
-            # Persistir tags novas
+            # Salvar tags
             for k, v in selected_tags.items():
                 if v and v not in st.session_state.tags_salvas.get(k, []):
                     if k not in st.session_state.tags_salvas: st.session_state.tags_salvas[k] = []
@@ -285,7 +281,7 @@ with tab_subir:
             processed, pendentes = [], []
             for i in range(len(l_u)):
                 try:
-                    n_up = l_n[i].strip().upper()
+                    n_up = l_n[i].strip().upper() # TUDO EM MAIÚSCULO
                     fname = n_up.split(" ")[0]; lname = " ".join(n_up.split(" ")[1:]) if " " in n_up else ""
                     
                     c_o = l_co[i].strip().upper(); p_o = l_p[i].strip().upper()
@@ -306,14 +302,15 @@ with tab_subir:
                 except: continue
             st.session_state.dados_brutos, st.session_state.pendentes, st.session_state.processou = processed, pendentes, True
 
+    # Seção de validação e download
     if st.session_state.get("processou") and st.session_state.get("pendentes"):
-        st.warning("Validação de Cartão:")
-        ed = st.data_editor(pd.DataFrame(st.session_state.pendentes), column_config={"Definir": st.column_config.SelectboxColumn("Opção", options=["CARTÃO", "BOLETO"], required=True)}, disabled=["Index", "Aluno", "Orig"], hide_index=True)
-        if st.button("Confirmar e Gerar"):
+        st.warning("⚠️ Confirme as formas de pagamento para os itens com CARTÃO:")
+        ed = st.data_editor(pd.DataFrame(st.session_state.pendentes), column_config={"Definir": st.column_config.SelectboxColumn("Opção", options=["CARTÃO", "BOLETO"], required=True)}, disabled=["Index", "Aluno", "Orig"], hide_index=True, key="ed_pay_final")
+        if st.button("Confirmar Seleções e Baixar"):
             for _, r in ed.iterrows(): st.session_state.dados_brutos[r["Index"]]["payment"] = r["Definir"]
             out = BytesIO(); wb = Workbook(); ws = wb.active; cols = ["username", "email2", "name", "lastname", "cellphone2", "document", "city2", "courses", "payment", "observation", "ouro", "password", "role", "secretary", "seller", "contract_date", "active"]
-            ws.append(cols); [ws.append([d[c] for c in cols]) for d in st.session_state.dados_brutos]; wb.save(out); st.download_button("Baixar Planilha", out.getvalue(), "ead.xlsx")
+            ws.append(cols); [ws.append([d[c] for c in cols]) for d in st.session_state.dados_brutos]; wb.save(out); st.download_button("📥 Baixar Planilha Final", out.getvalue(), f"ead_processado_{date.today()}.xlsx")
     elif st.session_state.get("processou"):
         out = BytesIO(); wb = Workbook(); ws = wb.active; cols = ["username", "email2", "name", "lastname", "cellphone2", "document", "city2", "courses", "payment", "observation", "ouro", "password", "role", "secretary", "seller", "contract_date", "active"]
-        ws.append(cols); [ws.append([d[c] for c in cols]) for d in st.session_state.dados_brutos]; wb.save(out); st.download_button("Baixar Planilha", out.getvalue(), "ead.xlsx")
+        ws.append(cols); [ws.append([d[c] for c in cols]) for d in st.session_state.dados_brutos]; wb.save(out); st.download_button("📥 Baixar Planilha", out.getvalue(), f"ead_processado_{date.today()}.xlsx")
     st.markdown('</div>', unsafe_allow_html=True)
