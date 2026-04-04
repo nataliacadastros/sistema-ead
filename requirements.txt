@@ -1,7 +1,7 @@
 streamlit
 pandas
 plotly
-streamlit-gsheets-connection
+st-gsheets-connection
 gspread
 google-auth
 openpyxl
