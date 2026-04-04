@@ -40,7 +40,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS HUD NEON ---
+# --- CSS HUD NEON COMPLETO ---
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e1e; color: #e0e0e0; }
@@ -194,7 +194,7 @@ with tab_ger:
             sc = "status-badge status-ativo" if r['STATUS'] == "ATIVO" else "status-badge status-cancelado"
             rows += f"<tr><td><span class='{sc}'>{r['STATUS']}</span></td><td>{r['UNID.']}</td><td>{r['TURMA']}</td><td>{r['10C']}</td><td>{r['ING']}</td><td>{r['DT_CAD']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ID']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ALUNO']}</td><td>{r['TEL_RESP']}</td><td>{r['TEL_ALU']}</td><td>{r['CPF']}</td><td>{r['CIDADE']}</td><td>{r['CURSO']}</td><td>{r['PAGTO']}</td><td>{r['VEND.']}</td><td>{r['DT_MAT']}</td></tr>"
         st.markdown(f'<div class="custom-table-wrapper"><table class="custom-table"><thead><tr>' + ''.join([f'<th>{h}</th>' for h in df_g.columns]) + f'</tr></thead><tbody>{rows}</tbody></table></div>', unsafe_allow_html=True)
-    except Exception as e: st.error("Erro ao carregar Gerenciamento.")
+    except Exception as e: st.error("Erro ao carregar dados.")
 
 # --- ABA 3: RELATÓRIOS ---
 with tab_rel:
@@ -241,7 +241,7 @@ with tab_subir:
     modo = st.radio("Método:", ["MANUAL", "AUTOMÁTICO"], horizontal=True, label_visibility="collapsed")
     st.write("---")
 
-    df_mestre = None; df_f_auto = None; cidades_sel = []
+    df_f_auto = None; cidades_sel = []
 
     if modo == "MANUAL":
         def contar_itens(texto): return len([i for i in texto.strip().split('\n') if i.strip()]) if texto else 0
@@ -269,20 +269,18 @@ with tab_subir:
 
     else:
         st.markdown("<h4 style='color:#00f2ff'>FILTRAR POR DATA DE CADASTRO (Coluna F)</h4>", unsafe_allow_html=True)
-        try:
-            df_mestre = conn.read(ttl=300).dropna(how='all')
-            df_mestre.columns = [str(c).strip().upper() for c in df_mestre.columns]
-            col_data_f = df_mestre.columns[5] 
-            col_cidade_nome = df_mestre.columns[11]
-            df_mestre[col_data_f] = pd.to_datetime(df_mestre[col_data_f], dayfirst=True, errors='coerce')
-            data_sel = st.date_input("Selecione a data:", value=date.today(), format="DD/MM/YYYY")
-            df_f_auto = df_mestre[df_mestre[col_data_f].dt.date == data_sel]
-            if not df_f_auto.empty:
-                cids_l = sorted(df_f_auto[col_cidade_nome].unique())
-                cidades_sel = st.multiselect("Cidades:", cids_l, key="auto_cids_sel")
-                st.info(f"{len(df_f_auto[df_f_auto[col_cidade_nome].isin(cidades_sel)])} alunos encontrados.")
-            else: st.warning("Nenhum cadastro encontrado na Coluna F para esta data.")
-        except Exception: st.error("Aguarde o carregamento do Google Sheets...")
+        df_mestre = conn.read(ttl=300).dropna(how='all')
+        df_mestre.columns = [str(c).strip().upper() for c in df_mestre.columns]
+        col_data_f = df_mestre.columns[5] 
+        col_cidade_nome = df_mestre.columns[11]
+        df_mestre[col_data_f] = pd.to_datetime(df_mestre[col_data_f], dayfirst=True, errors='coerce')
+        data_sel = st.date_input("Selecione a data:", value=date.today(), format="DD/MM/YYYY")
+        df_f_auto = df_mestre[df_mestre[col_data_f].dt.date == data_sel]
+        if not df_f_auto.empty:
+            cids_l = sorted(df_f_auto[col_cidade_nome].unique())
+            cidades_sel = st.multiselect("Cidades:", cids_l, key="auto_cids_sel")
+            st.info(f"{len(df_f_auto[df_f_auto[col_cidade_nome].isin(cidades_sel)])} alunos encontrados.")
+        else: st.warning("Nenhum cadastro encontrado.")
 
     # --- TAGS ---
     st.write("---")
@@ -330,15 +328,12 @@ with tab_subir:
                 t_a = [selected_tags[k] for k in cursos_tag_list if k in c_o and selected_tags.get(k)]
                 course_f = ",".join(t_a).upper() if t_a else c_o
                 
-                # --- LÓGICA DE PAGAMENTO REFINADA ---
+                # Pagamento
                 p_f = ""; p_duvida = False
-                has_boleto = "BOLETO" in p_o
-                has_cartao = "CARTÃO" in p_o or "LINK" in p_o
-                
-                if has_boleto and not has_cartao: p_f = "BOLETO"
-                elif has_cartao and not has_boleto: p_f = "CARTÃO"
-                else: # CONFLITO OU AUSÊNCIA DE TERMOS
-                    p_f = "PENDENTE"; p_duvida = True
+                has_bol = "BOLETO" in p_o; has_car = "CARTÃO" in p_o or "LINK" in p_o
+                if has_bol and not has_car: p_f = "BOLETO"
+                elif has_car and not has_bol: p_f = "CARTÃO"
+                else: p_f = "PENDENTE"; p_duvida = True
 
                 if p_duvida or p_f == "CARTÃO": 
                     pends.append({"Index": i, "Aluno": n_up, "Orig": p_o, "Opção": "CARTÃO" if p_f == "CARTÃO" else "BOLETO"})
