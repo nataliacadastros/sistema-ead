@@ -40,7 +40,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS HUD NEON COMPLETO (ORIGINAL) ---
+# --- CSS HUD NEON COMPLETO ---
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e1e; color: #e0e0e0; }
@@ -87,7 +87,9 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- INICIALIZAÇÃO DE ESTADOS ---
+# --- ESTADOS E CONEXÃO ---
+conn = st.connection("gsheets", type=GSheetsConnection)
+
 if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
 if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
@@ -95,16 +97,13 @@ if "processou" not in st.session_state: st.session_state.processou = False
 if "finalizado" not in st.session_state: st.session_state.finalizado = False
 if "excel_pronto" not in st.session_state: st.session_state.excel_pronto = None
 
-# --- CONEXÃO ---
-conn = st.connection("gsheets", type=GSheetsConnection)
-
 # --- FUNÇÕES ---
 def reset_campos_subir():
-    chaves = ["in_user", "in_nome", "in_cell", "in_doc", "in_city", "in_cour", "in_pay", "in_sell", "in_date"]
-    for c in chaves: 
+    for c in ["in_user", "in_nome", "in_cell", "in_doc", "in_city", "in_cour", "in_pay", "in_sell", "in_date"]:
         if c in st.session_state: st.session_state[c] = ""
     st.session_state.processou = False
     st.session_state.finalizado = False
+    st.session_state.excel_pronto = None
 
 def transformar_curso(chave):
     entrada = st.session_state[chave].strip()
@@ -139,7 +138,7 @@ def extrair_valor_geral(texto):
 # --- NAVEGAÇÃO ---
 tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
 
-# --- ABA 1: CADASTRO (ORIGINAL) ---
+# --- ABA 1: CADASTRO ---
 with tab_cad:
     _, centro, _ = st.columns([0.5, 5, 0.5])
     with centro:
@@ -177,7 +176,7 @@ with tab_cad:
                     except Exception as e: st.error(f"Erro: {e}")
         if st.session_state.lista_previa: st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
-# --- ABA 2: GERENCIAMENTO (ORIGINAL) ---
+# --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
     cf1, cf2, cf3, cf4 = st.columns([2.5, 1.5, 1.5, 0.5])
     with cf1: bu = st.text_input("🔍 Buscar...", key="busca_ger", placeholder="Nome ou ID", label_visibility="collapsed")
@@ -196,9 +195,9 @@ with tab_ger:
             sc = "status-badge status-ativo" if r['STATUS'] == "ATIVO" else "status-badge status-cancelado"
             rows += f"<tr><td><span class='{sc}'>{r['STATUS']}</span></td><td>{r['UNID.']}</td><td>{r['TURMA']}</td><td>{r['10C']}</td><td>{r['ING']}</td><td>{r['DT_CAD']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ID']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ALUNO']}</td><td>{r['TEL_RESP']}</td><td>{r['TEL_ALU']}</td><td>{r['CPF']}</td><td>{r['CIDADE']}</td><td>{r['CURSO']}</td><td>{r['PAGTO']}</td><td>{r['VEND.']}</td><td>{r['DT_MAT']}</td></tr>"
         st.markdown(f'<div class="custom-table-wrapper"><table class="custom-table"><thead><tr>' + ''.join([f'<th>{h}</th>' for h in df_g.columns]) + f'</tr></thead><tbody>{rows}</tbody></table></div>', unsafe_allow_html=True)
-    except Exception as e: st.error("Erro ao carregar dados.")
+    except Exception as e: st.error("Erro ao carregar Gerenciamento.")
 
-# --- ABA 3: RELATÓRIOS (ORIGINAL) ---
+# --- ABA 3: RELATÓRIOS ---
 with tab_rel:
     try:
         df_r = conn.read(ttl="0s").dropna(how='all')
@@ -238,15 +237,13 @@ with tab_rel:
                     figv.update_traces(line_color='#00f2ff'); figv.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=400); st.plotly_chart(figv, use_container_width=True)
     except Exception as e: st.error("Erro nos Relatórios.")
 
-# --- ABA 4: SUBIR ALUNOS (MODO MANUAL/AUTO) ---
+# --- ABA 4: SUBIR ALUNOS ---
 with tab_subir:
     st.markdown("### 📤 MODO DE IMPORTAÇÃO")
     modo = st.radio("Método:", ["MANUAL", "AUTOMÁTICO"], horizontal=True, label_visibility="collapsed")
     st.write("---")
 
-    df_mestre = None
-    df_f_auto = None
-    cidades_sel = []
+    raw_data_to_process = [] 
 
     if modo == "MANUAL":
         def contar_itens(texto): return len([i for i in texto.strip().split('\n') if i.strip()]) if texto else 0
@@ -275,19 +272,22 @@ with tab_subir:
     else:
         st.markdown("<h4 style='color:#00f2ff'>FILTRAR POR DATA DE CADASTRO (Coluna F)</h4>", unsafe_allow_html=True)
         try:
-            df_mestre = conn.read(ttl=300).dropna(how='all')
-            # Forçar mapeamento Coluna F (index 5) = Data Cadastro | Coluna L (index 11) = Cidade
-            col_data_nome = df_mestre.columns[5] 
-            col_cidade_nome = df_mestre.columns[11]
-            df_mestre[col_data_nome] = pd.to_datetime(df_mestre[col_data_nome], dayfirst=True, errors='coerce')
-            data_sel = st.date_input("Selecione a data:", value=date.today(), format="DD/MM/YYYY")
-            df_f_auto = df_mestre[df_mestre[col_data_nome].dt.date == data_sel]
-            if not df_f_auto.empty:
-                cids_l = sorted(df_f_auto[col_cidade_nome].unique())
-                cidades_sel = st.multiselect("Cidades:", cids_l, key="auto_cids_sel")
-                st.info(f"{len(df_f_auto[df_f_auto[col_cidade_nome].isin(cidades_sel)])} alunos encontrados.")
-            else: st.warning("Nenhum cadastro encontrado na Coluna F para esta data.")
-        except Exception: st.error("Aguarde o carregamento do Google Sheets...")
+            df_mestre_auto = conn.read(ttl=300).dropna(how='all')
+            df_mestre_auto.columns = [str(c).strip().upper() for c in df_mestre_auto.columns]
+            col_data_f = df_mestre_auto.columns[5] # Coluna F
+            df_mestre_auto[col_data_f] = pd.to_datetime(df_mestre_auto[col_data_f], dayfirst=True, errors='coerce')
+            
+            data_sel = st.date_input("Data Cadastro:", value=date.today(), format="DD/MM/YYYY")
+            df_f_auto_filtrado = df_mestre_auto[df_mestre_auto[col_data_f].dt.date == data_sel]
+            
+            if not df_f_auto_filtrado.empty:
+                col_cid_l = df_mestre_auto.columns[11] # Coluna L
+                cids_lista = sorted(df_f_auto_filtrado[col_cid_l].unique())
+                cidades_selecionadas = st.multiselect("Cidades:", cids_lista, key="auto_cids_sel")
+                st.session_state.df_para_processar = df_f_auto_filtrado[df_f_auto_filtrado[col_cid_l].isin(cidades_selecionadas)]
+                st.info(f"{len(st.session_state.df_para_processar)} alunos encontrados.")
+            else: st.warning("Nenhum dado encontrado na Coluna F para esta data.")
+        except Exception as e: st.error(f"Erro ao carregar Sheets.")
 
     # --- TAGS ---
     st.write("---")
@@ -306,10 +306,10 @@ with tab_subir:
             selected_tags[curso] = final_t
             if final_t: st.session_state[f"last_tag_{curso}"] = final_t
 
-    # --- PROCESSAMENTO ---
+    # --- PROCESSAMENTO FINAL ---
     st.write("---")
     if st.button("🚀 GERAR PLANILHA EAD", use_container_width=True):
-        if not os.path.exists(ARQUIVO_CIDADES): st.error("cidades.xlsx ausente.")
+        if not os.path.exists(ARQUIVO_CIDADES): st.error("Arquivo cidades.xlsx ausente.")
         else:
             wb_c = load_workbook(ARQUIVO_CIDADES); ws_c = wb_c.active
             cid_map = {str(r[1]).strip().upper(): str(r[2]) for r in ws_c.iter_rows(min_row=2, values_only=True) if r[1]}
@@ -318,33 +318,37 @@ with tab_subir:
                     if k not in st.session_state.tags_salvas: st.session_state.tags_salvas[k] = []
                     st.session_state.tags_salvas[k].append(v); salvar_tags(st.session_state.tags_salvas)
 
-            raw = []
             if modo == "MANUAL":
                 l_u = u_user.strip().split('\n'); l_n = u_nome.strip().split('\n'); l_p = u_pay.strip().split('\n')
                 for i in range(len(l_u)):
-                    try: raw.append({"User": l_u[i], "Nome": l_n[i], "Pay": l_p[i], "Cour": u_cour.strip().split('\n')[i], "Cell": u_cell.strip().split('\n')[i], "Doc": u_doc.strip().split('\n')[i], "City": u_city.strip().split('\n')[i], "Sell": u_sell.strip().split('\n')[i], "Date": u_date.strip().split('\n')[i]})
+                    try: raw_data_to_process.append({"User": l_u[i], "Nome": l_n[i], "Pay": l_p[i], "Cour": u_cour.strip().split('\n')[i], "Cell": u_cell.strip().split('\n')[i], "Doc": u_doc.strip().split('\n')[i], "City": u_city.strip().split('\n')[i], "Sell": u_sell.strip().split('\n')[i], "Date": u_date.strip().split('\n')[i]})
                     except: continue
             else:
-                # MAPEAMENTO AUTOMÁTICO: ID=G(6), ALUNO=H(7), TEL_ALU=J(9), CPF=K(10), CIDADE=L(11), CURSO=M(12), PAGTO=N(13), VEND=O(14), DATA_MAT=P(15)
-                df_final = df_f_auto[df_f_auto[df_f_auto.columns[11]].isin(cidades_sel)]
-                for _, r in df_final.iterrows():
-                    raw.append({"User": r.iloc[6], "Nome": r.iloc[7], "Cell": r.iloc[9], "Doc": r.iloc[10], "City": r.iloc[11], "Cour": r.iloc[12], "Pay": r.iloc[13], "Sell": r.iloc[14], "Date": r.iloc[15]})
+                if "df_para_processar" in st.session_state and not st.session_state.df_para_processar.empty:
+                    df_final = st.session_state.df_para_processar
+                    for _, r in df_final.iterrows():
+                        raw_data_to_process.append({
+                            "User": r.iloc[6], "Nome": r.iloc[7], "Cell": r.iloc[9], # TEL_ALU (Coluna J)
+                            "Doc": r.iloc[10], "City": r.iloc[11], "Cour": r.iloc[12], # CURSO (Coluna M)
+                            "Pay": r.iloc[13], "Sell": r.iloc[14], "Date": r.iloc[15]
+                        })
 
             processed, pends = [], []
-            for i, item in enumerate(raw):
+            for i, item in enumerate(raw_data_to_process):
                 n_up = str(item['Nome']).upper().strip(); c_o = str(item['Cour']).upper().strip(); p_o = str(item['Pay']).upper().strip()
                 t_a = [selected_tags[k] for k in cursos_tag_list if k in c_o and selected_tags.get(k)]
                 course_f = ",".join(t_a).upper() if t_a else c_o
                 p_f = "BOLETO" if ("BOLETO" in p_o or "SEM FORMA" in p_o) else ("CARTÃO" if "BOLSA 100%" in p_o else p_o)
                 if "CARTÃO" in p_o: pends.append({"Index": i, "Aluno": n_up, "Orig": p_o, "Opção": "CARTÃO"})
                 processed.append({"username": item['User'], "email2": f"{item['User']}@profissionalizaead.com.br", "name": n_up.split(" ")[0], "lastname": " ".join(n_up.split(" ")[1:]) if " " in n_up else "", "cellphone2": item['Cell'], "document": item['Doc'], "city2": cid_map.get(str(item['City']).upper(), item['City']), "courses": course_f, "payment": p_f, "observation": f"{course_f} | {p_o}".upper(), "ouro": "1" if "10" in course_f else "0", "password": "futuro", "role": "1", "secretary": "MGA", "seller": item['Sell'], "contract_date": item['Date'], "active": "1"})
+            
             st.session_state.dados_brutos, st.session_state.pendentes, st.session_state.processou = processed, pends, True
 
     if st.session_state.get("processou"):
         if st.session_state.pendentes:
             st.warning("Confirme pagamentos em CARTÃO:")
             ed = st.data_editor(pd.DataFrame(st.session_state.pendentes), column_config={"Opção": st.column_config.SelectboxColumn("Opção", options=["CARTÃO", "BOLETO"])}, hide_index=True)
-            if st.button("Gerar Excel Final"):
+            if st.button("Confirmar e Gerar"):
                 for _, r in ed.iterrows(): st.session_state.dados_brutos[r["Index"]]["payment"] = r["Opção"]
                 out = BytesIO(); wb = Workbook(); ws = wb.active; cols = list(st.session_state.dados_brutos[0].keys()); ws.append(cols)
                 for d in st.session_state.dados_brutos: ws.append([d[c] for c in cols])
