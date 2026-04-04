@@ -40,7 +40,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS HUD NEON ---
+# --- CSS HUD NEON COMPLETO ---
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e1e; color: #e0e0e0; }
@@ -79,6 +79,7 @@ st.markdown("""
     .hud-city-name { position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
 
     .stTextArea textarea { background-color: white !important; color: black !important; text-transform: uppercase !important; }
+    .contador-label { color: #00f2ff !important; font-size: 10px !important; margin-top: -10px; margin-bottom: 10px; text-align: right; }
     header {visibility: hidden;} footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
@@ -86,17 +87,19 @@ st.markdown("""
 # --- CONEXÃO ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# --- ESTADOS ---
+# --- ESTADOS DE SESSÃO ---
 if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
 if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
 if "df_final_processado" not in st.session_state: st.session_state.df_final_processado = None
+if "df_auto_ready" not in st.session_state: st.session_state.df_auto_ready = None
 
 # --- FUNÇÕES AUXILIARES ---
 def reset_campos_subir():
     for c in ["in_user", "in_nome", "in_cell", "in_doc", "in_city", "in_cour", "in_pay", "in_sell", "in_date"]:
         if c in st.session_state: st.session_state[c] = ""
     st.session_state.df_final_processado = None
+    st.session_state.df_auto_ready = None
 
 def extrair_valor_recebido(texto):
     match = re.search(r'PAG[OA]S?\s*(?:R\$)?\s*([\d\.,]+)', str(texto).upper())
@@ -243,10 +246,10 @@ with tab_subir:
             data_sel = st.date_input("Filtrar Cadastro (Coluna F):", value=date.today())
             df_filtrado = df_m[df_m[col_f].dt.date == data_sel]
             if not df_filtrado.empty:
-                cids = sorted(df_filtrado[df_m.columns[11]].unique()) # Coluna L (Cidade)
+                cids = sorted(df_filtrado[df_m.columns[11]].unique()) # Coluna L
                 sel_cids = st.multiselect("Cidades:", cids)
-                df_auto_ready = df_filtrado[df_filtrado[df_m.columns[11]].isin(sel_cids)]
-                st.info(f"{len(df_auto_ready)} alunos encontrados.")
+                st.session_state.df_auto_ready = df_filtrado[df_filtrado[df_m.columns[11]].isin(sel_cids)]
+                st.info(f"{len(st.session_state.df_auto_ready)} alunos encontrados.")
         except: st.error("Erro ao carregar dados do Sheets.")
     else:
         c1, c2 = st.columns(2)
@@ -271,64 +274,73 @@ with tab_subir:
             opts = st.session_state.tags_salvas.get(curso, [])
             last = st.session_state.get(f"last_{curso}")
             idx = opts.index(last)+1 if last in opts else 0
-            cur_tag = st.selectbox(curso, [""] + opts, index=idx)
-            new_tag = st.text_input(f"Nova {i}", placeholder="Nova...").upper()
+            cur_tag = st.selectbox(curso, [""] + opts, index=idx, key=f"sel_{curso}")
+            new_tag = st.text_input(f"Nova {i}", placeholder="Nova...", key=f"new_{i}").upper()
             final_tag = (new_tag if new_tag else cur_tag).upper()
             selected_tags[curso] = final_tag
             if final_tag: st.session_state[f"last_{curso}"] = final_tag
 
     if st.button("🚀 PROCESSAR DADOS", use_container_width=True):
+        raw_to_proc = []
         if modo == "MANUAL":
             l_ids = u_user.strip().split('\n')
             for i in range(len(l_ids)):
-                try: raw_data_final.append({"User": l_ids[i], "Nome": u_nome.strip().split('\n')[i], "Pay": u_pay.strip().split('\n')[i], "Cour": u_cour.strip().split('\n')[i], "Cell": u_cell.strip().split('\n')[i], "Doc": u_doc.strip().split('\n')[i], "City": u_city.strip().split('\n')[i], "Sell": u_sell.strip().split('\n')[i], "Date": u_date.strip().split('\n')[i]})
+                try:
+                    raw_to_proc.append({
+                        "User": l_ids[i], "Nome": u_nome.strip().split('\n')[i], "Pay": u_pay.strip().split('\n')[i], 
+                        "Cour": u_cour.strip().split('\n')[i], "Cell": u_cell.strip().split('\n')[i], 
+                        "Doc": u_doc.strip().split('\n')[i], "City": u_city.strip().split('\n')[i], 
+                        "Sell": u_sell.strip().split('\n')[i], "Date": u_date.strip().split('\n')[i]
+                    })
                 except: continue
-        else:
-            for _, r in df_auto_ready.iterrows():
-                raw_data_final.append({"User": r.iloc[6], "Nome": r.iloc[7], "Cell": r.iloc[9], "Doc": r.iloc[10], "City": r.iloc[11], "Cour": r.iloc[12], "Pay": r.iloc[13], "Sell": r.iloc[14], "Date": r.iloc[15]})
+        elif st.session_state.df_auto_ready is not None:
+            for _, r in st.session_state.df_auto_ready.iterrows():
+                raw_to_proc.append({"User": r.iloc[6], "Nome": r.iloc[7], "Cell": r.iloc[9], "Doc": r.iloc[10], "City": r.iloc[11], "Cour": r.iloc[12], "Pay": r.iloc[13], "Sell": r.iloc[14], "Date": r.iloc[15]})
 
-        wb_c = load_workbook(ARQUIVO_CIDADES); ws_c = wb_c.active
-        c_map = {str(r[1]).strip().upper(): str(r[2]) for r in ws_c.iter_rows(min_row=2, values_only=True) if r[1]}
-        
-        processed_list = []
-        for item in raw_data_final:
-            c_orig = str(item['Cour']).upper(); p_orig = str(item['Pay']).upper()
-            tags = [selected_tags[k] for k in cursos_tags if k in c_orig and selected_tags.get(k)]
-            c_final = ",".join(tags).upper() if tags else c_orig
+        if raw_to_proc:
+            wb_c = load_workbook(ARQUIVO_CIDADES); ws_c = wb_c.active
+            c_map = {str(r[1]).strip().upper(): str(r[2]) for r in ws_c.iter_rows(min_row=2, values_only=True) if r[1]}
             
-            # Regra de Pagamento
-            p_final = "PENDENTE"; has_bol = "BOLETO" in p_orig; has_car = "CARTÃO" in p_orig or "LINK" in p_orig
-            if has_bol and not has_car: p_final = "BOLETO"
-            elif has_car and not has_bol: p_final = "CARTÃO"
-            
-            processed_list.append({
-                "username": item['User'], "email2": f"{item['User']}@profissionalizaead.com.br", 
-                "name": str(item['Nome']).split(" ")[0].upper(), 
-                "lastname": " ".join(str(item['Nome']).split(" ")[1:]).upper(),
-                "cellphone2": item['Cell'], "document": item['Doc'], "city2": c_map.get(str(item['City']).upper(), item['City']),
-                "courses": c_final, "payment": p_final, "observation": f"{c_final} | {c_orig} | {p_orig}".upper(),
-                "ouro": "1" if "10" in c_final else "0", "password": "futuro", "role": "1", "secretary": "MGA", 
-                "seller": item['Sell'], "contract_date": item['Date'], "active": "1"
-            })
-        st.session_state.df_final_processado = pd.DataFrame(processed_list)
+            processed_list = []
+            for item in raw_to_proc:
+                c_orig = str(item['Cour']).upper(); p_orig = str(item['Pay']).upper()
+                tags_found = [selected_tags[k] for k in cursos_tags if k in c_orig and selected_tags.get(k)]
+                c_final = ",".join(tags_found).upper() if tags_found else c_orig
+                
+                # Regra de Pagamento
+                p_final = "PENDENTE"
+                has_bol = "BOLETO" in p_orig; has_car = "CARTÃO" in p_orig or "LINK" in p_orig
+                if has_bol and not has_car: p_final = "BOLETO"
+                elif has_car and not has_bol: p_final = "CARTÃO"
+                
+                processed_list.append({
+                    "username": item['User'], "email2": f"{item['User']}@profissionalizaead.com.br", 
+                    "name": str(item['Nome']).split(" ")[0].upper(), 
+                    "lastname": " ".join(str(item['Nome']).split(" ")[1:]).upper(),
+                    "cellphone2": item['Cell'], "document": item['Doc'], "city2": c_map.get(str(item['City']).upper(), item['City']),
+                    "courses": c_final, "payment": p_final, "observation": f"{c_final} | {c_orig} | {p_orig}".upper(),
+                    "ouro": "1" if "10" in c_final else "0", "password": "futuro", "role": "1", "secretary": "MGA", 
+                    "seller": item['Sell'], "contract_date": item['Date'], "active": "1"
+                })
+            st.session_state.df_final_processado = pd.DataFrame(processed_list)
 
     if st.session_state.df_final_processado is not None:
         df = st.session_state.df_final_processado
         mask_pendente = df['payment'] == "PENDENTE"
         
         if mask_pendente.any():
-            st.warning("⚠️ Alguns pagamentos precisam de confirmação:")
+            st.warning("⚠️ Confirmação necessária:")
             df_conf = df.loc[mask_pendente, ["username", "name", "observation"]].copy()
-            df_conf.columns = ["ID Aluno", "Nome Aluno", "Texto Original (Pagamento)"]
-            df_conf["Qual a forma?"] = "BOLETO"
+            df_conf.columns = ["ID", "Nome", "Texto Original (Pagamento)"]
+            df_conf["Forma Final"] = "BOLETO"
             
-            edited = st.data_editor(df_conf, column_config={"Qual a forma?": st.column_config.SelectboxColumn("Forma", options=["BOLETO", "CARTÃO"], required=True)}, disabled=["ID Aluno", "Nome Aluno", "Texto Original (Pagamento)"], hide_index=True, use_container_width=True)
+            edited = st.data_editor(df_conf, column_config={"Forma Final": st.column_config.SelectboxColumn("Opção", options=["BOLETO", "CARTÃO"], required=True)}, disabled=["ID", "Nome", "Texto Original (Pagamento)"], hide_index=True, use_container_width=True, key="pag_editor")
             
-            if st.button("✅ FINALIZAR E GERAR EXCEL"):
+            if st.button("✅ CONFIRMAR E GERAR EXCEL"):
                 for _, row in edited.iterrows():
-                    df.loc[df['username'] == row["ID Aluno"], "payment"] = row["Qual a forma?"]
+                    df.loc[df['username'] == row["ID"], "payment"] = row["Forma Final"]
                 st.session_state.df_final_processado = df
-                st.success("Pagamentos confirmados!")
+                st.success("Confirmado!")
                 st.rerun()
                 
         if not (st.session_state.df_final_processado['payment'] == "PENDENTE").any():
