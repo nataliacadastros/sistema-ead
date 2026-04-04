@@ -40,7 +40,7 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS HUD NEON & LAYOUT ORIGINAL ---
+# --- CSS HUD NEON COMPLETO ---
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e1e; color: #e0e0e0; }
@@ -53,24 +53,23 @@ st.markdown("""
     .stTabs [aria-selected="true"] { color: #00f2ff !important; border-bottom: 2px solid #00f2ff !important; background-color: rgba(0, 242, 255, 0.05) !important; }
     .main .block-container { padding-top: 45px !important; max-width: 100% !important; margin: 0 auto !important; }
     
-    /* CADASTRO */
+    /* ESTILO FORMULÁRIOS CADASTRO */
     div[data-testid="stHorizontalBlock"] { margin-bottom: 0px !important; display: flex; align-items: center; }
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; padding-right: 15px !important; display: flex; align-items: center; justify-content: flex-end; }
     div[data-testid="stTextInput"] { width: 55% !important; }
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 18px !important; border-radius: 5px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
 
-    /* GERENCIAMENTO */
+    /* ESTILO TABELA GERENCIAMENTO */
     .custom-table-wrapper { width: 100%; max-height: 600px; overflow: auto; background-color: #121629; border: 2px solid #1f295a; border-radius: 10px; margin-top: 15px; }
     .custom-table { width: 100%; border-collapse: collapse; min-width: 2500px !important; }
     .custom-table th { background-color: #1f295a; color: #00f2ff; text-align: left; padding: 15px; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; z-index: 99; }
     .custom-table td { padding: 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: nowrap; }
-    .custom-table tr:hover { background-color: rgba(0, 242, 255, 0.1); }
     .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }
     .status-ativo { background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
     .status-cancelado { background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
 
-    /* RELATÓRIO HUD */
+    /* RELATÓRIO CARDS */
     .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 100px; display: flex; flex-direction: column; justify-content: center; }
     .neon-pink { color: #ff007a; border-top: 2px solid #ff007a; }
     .neon-green { color: #2ecc71; border-top: 2px solid #2ecc71; }
@@ -93,9 +92,17 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- CONEXÃO E FUNÇÕES ---
+# --- INICIALIZAÇÃO DE ESTADOS (CORREÇÃO ATTRIBUTE ERROR) ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
+if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
+if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
+if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
+if "processou" not in st.session_state: st.session_state.processou = False
+if "finalizado" not in st.session_state: st.session_state.finalizado = False
+if "excel_pronto" not in st.session_state: st.session_state.excel_pronto = None
+
+# --- FUNÇÕES ---
 def reset_campos_subir():
     for c in ["in_user", "in_nome", "in_cell", "in_doc", "in_city", "in_cour", "in_pay", "in_sell", "in_date"]:
         if c in st.session_state: st.session_state[c] = ""
@@ -132,10 +139,10 @@ def extrair_valor_geral(texto):
         return float(v[0]) if v else 0.0
     except: return 0.0
 
-# --- ABAS ---
+# --- NAVEGAÇÃO ---
 tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
 
-# --- ABA 1: CADASTRO (RESTAURADA 100%) ---
+# --- ABA 1: CADASTRO ---
 with tab_cad:
     _, centro, _ = st.columns([0.5, 5, 0.5])
     with centro:
@@ -173,7 +180,7 @@ with tab_cad:
                     except Exception as e: st.error(f"Erro: {e}")
         if st.session_state.lista_previa: st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
-# --- ABA 2: GERENCIAMENTO (RESTAURADA 100%) ---
+# --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
     cf1, cf2, cf3, cf4 = st.columns([2.5, 1.5, 1.5, 0.5])
     with cf1: bu = st.text_input("🔍 Buscar...", key="busca_ger", placeholder="Nome ou ID", label_visibility="collapsed")
@@ -195,7 +202,7 @@ with tab_ger:
         st.markdown(f'<div class="custom-table-wrapper"><table class="custom-table"><thead><tr>' + ''.join([f'<th>{h}</th>' for h in hd]) + f'</tr></thead><tbody>{rows}</tbody></table></div>', unsafe_allow_html=True)
     except Exception as e: st.error(f"Erro: {e}")
 
-# --- ABA 3: RELATÓRIOS (RESTAURADA 100%) ---
+# --- ABA 3: RELATÓRIOS ---
 with tab_rel:
     try:
         df_r = conn.read(ttl="0s").dropna(how='all')
@@ -227,14 +234,14 @@ with tab_rel:
                 colg1, colg2 = st.columns(2)
                 with colg1:
                     figp = go.Figure(data=[go.Pie(labels=df_f['STATUS'].value_counts().index, values=df_f['STATUS'].value_counts().values, hole=0.5, marker=dict(colors=['#2ecc71', '#ff4b4b']))])
-                    figp.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=400); st.plotly_chart(figp, use_container_width=True)
+                    figp.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', showlegend=False, height=400); st.plotly_chart(figp, use_container_width=True)
                 with colg2:
                     dfv = df_f[v_col].value_counts().reset_index().head(5)
                     figv = px.line(dfv, x=v_col, y='count', markers=True, text='count')
                     figv.update_traces(line_color='#00f2ff'); figv.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=400); st.plotly_chart(figv, use_container_width=True)
     except Exception as e: st.error(f"Erro: {e}")
 
-# --- ABA 4: SUBIR ALUNOS (SISTEMA MANUAL E AUTOMÁTICO) ---
+# --- ABA 4: SUBIR ALUNOS ---
 with tab_subir:
     st.markdown("### 📤 MODO DE IMPORTAÇÃO")
     modo = st.radio("Selecione o método:", ["MANUAL", "AUTOMÁTICO"], horizontal=True, label_visibility="collapsed")
@@ -276,16 +283,17 @@ with tab_subir:
     else:
         st.markdown("<h4 style='color:#00f2ff'>FILTRAR POR DATA DE MATRÍCULA</h4>", unsafe_allow_html=True)
         df_auto = conn.read(ttl="0s").dropna(how='all')
-        df_auto['DT_MAT_AUTO'] = pd.to_datetime(df_auto['DT_MAT'], dayfirst=True, errors='coerce')
-        data_sel = st.date_input("Selecione o dia:", value=date.today(), format="DD/MM/YYYY")
-        df_filtrado_auto = df_auto[df_auto['DT_MAT_AUTO'].dt.date == data_sel]
+        df_auto.columns = ['STATUS', 'UNID', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND', 'DT_MAT']
+        df_auto['DT_MAT_DATE'] = pd.to_datetime(df_auto['DT_MAT'], dayfirst=True, errors='coerce')
+        data_sel = st.date_input("Dia:", value=date.today(), format="DD/MM/YYYY")
+        df_filtrado_auto = df_auto[df_auto['DT_MAT_DATE'].dt.date == data_sel]
         if not df_filtrado_auto.empty:
-            cidades_disponiveis = sorted(df_filtrado_auto['CIDADE'].unique())
-            cidades_sel = st.multiselect("Selecione as cidades cadastradas no dia:", cidades_disponiveis)
-            st.info(f"{len(df_filtrado_auto[df_filtrado_auto['CIDADE'].isin(cidades_sel)])} alunos encontrados.")
-        else: st.warning("Nenhum cadastro encontrado nesta data.")
+            cids = sorted(df_filtrado_auto['CIDADE'].unique())
+            cids_sel = st.multiselect("Cidades:", cids)
+            st.info(f"{len(df_filtrado_auto[df_filtrado_auto['CIDADE'].isin(cids_sel)])} alunos encontrados.")
+        else: st.warning("Sem dados nesta data.")
 
-    # --- TAGS (RODAPÉ) ---
+    # --- TAGS ---
     st.write("---")
     st.markdown("<h4 style='color:#bc13fe; font-size:16px;'>CONFIGURAÇÃO DE TAGS</h4>", unsafe_allow_html=True)
     cursos_tag_list = ['PREPARATÓRIO JOVEM BANCÁRIO', 'PREPARATÓRIO AGRO', 'JOVEM NO DIREITO', 'INGLÊS', 'PRÉ MILITAR', 'ADMINISTRATIVO', 'INFORMÁTICA', 'PREPARATÓRIO ENCCEJA', 'JOVEM NA AVIAÇÃO', 'TECNOLOGIA']
@@ -329,33 +337,30 @@ with tab_subir:
                     try: raw_data.append({"User": l_u[i], "Nome": l_n[i], "Pay": l_p[i], "Cour": l_co[i], "Cell": l_ce[i], "Doc": l_d[i], "City": l_ci[i], "Sell": l_s[i], "Date": l_dt[i]})
                     except: continue
             else:
-                df_final_auto = df_filtrado_auto[df_filtrado_auto['CIDADE'].isin(cidades_sel)]
+                df_final_auto = df_filtrado_auto[df_filtrado_auto['CIDADE'].isin(cids_sel)]
                 for _, r in df_final_auto.iterrows():
-                    raw_data.append({"User": r['ID'], "Nome": r['ALUNO'], "Pay": r['PAGTO'], "Cour": r['CURSO'], "Cell": r['TEL_ALU'], "Doc": r['CPF'], "City": r['CIDADE'], "Sell": r['VEND.'], "Date": r['DT_MAT']})
+                    raw_data.append({"User": r['ID'], "Nome": r['ALUNO'], "Pay": r['PAGTO'], "Cour": r['CURSO'], "Cell": r['TEL_ALU'], "Doc": r['CPF'], "City": r['CIDADE'], "Sell": r['VEND'], "Date": r['DT_MAT']})
 
             processed, pendentes = [], []
             for i, item in enumerate(raw_data):
-                try:
-                    n_up = str(item['Nome']).strip().upper()
-                    c_o = str(item['Cour']).strip().upper(); p_o = str(item['Pay']).strip().upper()
-                    t_a = [selected_tags[k].upper() for k in cursos_tag_list if k in c_o and selected_tags.get(k)]
-                    courses_col = ",".join(t_a).upper() if t_a else c_o.upper()
-                    obs = f"{','.join(t_a) if t_a else 'SEM TAG'} | {c_o} | {p_o}".upper()
-                    p_f = "BOLETO" if ("BOLETO" in p_o or "SEM FORMA" in p_o) else ("CARTÃO" if "BOLSA 100%" in p_o else p_o)
-                    if "CARTÃO" in p_o: pendentes.append({"Index": i, "Aluno": n_up, "Orig": p_o, "Opção": "CARTÃO"})
-                    processed.append({
-                        "username": item['User'], "email2": f"{item['User']}@profissionalizaead.com.br", 
-                        "name": n_up.split(" ")[0], "lastname": " ".join(n_up.split(" ")[1:]) if " " in n_up else "",
-                        "cellphone2": item['Cell'], "document": item['Doc'], "city2": cid_map.get(str(item['City']).strip().upper(), item['City']),
-                        "courses": courses_col, "payment": p_f, "observation": obs, "ouro": "1" if "+ 10" in obs else "0",
-                        "password": "futuro", "role": "1", "secretary": "MGA", "seller": item['Sell'], "contract_date": item['Date'], "active": "1"
-                    })
-                except: continue
+                n_up = str(item['Nome']).strip().upper()
+                c_o = str(item['Cour']).strip().upper(); p_o = str(item['Pay']).strip().upper()
+                t_a = [selected_tags[k].upper() for k in cursos_tag_list if k in c_o and selected_tags.get(k)]
+                courses_col = ",".join(t_a).upper() if t_a else c_o.upper()
+                obs = f"{','.join(t_a) if t_a else 'SEM TAG'} | {c_o} | {p_o}".upper()
+                p_f = "BOLETO" if ("BOLETO" in p_o or "SEM FORMA" in p_o) else ("CARTÃO" if "BOLSA 100%" in p_o else p_o)
+                if "CARTÃO" in p_o: pendentes.append({"Index": i, "Aluno": n_up, "Orig": p_o, "Opção": "CARTÃO"})
+                processed.append({
+                    "username": item['User'], "email2": f"{item['User']}@profissionalizaead.com.br", "name": n_up.split(" ")[0], "lastname": " ".join(n_up.split(" ")[1:]) if " " in n_up else "",
+                    "cellphone2": item['Cell'], "document": item['Doc'], "city2": cid_map.get(str(item['City']).strip().upper(), item['City']),
+                    "courses": courses_col, "payment": p_f, "observation": obs, "ouro": "1" if "+ 10" in obs else "0",
+                    "password": "futuro", "role": "1", "secretary": "MGA", "seller": item['Sell'], "contract_date": item['Date'], "active": "1"
+                })
             st.session_state.dados_brutos, st.session_state.pendentes, st.session_state.processou = processed, pendentes, True
 
     if st.session_state.get("processou"):
         if st.session_state.pendentes:
-            st.warning("⚠️ Confirme os pagamentos em CARTÃO:")
+            st.warning("⚠️ Confirme pagamentos em CARTÃO:")
             ed_df = st.data_editor(pd.DataFrame(st.session_state.pendentes), column_config={"Opção": st.column_config.SelectboxColumn("Opção", options=["CARTÃO", "BOLETO"], required=True)}, disabled=["Index", "Aluno", "Orig"], hide_index=True, key="ed_pag_final")
             if st.button("Gerar Planilha Final"):
                 for _, row in ed_df.iterrows(): st.session_state.dados_brutos[row["Index"]]["payment"] = row["Opção"]
@@ -367,7 +372,6 @@ with tab_subir:
             ex_data = st.session_state.get("excel_pronto")
             if not ex_data:
                 out = BytesIO(); wb = Workbook(); ws = wb.active; cols = ["username", "email2", "name", "lastname", "cellphone2", "document", "city2", "courses", "payment", "observation", "ouro", "password", "role", "secretary", "seller", "contract_date", "active"]
-                ws.append(cols); [ws.append([d[c] for c in cols]) for d in st.session_state.dados_brutos]; wb.save(out)
-                ex_data = out.getvalue()
+                ws.append(cols); [ws.append([d[c] for c in cols]) for d in st.session_state.dados_brutos]; wb.save(out); ex_data = out.getvalue()
             st.download_button("📥 Baixar Excel", ex_data, f"ead_final_{date.today()}.xlsx", on_click=reset_campos_subir)
     st.markdown('</div>', unsafe_allow_html=True)
