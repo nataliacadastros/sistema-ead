@@ -89,7 +89,6 @@ st.markdown("""
         margin-bottom: 10px;
     }
     
-    /* Reduzir altura e fonte dos inputs de tag */
     div[data-testid="column"] .stSelectbox div[data-baseweb="select"], 
     div[data-testid="column"] .stTextInput input {
         min-height: 24px !important;
@@ -98,12 +97,12 @@ st.markdown("""
         padding: 0 8px !important;
     }
     
-    /* Ajuste específico para os botões de lixeira */
     div[data-testid="column"] button {
         height: 24px !important;
         padding-top: 0 !important;
         padding-bottom: 0 !important;
         line-height: 1 !important;
+        min-width: 30px !important;
     }
 
     header {visibility: hidden;} footer {visibility: hidden;}
@@ -246,7 +245,7 @@ with tab_rel:
                 st.markdown(f'<div class="card-hud neon-purple"><small>Ticket Médio</small><div style="font-size:10px">Bol: R${tm_b:.0f} | Car: R${tm_c:.0f}</div></div>', unsafe_allow_html=True)
             with c6: st.markdown(f'<div class="card-hud neon-blue"><small>Top</small><h2 style="font-size:14px">{df_f["Vendedor"].value_counts().idxmax() if not df_f.empty else "N/A"}</h2></div>', unsafe_allow_html=True)
             st.write("---")
-            df_cv = f_c = df_f['Cidade'].value_counts().head(4)
+            df_cv = df_f['Cidade'].value_counts().head(4)
             if not df_cv.empty:
                 t_c = df_cv.sum(); cores = ["#ff007a", "#2ecc71", "#00f2ff", "#bc13fe"]
                 s_html = "".join([f'<div class="hud-segment" style="width:{(q/t_c)*100}%; background:{cores[i%4]};"><div class="hud-label" style="color:{cores[i%4]};">{q}</div><div class="hud-city-name" style="color:{cores[i%4]};">{n}</div></div>' for i, (n, q) in enumerate(df_cv.items())])
@@ -295,16 +294,14 @@ with tab_subir:
     st.markdown("#### CONFIGURAR TAGS")
     cursos_tags = ['PREPARATÓRIO JOVEM BANCÁRIO', 'PREPARATÓRIO AGRO', 'JOVEM NO DIREITO', 'INGLÊS', 'PRÉ MILITAR', 'ADMINISTRATIVO', 'INFORMÁTICA', 'PREPARATÓRIO ENCCEJA', 'JOVEM NA AVIAÇÃO', 'TECNOLOGIA']
     
-    # Dividir em 3 colunas conforme solicitado
     cols = st.columns(3); selected_tags = {}
     
     for i, curso in enumerate(cursos_tags):
         with cols[i % 3]:
-            # Título do curso (aparece primeiro)
             st.markdown(f"<p style='font-size:10px; margin-bottom:2px; color:#00f2ff; font-weight:bold;'>{curso}</p>", unsafe_allow_html=True)
             
-            # Linha de Seleção e Exclusão (metade da altura/largura via CSS global)
-            c_sel, c_del = st.columns([0.8, 0.2])
+            # Ajuste de largura: 40% para o seletor
+            c_sel, c_del = st.columns([0.4, 0.6])
             opts = st.session_state.tags_salvas.get(curso, [])
             last = st.session_state.get(f"last_{curso}")
             idx = opts.index(last)+1 if last in opts else 0
@@ -317,8 +314,9 @@ with tab_subir:
                     salvar_tags(st.session_state.tags_salvas)
                     st.rerun()
 
-            # Campo de Nova Tag logo abaixo
-            new_tag = st.text_input("", placeholder="Nova...", key=f"new_{i}", label_visibility="collapsed").upper()
+            # Nova tag também com coluna de ajuste para manter o 40%
+            c_new, _ = st.columns([0.4, 0.6])
+            new_tag = c_new.text_input("", placeholder="Nova...", key=f"new_{i}", label_visibility="collapsed").upper()
             
             final_tag = (new_tag if new_tag else cur_tag).upper()
             selected_tags[curso] = final_tag
