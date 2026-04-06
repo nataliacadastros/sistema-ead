@@ -310,7 +310,6 @@ with tab_subir:
             with cols[i % 3]:
                 st.markdown(f"<p style='font-size:10px; margin-bottom:2px; color:#00f2ff; font-weight:bold;'>{curso}</p>", unsafe_allow_html=True)
                 
-                # Acesso seguro às chaves
                 tags_lista = st.session_state.dados_tags.get("tags", {}).get(curso, [])
                 last_sel = st.session_state.dados_tags.get("last_selection", {}).get(curso, "")
                 idx_default = (tags_lista.index(last_sel) + 1) if last_sel in tags_lista else 0
