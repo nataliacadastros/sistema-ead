@@ -64,14 +64,6 @@ st.markdown("""
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 18px !important; border-radius: 5px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
 
-    .custom-table-wrapper { width: 100%; max-height: 600px; overflow: auto; background-color: #121629; border: 2px solid #1f295a; border-radius: 10px; margin-top: 15px; }
-    .custom-table { width: 100%; border-collapse: collapse; min-width: 2500px !important; }
-    .custom-table th { background-color: #1f295a; color: #00f2ff; text-align: left; padding: 15px; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; z-index: 99; }
-    .custom-table td { padding: 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: nowrap; }
-    .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }
-    .status-ativo { background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
-    .status-cancelado { background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
-
     .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 100px; display: flex; flex-direction: column; justify-content: center; }
     .neon-pink { color: #ff007a; border-top: 2px solid #ff007a; }
     .neon-green { color: #2ecc71; border-top: 2px solid #2ecc71; }
@@ -86,12 +78,7 @@ st.markdown("""
         border: none !important;
         transition: all 0.3s ease !important;
     }
-    div.stButton > button:hover {
-        background-color: #00d4df !important;
-        box-shadow: 0 0 15px rgba(0, 242, 255, 0.6) !important;
-        color: #000000 !important;
-    }
-
+    
     .hud-bar-container { background: rgba(31, 41, 90, 0.3); height: 14px; border-radius: 20px; width: 100%; position: relative; margin: 50px 0 40px 0; border: 1px solid #1f295a; }
     .hud-segment { height: 100%; float: left; position: relative; }
     .hud-label { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); background: #121629; border: 1px solid currentColor; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
@@ -99,6 +86,7 @@ st.markdown("""
 
     .stTextArea textarea { background-color: white !important; color: black !important; text-transform: uppercase !important; }
     
+    /* CSS Compacto para a Seção de Tags e Data Editor */
     div[data-testid="column"] .stSelectbox div[data-baseweb="select"], 
     div[data-testid="column"] .stTextInput input {
         min-height: 24px !important;
@@ -107,12 +95,12 @@ st.markdown("""
         padding: 0 8px !important;
     }
     
-    div[data-testid="column"] button {
-        height: 24px !important;
-        padding-top: 0 !important;
-        padding-bottom: 0 !important;
-        line-height: 1 !important;
-        min-width: 30px !important;
+    .bulk-panel {
+        background: rgba(31, 41, 90, 0.4);
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid #00f2ff;
+        margin-bottom: 10px;
     }
 
     header {visibility: hidden;} footer {visibility: hidden;}
@@ -122,9 +110,15 @@ st.markdown("""
 # --- CONEXÃO REFORÇADA ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
+def get_gsheets_client():
+    creds_info = st.secrets["connections"]["gsheets"]
+    scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+    creds = Credentials.from_service_account_info(creds_info, scopes=scopes)
+    return gspread.authorize(creds), creds_info["spreadsheet"]
+
 def safe_read():
     try:
-        return conn.read(ttl="10s").dropna(how='all')
+        return conn.read(ttl="5s").dropna(how='all')
     except Exception as e:
         st.error(f"Erro de conexão: {e}")
         return pd.DataFrame()
@@ -134,14 +128,12 @@ if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
 if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
 if "df_final_processado" not in st.session_state: st.session_state.df_final_processado = None
-if "df_auto_ready" not in st.session_state: st.session_state.df_auto_ready = None
 
 # --- FUNÇÕES AUXILIARES ---
 def reset_campos_subir():
     for c in ["in_user", "in_nome", "in_cell", "in_doc", "in_city", "in_cour", "in_pay", "in_sell", "in_date"]:
         if c in st.session_state: st.session_state[c] = ""
     st.session_state.df_final_processado = None
-    st.session_state.df_auto_ready = None
 
 def extrair_valor_recebido(texto):
     match = re.search(r'PAG[OA]S?\s*(?:R\$)?\s*([\d\.,]+)', str(texto).upper())
@@ -173,10 +165,52 @@ def atualizar_pagamento():
     if st.session_state.get(f"chk_3_{suffix}"): novo += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
     st.session_state[f"f_pagto_{suffix}"] = novo.upper()
 
+# --- MODAL DE EDIÇÃO INDIVIDUAL ---
+@st.dialog("📝 EDITAR ALUNO")
+def editar_aluno_modal(dados_aluno, row_idx):
+    st.markdown(f"### ID: {dados_aluno['ID']}")
+    cols = st.columns(2)
+    new_data = {}
+    
+    campos = [
+        ('STATUS', ['ATIVO', 'CANCELADO']), ('UNID.', ['MGA', 'A DEFINIR']), 
+        ('TURMA', None), ('10C', ['SIM', 'NÃO']), ('ING', ['SIM', 'NÃO']),
+        ('ALUNO', None), ('TEL_RESP', None), ('TEL_ALU', None), 
+        ('CPF', None), ('CIDADE', None), ('CURSO', None), 
+        ('PAGTO', None), ('VEND.', None), ('DT_MAT', None)
+    ]
+    
+    for i, (label, options) in enumerate(campos):
+        with cols[i % 2]:
+            if options:
+                new_data[label] = st.selectbox(label, options, index=options.index(dados_aluno[label]) if dados_aluno[label] in options else 0)
+            else:
+                new_data[label] = st.text_input(label, value=str(dados_aluno[label])).upper()
+    
+    if st.button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
+        try:
+            client, sheet_id = get_gsheets_client()
+            ws = client.open_by_url(sheet_id).get_worksheet(0)
+            # A planilha tem cabeçalho, row_idx do pandas 0 é linha 2 no Sheets (se não houver filtros complexos)
+            # Para garantir, buscamos pela coluna ID
+            cell = ws.find(dados_aluno['ID'], in_column=7)
+            if cell:
+                row_to_update = cell.row
+                valores = [new_data['STATUS'], new_data['UNID.'], new_data['TURMA'], new_data['10C'], 
+                           new_data['ING'], dados_aluno['DT_CAD'], dados_aluno['ID'], new_data['ALUNO'], 
+                           new_data['TEL_RESP'], new_data['TEL_ALU'], new_data['CPF'], new_data['CIDADE'], 
+                           new_data['CURSO'], new_data['PAGTO'], new_data['VEND.'], new_data['DT_MAT']]
+                ws.update(f'A{row_to_update}:P{row_to_update}', [valores])
+                st.success("Dados atualizados!")
+                st.cache_data.clear()
+                st.rerun()
+        except Exception as e:
+            st.error(f"Erro ao salvar: {e}")
+
 # --- NAVEGAÇÃO ---
 tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
 
-# --- ABA 1: CADASTRO ---
+# --- ABA 1: CADASTRO (RESTAURADA) ---
 with tab_cad:
     _, centro, _ = st.columns([0.5, 5, 0.5])
     with centro:
@@ -206,35 +240,88 @@ with tab_cad:
             if st.button("📤 ENVIAR PLANILHA"):
                 if st.session_state.lista_previa:
                     try:
-                        creds = st.secrets["connections"]["gsheets"]; client = gspread.authorize(Credentials.from_service_account_info(creds, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
-                        ws = client.open_by_url(creds["spreadsheet"]).get_worksheet(0); d_f = []
+                        client, sheet_id = get_gsheets_client()
+                        ws = client.open_by_url(sheet_id).get_worksheet(0); d_f = []
                         for a in st.session_state.lista_previa: d_f.append(["ATIVO", "MGA", "A DEFINIR", "SIM" if "10 CURSOS" in a["Course"] else "NÃO", "A DEFINIR" if "INGLÊS" in a["Course"] else "NÃO", date.today().strftime("%d/%m/%Y"), a["ID"], a["Aluno"], a["Tel_Resp"], a["Tel_Aluno"], a["CPF"], a["Cidade"], a["Course"], a["Pagto"], a["Vendedor"], a["Data_Mat"]])
                         ws.insert_rows(d_f, row=len(ws.col_values(1)) + 2 if ws.col_values(1) else 2)
                         st.session_state.lista_previa = []; st.session_state.reset_geral += 1; st.success("Enviado!"); st.cache_data.clear(); st.rerun()
                     except Exception as e: st.error(f"Erro: {e}")
         if st.session_state.lista_previa: st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
-# --- ABA 2: GERENCIAMENTO ---
+# --- ABA 2: GERENCIAMENTO (TURBO) ---
 with tab_ger:
-    cf1, cf2, cf3, cf4 = st.columns([2.5, 1.5, 1.5, 0.5])
+    cf1, cf2, cf3, cf4, cf5 = st.columns([2, 1.2, 1.2, 0.5, 0.8])
     with cf1: bu = st.text_input("🔍 Buscar...", key="busca_ger", placeholder="Nome ou ID", label_visibility="collapsed")
     with cf2: fs = st.selectbox("Status", ["Todos", "ATIVO", "CANCELADO"], key="filtro_status", label_visibility="collapsed")
     with cf3: fu = st.selectbox("Unidade", ["Todos", "MGA"], key="filtro_unid", label_visibility="collapsed")
     with cf4: 
         if st.button("🔄", key="btn_ref"): st.cache_data.clear(); st.rerun()
+    
     df_g = safe_read()
     if not df_g.empty:
         df_g.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
         if bu: df_g = df_g[df_g['ALUNO'].str.contains(bu, case=False) | df_g['ID'].str.contains(bu, case=False)]
         if fs != "Todos": df_g = df_g[df_g['STATUS'] == fs]
         if fu != "Todos": df_g = df_g[df_g['UNID.'] == fu]
-        rows = ""
-        for _, r in df_g.iloc[::-1].iterrows():
-            sc = "status-badge status-ativo" if r['STATUS'] == "ATIVO" else "status-badge status-cancelado"
-            rows += f"<tr><td><span class='{sc}'>{r['STATUS']}</span></td><td>{r['UNID.']}</td><td>{r['TURMA']}</td><td>{r['10C']}</td><td>{r['ING']}</td><td>{r['DT_CAD']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ID']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ALUNO']}</td><td>{r['TEL_RESP']}</td><td>{r['TEL_ALU']}</td><td>{r['CPF']}</td><td>{r['CIDADE']}</td><td>{r['CURSO']}</td><td>{r['PAGTO']}</td><td>{r['VEND.']}</td><td>{r['DT_MAT']}</td></tr>"
-        st.markdown(f'<div class="custom-table-wrapper"><table class="custom-table"><thead><tr>' + ''.join([f'<th>{h}</th>' for h in df_g.columns]) + f'</tr></thead><tbody>{rows}</tbody></table></div>', unsafe_allow_html=True)
 
-# --- ABA 3: RELATÓRIOS ---
+        # Painel de Ações em Lote
+        with st.container():
+            st.markdown('<div class="bulk-panel">', unsafe_allow_html=True)
+            bl1, bl2, bl3, bl4, bl5, bl6 = st.columns([1,1,1,0.7,0.7,1.5])
+            b_status = bl1.selectbox("Novo Status", ["", "ATIVO", "CANCELADO"], key="bulk_status")
+            b_unid = bl2.selectbox("Nova Unid", ["", "MGA", "A DEFINIR"], key="bulk_unid")
+            b_turma = bl3.text_input("Nova Turma", key="bulk_turma", placeholder="Turma...")
+            b_10c = bl4.selectbox("10C", ["", "SIM", "NÃO"], key="bulk_10c")
+            b_ing = bl5.selectbox("ING", ["", "SIM", "NÃO"], key="bulk_ing")
+            
+            if bl6.button("⚡ APLICAR EM LOTE"):
+                # Captura IDs selecionados no data_editor (veja abaixo)
+                pass # Lógica de lote será processada se houver seleção
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        # Editor de Dados principal
+        event = st.dataframe(
+            df_g,
+            use_container_width=True,
+            hide_index=True,
+            on_select="rerun",
+            selection_mode="multi-row",
+            column_config={
+                "STATUS": st.column_config.SelectboxColumn("STATUS", options=["ATIVO", "CANCELADO"], width="small"),
+                "ID": st.column_config.TextColumn("ID", width="small", help="Clique no botão editar abaixo para abrir"),
+            }
+        )
+
+        selected_rows = event.selection.rows
+        if len(selected_rows) == 1:
+            if st.button(f"📝 EDITAR {df_g.iloc[selected_rows[0]]['ALUNO']}", use_container_width=True):
+                editar_aluno_modal(df_g.iloc[selected_rows[0]].to_dict(), selected_rows[0])
+        
+        elif len(selected_rows) > 1:
+            if st.button(f"⚡ EXECUTAR LOTE EM {len(selected_rows)} ALUNOS", use_container_width=True):
+                try:
+                    client, sheet_id = get_gsheets_client()
+                    ws = client.open_by_url(sheet_id).get_worksheet(0)
+                    for idx in selected_rows:
+                        aluno_id = df_g.iloc[idx]['ID']
+                        cell = ws.find(aluno_id, in_column=7)
+                        if cell:
+                            if b_status: ws.update_cell(cell.row, 1, b_status)
+                            if b_unid: ws.update_cell(cell.row, 2, b_unid)
+                            if b_turma: ws.update_cell(cell.row, 3, b_turma.upper())
+                            if b_10c: ws.update_cell(cell.row, 4, b_10c)
+                            if b_ing: ws.update_cell(cell.row, 5, b_ing)
+                    st.success("Processamento em lote concluído!")
+                    st.cache_data.clear(); st.rerun()
+                except Exception as e: st.error(f"Erro no lote: {e}")
+
+        # Botão Exportar
+        output = BytesIO(); wb = Workbook(); ws_exc = wb.active; ws_exc.append(list(df_g.columns))
+        for r in df_g.values.tolist(): ws_exc.append(r)
+        wb.save(output)
+        cf5.download_button("📥 EXCEL", output.getvalue(), f"gerenciamento_{date.today()}.xlsx", use_container_width=True)
+
+# --- ABA 3: RELATÓRIOS (RESTAURADA) ---
 with tab_rel:
     df_r = safe_read()
     if not df_r.empty:
@@ -269,16 +356,15 @@ with tab_rel:
                 figv = px.line(dfv, x='Vendedor', y='count', markers=True, text='count')
                 figv.update_traces(line_color='#00f2ff'); figv.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=400); st.plotly_chart(figv, use_container_width=True)
 
-# --- ABA 4: SUBIR ALUNOS ---
+# --- ABA 4: SUBIR ALUNOS (RESTAURADA) ---
 with tab_subir:
     st.markdown("### 📤 IMPORTAÇÃO EAD")
     modo = st.radio("Método:", ["MANUAL", "AUTOMÁTICO"], horizontal=True)
     st.write("---")
-
     if modo == "AUTOMÁTICO":
         df_m = safe_read()
         if not df_m.empty:
-            col_f = df_m.columns[5] # Coluna F
+            col_f = df_m.columns[5]
             df_m[col_f] = pd.to_datetime(df_m[col_f], dayfirst=True, errors='coerce')
             data_sel = st.date_input("Filtrar Cadastro (Coluna F):", value=date.today())
             df_filtrado = df_m[df_m[col_f].dt.date == data_sel]
@@ -288,116 +374,59 @@ with tab_subir:
                 st.session_state.df_auto_ready = df_filtrado[df_filtrado[df_m.columns[11]].isin(sel_cids)]
                 st.info(f"{len(st.session_state.df_auto_ready)} alunos encontrados.")
     else:
-        c1, c2 = st.columns(2)
-        with c1:
-            u_user = st.text_area("IDs", height=100, key="in_user")
-            u_cell = st.text_area("Celulares", height=100, key="in_cell")
-            u_city = st.text_area("Cidades", height=100, key="in_city")
-            u_pay = st.text_area("Pagamentos", height=100, key="in_pay")
-        with c2:
-            u_nome = st.text_area("Nomes", height=100, key="in_nome")
-            u_doc = st.text_area("Documentos", height=100, key="in_doc")
-            u_cour = st.text_area("Cursos", height=100, key="in_cour")
-            u_sell = st.text_area("Vendedores", height=100, key="in_sell")
-        u_date = st.text_area("Datas", height=100, key="in_date")
+        c1, c2 = st.columns(2); u_user = c1.text_area("IDs", height=100, key="in_user"); u_cell = c1.text_area("Celulares", height=100, key="in_cell"); u_city = c1.text_area("Cidades", height=100, key="in_city"); u_pay = c1.text_area("Pagamentos", height=100, key="in_pay"); u_nome = c2.text_area("Nomes", height=100, key="in_nome"); u_doc = c2.text_area("Documentos", height=100, key="in_doc"); u_cour = c2.text_area("Cursos", height=100, key="in_cour"); u_sell = c2.text_area("Vendedores", height=100, key="in_sell"); u_date = st.text_area("Datas", height=100, key="in_date")
 
-    # --- SEÇÃO CONFIGURAR TAGS ---
     with st.expander("🛠️ CONFIGURAR TAGS", expanded=False):
         cursos_tags = ['PREPARATÓRIO JOVEM BANCÁRIO', 'PREPARATÓRIO AGRO', 'JOVEM NO DIREITO', 'INGLÊS', 'PRÉ MILITAR', 'ADMINISTRATIVO', 'INFORMÁTICA', 'PREPARATÓRIO ENCCEJA', 'JOVEM NA AVIAÇÃO', 'TECNOLOGIA']
         cols = st.columns(3); selected_tags = {}
-        
         for i, curso in enumerate(cursos_tags):
             with cols[i % 3]:
                 st.markdown(f"<p style='font-size:10px; margin-bottom:2px; color:#00f2ff; font-weight:bold;'>{curso}</p>", unsafe_allow_html=True)
-                
                 tags_lista = st.session_state.dados_tags.get("tags", {}).get(curso, [])
                 last_sel = st.session_state.dados_tags.get("last_selection", {}).get(curso, "")
                 idx_default = (tags_lista.index(last_sel) + 1) if last_sel in tags_lista else 0
-
-                c_sel, c_del = st.columns([0.4, 0.6])
-                cur_tag = c_sel.selectbox("", [""] + tags_lista, index=idx_default, key=f"sel_{curso}", label_visibility="collapsed")
-                
-                if cur_tag != last_sel:
-                    st.session_state.dados_tags["last_selection"][curso] = cur_tag
-                    salvar_tags(st.session_state.dados_tags)
-
+                c_sel, c_del = st.columns([0.4, 0.6]); cur_tag = c_sel.selectbox("", [""] + tags_lista, index=idx_default, key=f"sel_{curso}", label_visibility="collapsed")
+                if cur_tag != last_sel: st.session_state.dados_tags["last_selection"][curso] = cur_tag; salvar_tags(st.session_state.dados_tags)
                 if c_del.button("🗑️", key=f"del_{curso}"):
                     if cur_tag and cur_tag in st.session_state.dados_tags["tags"][curso]:
-                        st.session_state.dados_tags["tags"][curso].remove(cur_tag)
-                        st.session_state.dados_tags["last_selection"][curso] = ""
-                        salvar_tags(st.session_state.dados_tags)
-                        st.rerun()
-
-                c_new, _ = st.columns([0.4, 0.6])
-                new_tag = c_new.text_input("", placeholder="Nova...", key=f"new_{i}", label_visibility="collapsed").upper()
-                
+                        st.session_state.dados_tags["tags"][curso].remove(cur_tag); st.session_state.dados_tags["last_selection"][curso] = ""; salvar_tags(st.session_state.dados_tags); st.rerun()
+                c_new, _ = st.columns([0.4, 0.6]); new_tag = c_new.text_input("", placeholder="Nova...", key=f"new_{i}", label_visibility="collapsed").upper()
                 if new_tag and new_tag not in tags_lista:
                     if "tags" not in st.session_state.dados_tags: st.session_state.dados_tags["tags"] = {}
                     if curso not in st.session_state.dados_tags["tags"]: st.session_state.dados_tags["tags"][curso] = []
-                    st.session_state.dados_tags["tags"][curso].append(new_tag)
-                    st.session_state.dados_tags["last_selection"][curso] = new_tag
-                    salvar_tags(st.session_state.dados_tags)
-                    st.rerun()
-                
-                final_tag = (new_tag if new_tag else cur_tag).upper()
-                selected_tags[curso] = final_tag
+                    st.session_state.dados_tags["tags"][curso].append(new_tag); st.session_state.dados_tags["last_selection"][curso] = new_tag; salvar_tags(st.session_state.dados_tags); st.rerun()
+                selected_tags[curso] = (new_tag if new_tag else cur_tag).upper()
 
     if st.button("🚀 PROCESSAR DADOS", use_container_width=True):
         raw_list = []
         if modo == "MANUAL":
             l_ids = u_user.strip().split('\n')
             for i in range(len(l_ids)):
-                try:
-                    raw_list.append({
-                        "User": l_ids[i], "Nome": u_nome.strip().split('\n')[i], "Pay": u_pay.strip().split('\n')[i], 
-                        "Cour": u_cour.strip().split('\n')[i], "Cell": u_cell.strip().split('\n')[i], 
-                        "Doc": u_doc.strip().split('\n')[i], "City": u_city.strip().split('\n')[i], 
-                        "Sell": u_sell.strip().split('\n')[i], "Date": u_date.strip().split('\n')[i]
-                    })
+                try: raw_list.append({"User": l_ids[i], "Nome": u_nome.strip().split('\n')[i], "Pay": u_pay.strip().split('\n')[i], "Cour": u_cour.strip().split('\n')[i], "Cell": u_cell.strip().split('\n')[i], "Doc": u_doc.strip().split('\n')[i], "City": u_city.strip().split('\n')[i], "Sell": u_sell.strip().split('\n')[i], "Date": u_date.strip().split('\n')[i]})
                 except: continue
         elif "df_auto_ready" in st.session_state and st.session_state.df_auto_ready is not None:
-            for _, r in st.session_state.df_auto_ready.iterrows():
-                raw_list.append({"User": r.iloc[6], "Nome": r.iloc[7], "Cell": r.iloc[9], "Doc": r.iloc[10], "City": r.iloc[11], "Cour": r.iloc[12], "Pay": r.iloc[13], "Sell": r.iloc[14], "Date": r.iloc[15]})
-
+            for _, r in st.session_state.df_auto_ready.iterrows(): raw_list.append({"User": r.iloc[6], "Nome": r.iloc[7], "Cell": r.iloc[9], "Doc": r.iloc[10], "City": r.iloc[11], "Cour": r.iloc[12], "Pay": r.iloc[13], "Sell": r.iloc[14], "Date": r.iloc[15]})
         if raw_list:
-            wb_c = load_workbook(ARQUIVO_CIDADES); ws_c = wb_c.active
-            c_map = {str(r[1]).strip().upper(): str(r[2]) for r in ws_c.iter_rows(min_row=2, values_only=True) if r[1]}
+            wb_c = load_workbook(ARQUIVO_CIDADES); ws_c = wb_c.active; c_map = {str(r[1]).strip().upper(): str(r[2]) for r in ws_c.iter_rows(min_row=2, values_only=True) if r[1]}
             processed = []
             for item in raw_list:
-                c_orig = str(item['Cour']).upper(); p_orig = str(item['Pay']).upper()
-                tags_f = [selected_tags[k] for k in cursos_tags if k in c_orig and selected_tags.get(k)]
-                c_final = ",".join(tags_f).upper() if tags_f else c_orig
-                p_final = "PENDENTE"
-                has_bol = "BOLETO" in p_orig; has_car = "CARTÃO" in p_orig or "LINK" in p_orig
+                c_orig = str(item['Cour']).upper(); p_orig = str(item['Pay']).upper(); tags_f = [selected_tags[k] for k in cursos_tags if k in c_orig and selected_tags.get(k)]; c_final = ",".join(tags_f).upper() if tags_f else c_orig
+                p_final = "PENDENTE"; has_bol = "BOLETO" in p_orig; has_car = "CARTÃO" in p_orig or "LINK" in p_orig
                 if (has_bol and not has_car): p_final = "BOLETO"
                 elif (has_car and not has_bol): p_final = "CARTÃO"
-                obs_final = f"{c_final} | {c_orig} | {p_orig}".upper()
-                ouro_val = "1" if "10 CURSOS PROFISSIONALIZANTES" in obs_final else "0"
-                processed.append({
-                    "username": item['User'], "email2": f"{item['User']}@profissionalizaead.com.br", 
-                    "name": str(item['Nome']).split(" ")[0].upper(), 
-                    "lastname": " ".join(str(item['Nome']).split(" ")[1:]).upper(),
-                    "cellphone2": item['Cell'], "document": item['Doc'], "city2": c_map.get(str(item['City']).upper(), item['City']),
-                    "courses": c_final, "payment": p_final, "observation": obs_final,
-                    "ouro": ouro_val, "password": "futuro", "role": "1", "secretary": "MGA", 
-                    "seller": item['Sell'], "contract_date": item['Date'], "active": "1"
-                })
+                obs_f = f"{c_final} | {c_orig} | {p_orig}".upper()
+                processed.append({"username": item['User'], "email2": f"{item['User']}@profissionalizaead.com.br", "name": str(item['Nome']).split(" ")[0].upper(), "lastname": " ".join(str(item['Nome']).split(" ")[1:]).upper(), "cellphone2": item['Cell'], "document": item['Doc'], "city2": c_map.get(str(item['City']).upper(), item['City']), "courses": c_final, "payment": p_final, "observation": obs_f, "ouro": "1" if "10 CURSOS" in obs_f else "0", "password": "futuro", "role": "1", "secretary": "MGA", "seller": item['Sell'], "contract_date": item['Date'], "active": "1"})
             st.session_state.df_final_processado = pd.DataFrame(processed)
 
     if st.session_state.df_final_processado is not None:
         df = st.session_state.df_final_processado
         mask = df['payment'] == "PENDENTE"
         if mask.any():
-            st.warning("⚠️ Confirmação necessária:")
-            df_conf = df.loc[mask, ["username", "name", "observation"]].copy()
-            df_conf.columns = ["ID", "Nome", "Texto Original (Pagamento)"]
-            df_conf["Forma Final"] = "BOLETO"
-            edited = st.data_editor(df_conf, column_config={"Forma Final": st.column_config.SelectboxColumn("Forma", options=["BOLETO", "CARTÃO"], required=True)}, disabled=["ID", "Nome", "Texto Original (Pagamento)"], hide_index=True, use_container_width=True, key="pag_editor")
+            st.warning("⚠️ Confirmação necessária:"); df_conf = df.loc[mask, ["username", "name", "observation"]].copy(); df_conf.columns = ["ID", "Nome", "Texto Original"]; df_conf["Forma Final"] = "BOLETO"
+            edited = st.data_editor(df_conf, column_config={"Forma Final": st.column_config.SelectboxColumn("Forma", options=["BOLETO", "CARTÃO"], required=True)}, disabled=["ID", "Nome", "Texto Original"], hide_index=True, use_container_width=True, key="pag_editor")
             if st.button("✅ CONFIRMAR E GERAR EXCEL"):
-                for _, row in edited.iterrows():
-                    df.loc[df['username'] == row["ID"], "payment"] = row["Forma Final"]
-                st.session_state.df_final_processado = df
-                st.rerun()
+                for _, row in edited.iterrows(): df.loc[df['username'] == row["ID"], "payment"] = row["Forma Final"]
+                st.session_state.df_final_processado = df; st.rerun()
         if not (st.session_state.df_final_processado['payment'] == "PENDENTE").any():
             output = BytesIO(); wb = Workbook(); ws = wb.active; ws.append(list(st.session_state.df_final_processado.columns))
             for r in st.session_state.df_final_processado.values.tolist(): ws.append(r)
