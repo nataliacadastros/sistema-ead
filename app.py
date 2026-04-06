@@ -80,6 +80,20 @@ st.markdown("""
 
     .stTextArea textarea { background-color: white !important; color: black !important; text-transform: uppercase !important; }
     
+    /* CORREÇÃO DO BOTÃO PROCESSAR E OUTROS */
+    div.stButton > button {
+        background-color: #00f2ff !important;
+        color: #000000 !important;
+        font-weight: bold !important;
+        border: none !important;
+        transition: all 0.3s ease !important;
+    }
+    div.stButton > button:hover {
+        background-color: #00d4df !important;
+        box-shadow: 0 0 15px rgba(0, 242, 255, 0.6) !important;
+        color: #000000 !important;
+    }
+
     /* CSS Compacto para a Seção de Tags */
     div[data-testid="column"] .stSelectbox div[data-baseweb="select"], 
     div[data-testid="column"] .stTextInput input {
@@ -283,7 +297,7 @@ with tab_subir:
             u_sell = st.text_area("Vendedores", height=100, key="in_sell")
         u_date = st.text_area("Datas", height=100, key="in_date")
 
-    # --- SEÇÃO CONFIGURAR TAGS OCULTA (Versão Otimizada) ---
+    # --- SEÇÃO CONFIGURAR TAGS OCULTA ---
     with st.expander("🛠️ CONFIGURAR TAGS", expanded=False):
         cursos_tags = ['PREPARATÓRIO JOVEM BANCÁRIO', 'PREPARATÓRIO AGRO', 'JOVEM NO DIREITO', 'INGLÊS', 'PRÉ MILITAR', 'ADMINISTRATIVO', 'INFORMÁTICA', 'PREPARATÓRIO ENCCEJA', 'JOVEM NA AVIAÇÃO', 'TECNOLOGIA']
         cols = st.columns(3); selected_tags = {}
