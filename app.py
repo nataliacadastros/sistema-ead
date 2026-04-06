@@ -23,16 +23,19 @@ def carregar_tags():
     if os.path.exists(ARQUIVO_TAGS):
         try:
             with open(ARQUIVO_TAGS, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except: return {}
-    return {}
+                data = json.load(f)
+                # Garante que as tags e a última seleção sejam carregadas
+                return data if isinstance(data, dict) else {"tags": {}, "last_selection": {}}
+        except: return {"tags": {}, "last_selection": {}}
+    return {"tags": {}, "last_selection": {}}
 
-def salvar_tags(tags):
+def salvar_tags(dados):
     with open(ARQUIVO_TAGS, "w", encoding="utf-8") as f:
-        json.dump(tags, f, ensure_ascii=False, indent=2)
+        json.dump(dados, f, ensure_ascii=False, indent=2)
 
-if "tags_salvas" not in st.session_state:
-    st.session_state.tags_salvas = carregar_tags()
+# Inicialização do estado de tags
+if "dados_tags" not in st.session_state:
+    st.session_state.dados_tags = carregar_tags()
 
 DIC_CURSOS = {
     "00": "COLÉGIO COMBO", "1": "PREPARATÓRIO JOVEM BANCÁRIO", "2": "10 CURSOS PROFISSIONALIZANTES",
@@ -73,14 +76,7 @@ st.markdown("""
     .neon-purple { color: #bc13fe; border-top: 2px solid #bc13fe; }
     .neon-red { color: #ff4b4b; border-top: 2px solid #ff4b4b; }
     
-    .hud-bar-container { background: rgba(31, 41, 90, 0.3); height: 14px; border-radius: 20px; width: 100%; position: relative; margin: 50px 0 40px 0; border: 1px solid #1f295a; }
-    .hud-segment { height: 100%; float: left; position: relative; }
-    .hud-label { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); background: #121629; border: 1px solid currentColor; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
-    .hud-city-name { position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
-
-    .stTextArea textarea { background-color: white !important; color: black !important; text-transform: uppercase !important; }
-    
-    /* CORREÇÃO DO BOTÃO PROCESSAR E OUTROS */
+    /* BOTÕES GERAIS */
     div.stButton > button {
         background-color: #00f2ff !important;
         color: #000000 !important;
@@ -94,6 +90,13 @@ st.markdown("""
         color: #000000 !important;
     }
 
+    .hud-bar-container { background: rgba(31, 41, 90, 0.3); height: 14px; border-radius: 20px; width: 100%; position: relative; margin: 50px 0 40px 0; border: 1px solid #1f295a; }
+    .hud-segment { height: 100%; float: left; position: relative; }
+    .hud-label { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); background: #121629; border: 1px solid currentColor; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+    .hud-city-name { position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
+
+    .stTextArea textarea { background-color: white !important; color: black !important; text-transform: uppercase !important; }
+    
     /* CSS Compacto para a Seção de Tags */
     div[data-testid="column"] .stSelectbox div[data-baseweb="select"], 
     div[data-testid="column"] .stTextInput input {
@@ -297,7 +300,7 @@ with tab_subir:
             u_sell = st.text_area("Vendedores", height=100, key="in_sell")
         u_date = st.text_area("Datas", height=100, key="in_date")
 
-    # --- SEÇÃO CONFIGURAR TAGS OCULTA ---
+    # --- SEÇÃO CONFIGURAR TAGS FIXAS ---
     with st.expander("🛠️ CONFIGURAR TAGS", expanded=False):
         cursos_tags = ['PREPARATÓRIO JOVEM BANCÁRIO', 'PREPARATÓRIO AGRO', 'JOVEM NO DIREITO', 'INGLÊS', 'PRÉ MILITAR', 'ADMINISTRATIVO', 'INFORMÁTICA', 'PREPARATÓRIO ENCCEJA', 'JOVEM NA AVIAÇÃO', 'TECNOLOGIA']
         cols = st.columns(3); selected_tags = {}
@@ -306,31 +309,39 @@ with tab_subir:
             with cols[i % 3]:
                 st.markdown(f"<p style='font-size:10px; margin-bottom:2px; color:#00f2ff; font-weight:bold;'>{curso}</p>", unsafe_allow_html=True)
                 
+                # Gerenciamento de opções e persistência
+                tags_lista = st.session_state.dados_tags["tags"].get(curso, [])
+                last_sel = st.session_state.dados_tags["last_selection"].get(curso, "")
+                idx_default = (tags_lista.index(last_sel) + 1) if last_sel in tags_lista else 0
+
                 c_sel, c_del = st.columns([0.4, 0.6])
-                opts = st.session_state.tags_salvas.get(curso, [])
-                last = st.session_state.get(f"last_{curso}")
-                idx = opts.index(last)+1 if last in opts else 0
+                cur_tag = c_sel.selectbox("", [""] + tags_lista, index=idx_default, key=f"sel_{curso}", label_visibility="collapsed")
                 
-                cur_tag = c_sel.selectbox("", [""] + opts, index=idx, key=f"sel_{curso}", label_visibility="collapsed")
-                
+                # Se mudou a seleção, salva como última usada
+                if cur_tag != last_sel:
+                    st.session_state.dados_tags["last_selection"][curso] = cur_tag
+                    salvar_tags(st.session_state.dados_tags)
+
                 if c_del.button("🗑️", key=f"del_{curso}"):
-                    if cur_tag and cur_tag in st.session_state.tags_salvas[curso]:
-                        st.session_state.tags_salvas[curso].remove(cur_tag)
-                        salvar_tags(st.session_state.tags_salvas)
+                    if cur_tag and cur_tag in st.session_state.dados_tags["tags"][curso]:
+                        st.session_state.dados_tags["tags"][curso].remove(cur_tag)
+                        st.session_state.dados_tags["last_selection"][curso] = ""
+                        salvar_tags(st.session_state.dados_tags)
                         st.rerun()
 
                 c_new, _ = st.columns([0.4, 0.6])
                 new_tag = c_new.text_input("", placeholder="Nova...", key=f"new_{i}", label_visibility="collapsed").upper()
                 
+                # Se digitou nova tag, adiciona na lista e define como última seleção
+                if new_tag and new_tag not in tags_lista:
+                    if curso not in st.session_state.dados_tags["tags"]: st.session_state.dados_tags["tags"][curso] = []
+                    st.session_state.dados_tags["tags"][curso].append(new_tag)
+                    st.session_state.dados_tags["last_selection"][curso] = new_tag
+                    salvar_tags(st.session_state.dados_tags)
+                    st.rerun()
+                
                 final_tag = (new_tag if new_tag else cur_tag).upper()
                 selected_tags[curso] = final_tag
-                
-                if final_tag: 
-                    st.session_state[f"last_{curso}"] = final_tag
-                    if new_tag and new_tag not in opts:
-                        if curso not in st.session_state.tags_salvas: st.session_state.tags_salvas[curso] = []
-                        st.session_state.tags_salvas[curso].append(new_tag)
-                        salvar_tags(st.session_state.tags_salvas)
 
     if st.button("🚀 PROCESSAR DADOS", use_container_width=True):
         raw_list = []
