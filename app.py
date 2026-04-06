@@ -81,14 +81,6 @@ st.markdown("""
     .stTextArea textarea { background-color: white !important; color: black !important; text-transform: uppercase !important; }
     
     /* CSS Compacto para a Seção de Tags */
-    .tag-box { 
-        border: 1px solid #1f295a; 
-        padding: 8px; 
-        border-radius: 5px; 
-        background: rgba(18, 22, 41, 0.5); 
-        margin-bottom: 10px;
-    }
-    
     div[data-testid="column"] .stSelectbox div[data-baseweb="select"], 
     div[data-testid="column"] .stTextInput input {
         min-height: 24px !important;
@@ -291,42 +283,40 @@ with tab_subir:
             u_sell = st.text_area("Vendedores", height=100, key="in_sell")
         u_date = st.text_area("Datas", height=100, key="in_date")
 
-    st.markdown("#### CONFIGURAR TAGS")
-    cursos_tags = ['PREPARATÓRIO JOVEM BANCÁRIO', 'PREPARATÓRIO AGRO', 'JOVEM NO DIREITO', 'INGLÊS', 'PRÉ MILITAR', 'ADMINISTRATIVO', 'INFORMÁTICA', 'PREPARATÓRIO ENCCEJA', 'JOVEM NA AVIAÇÃO', 'TECNOLOGIA']
-    
-    cols = st.columns(3); selected_tags = {}
-    
-    for i, curso in enumerate(cursos_tags):
-        with cols[i % 3]:
-            st.markdown(f"<p style='font-size:10px; margin-bottom:2px; color:#00f2ff; font-weight:bold;'>{curso}</p>", unsafe_allow_html=True)
-            
-            # Ajuste de largura: 40% para o seletor
-            c_sel, c_del = st.columns([0.4, 0.6])
-            opts = st.session_state.tags_salvas.get(curso, [])
-            last = st.session_state.get(f"last_{curso}")
-            idx = opts.index(last)+1 if last in opts else 0
-            
-            cur_tag = c_sel.selectbox("", [""] + opts, index=idx, key=f"sel_{curso}", label_visibility="collapsed")
-            
-            if c_del.button("🗑️", key=f"del_{curso}"):
-                if cur_tag and cur_tag in st.session_state.tags_salvas[curso]:
-                    st.session_state.tags_salvas[curso].remove(cur_tag)
-                    salvar_tags(st.session_state.tags_salvas)
-                    st.rerun()
+    # --- SEÇÃO CONFIGURAR TAGS OCULTA (Versão Otimizada) ---
+    with st.expander("🛠️ CONFIGURAR TAGS", expanded=False):
+        cursos_tags = ['PREPARATÓRIO JOVEM BANCÁRIO', 'PREPARATÓRIO AGRO', 'JOVEM NO DIREITO', 'INGLÊS', 'PRÉ MILITAR', 'ADMINISTRATIVO', 'INFORMÁTICA', 'PREPARATÓRIO ENCCEJA', 'JOVEM NA AVIAÇÃO', 'TECNOLOGIA']
+        cols = st.columns(3); selected_tags = {}
+        
+        for i, curso in enumerate(cursos_tags):
+            with cols[i % 3]:
+                st.markdown(f"<p style='font-size:10px; margin-bottom:2px; color:#00f2ff; font-weight:bold;'>{curso}</p>", unsafe_allow_html=True)
+                
+                c_sel, c_del = st.columns([0.4, 0.6])
+                opts = st.session_state.tags_salvas.get(curso, [])
+                last = st.session_state.get(f"last_{curso}")
+                idx = opts.index(last)+1 if last in opts else 0
+                
+                cur_tag = c_sel.selectbox("", [""] + opts, index=idx, key=f"sel_{curso}", label_visibility="collapsed")
+                
+                if c_del.button("🗑️", key=f"del_{curso}"):
+                    if cur_tag and cur_tag in st.session_state.tags_salvas[curso]:
+                        st.session_state.tags_salvas[curso].remove(cur_tag)
+                        salvar_tags(st.session_state.tags_salvas)
+                        st.rerun()
 
-            # Nova tag também com coluna de ajuste para manter o 40%
-            c_new, _ = st.columns([0.4, 0.6])
-            new_tag = c_new.text_input("", placeholder="Nova...", key=f"new_{i}", label_visibility="collapsed").upper()
-            
-            final_tag = (new_tag if new_tag else cur_tag).upper()
-            selected_tags[curso] = final_tag
-            
-            if final_tag: 
-                st.session_state[f"last_{curso}"] = final_tag
-                if new_tag and new_tag not in opts:
-                    if curso not in st.session_state.tags_salvas: st.session_state.tags_salvas[curso] = []
-                    st.session_state.tags_salvas[curso].append(new_tag)
-                    salvar_tags(st.session_state.tags_salvas)
+                c_new, _ = st.columns([0.4, 0.6])
+                new_tag = c_new.text_input("", placeholder="Nova...", key=f"new_{i}", label_visibility="collapsed").upper()
+                
+                final_tag = (new_tag if new_tag else cur_tag).upper()
+                selected_tags[curso] = final_tag
+                
+                if final_tag: 
+                    st.session_state[f"last_{curso}"] = final_tag
+                    if new_tag and new_tag not in opts:
+                        if curso not in st.session_state.tags_salvas: st.session_state.tags_salvas[curso] = []
+                        st.session_state.tags_salvas[curso].append(new_tag)
+                        salvar_tags(st.session_state.tags_salvas)
 
     if st.button("🚀 PROCESSAR DADOS", use_container_width=True):
         raw_list = []
