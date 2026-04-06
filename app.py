@@ -64,7 +64,7 @@ st.markdown("""
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 18px !important; border-radius: 5px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
 
-    .custom-table-wrapper { width: 100%; max-height: 600px; overflow: auto; background-color: #121629; border: 2px solid #1f295a; border-radius: 10px; margin-top: 15px; }
+    .custom-table-wrapper { width: 100%; max-height: 400px; overflow: auto; background-color: #121629; border: 2px solid #1f295a; border-radius: 10px; margin-top: 15px; }
     .custom-table { width: 100%; border-collapse: collapse; min-width: 2500px !important; }
     .custom-table th { background-color: #1f295a; color: #00f2ff; text-align: left; padding: 15px; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; z-index: 99; }
     .custom-table td { padding: 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: nowrap; }
@@ -84,46 +84,6 @@ st.markdown("""
         color: #000000 !important;
         font-weight: bold !important;
         border: none !important;
-        transition: all 0.3s ease !important;
-    }
-    div.stButton > button:hover {
-        background-color: #00d4df !important;
-        box-shadow: 0 0 15px rgba(0, 242, 255, 0.6) !important;
-        color: #000000 !important;
-    }
-
-    .hud-bar-container { background: rgba(31, 41, 90, 0.3); height: 14px; border-radius: 20px; width: 100%; position: relative; margin: 50px 0 40px 0; border: 1px solid #1f295a; }
-    .hud-segment { height: 100%; float: left; position: relative; }
-    .hud-label { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); background: #121629; border: 1px solid currentColor; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
-    .hud-city-name { position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
-
-    .stTextArea textarea { background-color: white !important; color: black !important; text-transform: uppercase !important; }
-    
-    div[data-testid="column"] .stSelectbox div[data-baseweb="select"], 
-    div[data-testid="column"] .stTextInput input {
-        min-height: 24px !important;
-        height: 24px !important;
-        font-size: 10px !important;
-        padding: 0 8px !important;
-    }
-    
-    div[data-testid="column"] button {
-        height: 24px !important;
-        padding-top: 0 !important;
-        padding-bottom: 0 !important;
-        line-height: 1 !important;
-        min-width: 30px !important;
-    }
-
-    /* Botão de edição invisível na tabela */
-    .btn-edit-invisible {
-        background: transparent !important;
-        border: 1px solid #1f295a !important;
-        color: #00f2ff !important;
-        font-size: 10px !important;
-        cursor: pointer;
-        padding: 2px 5px !important;
-        border-radius: 4px;
     }
 
     header {visibility: hidden;} footer {visibility: hidden;}
@@ -135,41 +95,37 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 def safe_read():
     try:
-        return conn.read(ttl="10s").dropna(how='all')
+        return conn.read(ttl="5s").dropna(how='all')
     except Exception as e:
         st.error(f"Erro de conexão: {e}")
         return pd.DataFrame()
 
-def atualizar_planilha_gspread(df_original, aluno_id, novos_dados):
-    """Localiza o aluno pelo ID e atualiza os dados no Google Sheets."""
+def atualizar_planilha_gspread(aluno_id, novos_dados):
+    """Função para salvar edições diretamente no Google Sheets via Gspread"""
     try:
         creds = st.secrets["connections"]["gsheets"]
         client = gspread.authorize(Credentials.from_service_account_info(creds, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
         ws = client.open_by_url(creds["spreadsheet"]).get_worksheet(0)
         
-        # Encontrar a linha (ID está na coluna G, que é índice 7 no Sheets, mas vamos buscar em todo o sheet)
-        # O ID no seu código está na coluna 7 (index 6 no dataframe)
-        cell = ws.find(aluno_id)
+        # Encontrar a linha pelo ID (Coluna G / Índice 7)
+        cell = ws.find(str(aluno_id))
         if cell:
             row_idx = cell.row
-            # Mapeamento de colunas baseado na sua ordem de inserção na Aba 1
-            # 1:Status, 2:Unid, 3:Turma, 4:10C, 5:ING, 6:DT_CAD, 7:ID, 8:ALUNO...
+            # Mapeamento de colunas da sua planilha
             col_map = {
-                "STATUS": 1, "UNID.": 2, "TURMA": 3, "10C": 4, "ING": 5, 
-                "TEL_RESP": 9, "TEL_ALU": 10, "CPF": 11, "CIDADE": 12, 
+                "STATUS": 1, "UNID.": 2, "TURMA": 3, "10C": 4, "ING": 5,
+                "TEL_RESP": 9, "TEL_ALU": 10, "CPF": 11, "CIDADE": 12,
                 "CURSO": 13, "PAGTO": 14, "VEND.": 15, "DT_MAT": 16
             }
-            
             updates = []
             for field, val in novos_dados.items():
                 if field in col_map:
                     updates.append({'range': gspread.utils.rowcol_to_a1(row_idx, col_map[field]), 'values': [[str(val).upper()]]})
-            
             if updates:
                 ws.batch_update(updates)
                 return True
     except Exception as e:
-        st.error(f"Erro ao atualizar: {e}")
+        st.error(f"Erro ao salvar: {e}")
     return False
 
 # --- ESTADOS DE SESSÃO ---
@@ -177,15 +133,13 @@ if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
 if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
 if "df_final_processado" not in st.session_state: st.session_state.df_final_processado = None
-if "df_auto_ready" not in st.session_state: st.session_state.df_auto_ready = None
-if "selecionados_lote" not in st.session_state: st.session_state.selecionados_lote = set()
+if "selecionados_ids" not in st.session_state: st.session_state.selecionados_ids = []
 
 # --- FUNÇÕES AUXILIARES ---
 def reset_campos_subir():
     for c in ["in_user", "in_nome", "in_cell", "in_doc", "in_city", "in_cour", "in_pay", "in_sell", "in_date"]:
         if c in st.session_state: st.session_state[c] = ""
     st.session_state.df_final_processado = None
-    st.session_state.df_auto_ready = None
 
 def extrair_valor_recebido(texto):
     match = re.search(r'PAG[OA]S?\s*(?:R\$)?\s*([\d\.,]+)', str(texto).upper())
@@ -219,59 +173,50 @@ def atualizar_pagamento():
 
 # --- MODAIS DE EDIÇÃO ---
 @st.dialog("EDITAR ALUNO")
-def modal_editar_aluno(dados_aluno):
-    st.markdown(f"### Editando: {dados_aluno['ALUNO']}")
-    col1, col2 = st.columns(2)
+def modal_editar_aluno(r):
+    st.markdown(f"### ID: {r['ID']} | {r['ALUNO']}")
+    c1, c2 = st.columns(2)
+    novos = {}
+    with c1:
+        novos["STATUS"] = st.selectbox("STATUS", ["ATIVO", "CANCELADO"], index=0 if r["STATUS"] == "ATIVO" else 1)
+        novos["UNID."] = st.text_input("UNIDADE", value=r["UNID."])
+        novos["TURMA"] = st.text_input("TURMA", value=r["TURMA"])
+        novos["10C"] = st.selectbox("10 CURSOS", ["SIM", "NÃO"], index=0 if r["10C"] == "SIM" else 1)
+    with c2:
+        novos["ING"] = st.selectbox("INGLÊS", ["SIM", "NÃO", "A DEFINIR"], index=0 if r["ING"] == "SIM" else (1 if r["ING"] == "NÃO" else 2))
+        novos["CIDADE"] = st.text_input("CIDADE", value=r["CIDADE"])
+        novos["CURSO"] = st.text_input("CURSO", value=r["CURSO"])
+        novos["PAGTO"] = st.text_input("PAGAMENTO", value=r["PAGTO"])
     
-    novos_dados = {}
-    with col1:
-        novos_dados["STATUS"] = st.selectbox("STATUS", ["ATIVO", "CANCELADO"], index=0 if dados_aluno["STATUS"] == "ATIVO" else 1)
-        novos_dados["UNID."] = st.text_input("UNIDADE", value=dados_aluno["UNID."])
-        novos_dados["TURMA"] = st.text_input("TURMA", value=dados_aluno["TURMA"])
-        novos_dados["10C"] = st.selectbox("10 CURSOS", ["SIM", "NÃO"], index=0 if dados_aluno["10C"] == "SIM" else 1)
-        novos_dados["ING"] = st.selectbox("INGLÊS", ["SIM", "NÃO", "A DEFINIR"], index=0 if dados_aluno["ING"] == "SIM" else (1 if dados_aluno["ING"] == "NÃO" else 2))
-    
-    with col2:
-        novos_dados["TEL_RESP"] = st.text_input("TEL. RESP", value=dados_aluno["TEL_RESP"])
-        novos_dados["TEL_ALU"] = st.text_input("TEL. ALUNO", value=dados_aluno["TEL_ALU"])
-        novos_dados["CIDADE"] = st.text_input("CIDADE", value=dados_aluno["CIDADE"])
-        novos_dados["CURSO"] = st.text_input("CURSO", value=dados_aluno["CURSO"])
-        novos_dados["PAGTO"] = st.text_input("PAGAMENTO", value=dados_aluno["PAGTO"])
-
     if st.button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
-        if atualizar_planilha_gspread(None, dados_aluno["ID"], novos_dados):
-            st.success("Dados atualizados com sucesso!")
+        if atualizar_planilha_gspread(r['ID'], novos):
+            st.success("Dados atualizados!")
             st.cache_data.clear()
             st.rerun()
 
 @st.dialog("EDIÇÃO EM LOTE")
-def modal_lote(ids_selecionados):
-    st.warning(f"Alterando {len(ids_selecionados)} alunos selecionados.")
-    st.markdown("Deixe em branco ou mantenha 'Manter Original' para não alterar o campo.")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        s_status = st.selectbox("Novo Status", ["Manter Original", "ATIVO", "CANCELADO"])
-        s_unid = st.text_input("Nova Unidade (Vazio para manter)")
-        s_turma = st.text_input("Nova Turma (Vazio para manter)")
-    with col2:
-        s_10c = st.selectbox("Novo 10C", ["Manter Original", "SIM", "NÃO"])
-        s_ing = st.selectbox("Novo Inglês", ["Manter Original", "SIM", "NÃO", "A DEFINIR"])
+def modal_lote(ids):
+    st.warning(f"Alterando {len(ids)} alunos selecionados")
+    c1, c2 = st.columns(2)
+    upd = {}
+    with c1:
+        st_lote = st.selectbox("Novo Status", ["Manter Original", "ATIVO", "CANCELADO"])
+        un_lote = st.text_input("Nova Unidade (Vazio p/ manter)")
+    with c2:
+        tr_lote = st.text_input("Nova Turma (Vazio p/ manter)")
+        c10_lote = st.selectbox("Novo 10C", ["Manter Original", "SIM", "NÃO"])
+        ing_lote = st.selectbox("Novo ING", ["Manter Original", "SIM", "NÃO", "A DEFINIR"])
 
     if st.button("🚀 APLICAR EM TODOS", use_container_width=True):
-        dados_update = {}
-        if s_status != "Manter Original": dados_update["STATUS"] = s_status
-        if s_unid: dados_update["UNID."] = s_unid
-        if s_turma: dados_update["TURMA"] = s_turma
-        if s_10c != "Manter Original": dados_update["10C"] = s_10c
-        if s_ing != "Manter Original": dados_update["ING"] = s_ing
-
-        progress_bar = st.progress(0)
-        for i, aid in enumerate(ids_selecionados):
-            atualizar_planilha_gspread(None, aid, dados_update)
-            progress_bar.progress((i + 1) / len(ids_selecionados))
+        if st_lote != "Manter Original": upd["STATUS"] = st_lote
+        if un_lote: upd["UNID."] = un_lote
+        if tr_lote: upd["TURMA"] = tr_lote
+        if c10_lote != "Manter Original": upd["10C"] = c10_lote
+        if ing_lote != "Manter Original": upd["ING"] = ing_lote
         
-        st.session_state.selecionados_lote = set()
+        for aid in ids:
+            atualizar_planilha_gspread(aid, upd)
+        st.session_state.selecionados_ids = []
         st.cache_data.clear()
         st.rerun()
 
@@ -318,69 +263,62 @@ with tab_cad:
 
 # --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
-    cf1, cf2, cf3, cf4, cf5 = st.columns([2.0, 1.2, 1.2, 0.8, 0.3])
+    cf1, cf2, cf3, cf4, cf5 = st.columns([2.0, 1.2, 1.2, 1.0, 0.3])
     with cf1: bu = st.text_input("🔍 Buscar...", key="busca_ger", placeholder="Nome ou ID", label_visibility="collapsed")
     with cf2: fs = st.selectbox("Status", ["Todos", "ATIVO", "CANCELADO"], key="filtro_status", label_visibility="collapsed")
     with cf3: fu = st.selectbox("Unidade", ["Todos", "MGA"], key="filtro_unid", label_visibility="collapsed")
     with cf4:
-        if st.button("🔧 LOTE", use_container_width=True):
-            if st.session_state.selecionados_lote:
-                modal_lote(list(st.session_state.selecionados_lote))
-            else: st.warning("Selecione alunos abaixo.")
+        if st.button("🔧 EDITAR LOTE", use_container_width=True):
+            if st.session_state.selecionados_ids: modal_lote(st.session_state.selecionados_ids)
+            else: st.warning("Selecione alunos na lista abaixo.")
     with cf5: 
         if st.button("🔄", key="btn_ref"): st.cache_data.clear(); st.rerun()
-    
+
     df_g = safe_read()
     if not df_g.empty:
         df_g.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
-        if bu: df_g = df_g[df_g['ALUNO'].str.contains(bu, case=False) | df_g['ID'].str.contains(bu, case=False)]
-        if fs != "Todos": df_g = df_g[df_g['STATUS'] == fs]
-        if fu != "Todos": df_g = df_g[df_g['UNID.'] == fu]
+        df_g['ID'] = df_g['ID'].astype(str)
         
-        # Inverter para ver os mais recentes primeiro
-        df_display = df_g.iloc[::-1]
-        
-        # Colunas extras para controle (checkbox e botão)
-        header_cols = ["SEL.", "EDIT"] + list(df_g.columns)
-        rows_html = ""
-        
-        for _, r in df_display.iterrows():
-            # Chave única para o checkbox
-            aluno_id = str(r['ID'])
-            
-            # Controle de seleção em lote via session_state
-            is_checked = aluno_id in st.session_state.selecionados_lote
-            
-            # Badge de status
-            sc = "status-badge status-ativo" if r['STATUS'] == "ATIVO" else "status-badge status-cancelado"
-            
-            # Gerar linha HTML
-            rows_html += f"<tr>"
-            # O Checkbox e o Botão de Editar são tratados pelo Streamlit fora do HTML puro para manter funcionalidade
-            # Mas na visualização, criamos o espaço para eles
-            rows_html += f"<td></td><td></td>" 
-            rows_html += f"<td><span class='{sc}'>{r['STATUS']}</span></td><td>{r['UNID.']}</td><td>{r['TURMA']}</td><td>{r['10C']}</td><td>{r['ING']}</td><td>{r['DT_CAD']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ID']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ALUNO']}</td><td>{r['TEL_RESP']}</td><td>{r['TEL_ALU']}</td><td>{r['CPF']}</td><td>{r['CIDADE']}</td><td>{r['CURSO']}</td><td>{r['PAGTO']}</td><td>{r['VEND.']}</td><td>{r['DT_MAT']}</td></tr>"
+        # Filtros
+        df_display = df_g.copy()
+        if bu: df_display = df_display[df_display['ALUNO'].str.contains(bu, case=False) | df_display['ID'].str.contains(bu, case=False)]
+        if fs != "Todos": df_display = df_display[df_display['STATUS'] == fs]
+        if fu != "Todos": df_display = df_display[df_display['UNID.'] == fu]
+        df_display = df_display.iloc[::-1]
 
-        # Renderização da Tabela com Sobreposição de Widgets para Interatividade
-        st.markdown(f'<div class="custom-table-wrapper"><table class="custom-table"><thead><tr>' + ''.join([f'<th>{h}</th>' for h in header_cols]) + f'</tr></thead><tbody>{rows_html}</tbody></table></div>', unsafe_allow_html=True)
+        # 1. Tabela Visual HUD (Mantendo seu Design)
+        rows_html = ""
+        for _, r in df_display.iterrows():
+            sc = "status-badge status-ativo" if r['STATUS'] == "ATIVO" else "status-badge status-cancelado"
+            rows_html += f"<tr><td><span class='{sc}'>{r['STATUS']}</span></td><td>{r['UNID.']}</td><td>{r['TURMA']}</td><td>{r['10C']}</td><td>{r['ING']}</td><td>{r['DT_CAD']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ID']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ALUNO']}</td><td>{r['TEL_RESP']}</td><td>{r['TEL_ALU']}</td><td>{r['CPF']}</td><td>{r['CIDADE']}</td><td>{r['CURSO']}</td><td>{r['PAGTO']}</td><td>{r['VEND.']}</td><td>{r['DT_MAT']}</td></tr>"
         
-        # Camada de Widgets flutuantes (Streamlit não permite botões dentro de HTML string, então usamos colunas para simular a posição lateral)
-        with st.container():
-            # Para cada linha do dataframe filtrado, criamos um controle discreto
-            for index, r in df_display.iterrows():
-                # Posicionamento absoluto via CSS é instável no Streamlit, então usamos uma técnica de "overlay" simples
-                # ou simplesmente listamos os botões logo abaixo da tabela para manter a funcionalidade
-                c_sel, c_edit, c_info = st.columns([0.05, 0.05, 0.9])
-                with c_sel:
-                    if st.checkbox("", key=f"chk_lote_{r['ID']}", label_visibility="collapsed"):
-                        st.session_state.selecionados_lote.add(str(r['ID']))
-                    else:
-                        st.session_state.selecionados_lote.discard(str(r['ID']))
-                with c_edit:
-                    if st.button("📝", key=f"btn_ed_{r['ID']}", help="Editar Aluno"):
-                        modal_editar_aluno(r)
-                with c_info:
-                    st.markdown(f"<small style='font-size:10px; color:#64748b'>{r['ID']} - {r['ALUNO']}</small>", unsafe_allow_html=True)
+        st.markdown(f'<div class="custom-table-wrapper"><table class="custom-table"><thead><tr>' + ''.join([f'<th>{h}</th>' for h in df_g.columns]) + f'</tr></thead><tbody>{rows_html}</tbody></table></div>', unsafe_allow_html=True)
+
+        # 2. Painel de Controles (Ações Interativas)
+        st.write("")
+        st.markdown("<p style='color:#00f2ff; font-size:12px; font-weight:bold;'>SELEÇÃO E EDIÇÃO INDIVIDUAL:</p>", unsafe_allow_html=True)
+        
+        # Criamos controles para os alunos visíveis na tabela acima
+        for idx, r in df_display.iterrows():
+            c_sel, c_edit, c_txt = st.columns([0.05, 0.05, 0.9])
+            
+            with c_sel:
+                # Checkbox para seleção em lote
+                if st.checkbox("", key=f"sel_{r['ID']}", label_visibility="collapsed"):
+                    if r['ID'] not in st.session_state.selecionados_ids:
+                        st.session_state.selecionados_ids.append(r['ID'])
+                else:
+                    if r['ID'] in st.session_state.selecionados_ids:
+                        st.session_state.selecionados_ids.remove(r['ID'])
+            
+            with c_edit:
+                # Botão para editar individualmente
+                if st.button("📝", key=f"btn_ed_{r['ID']}"):
+                    modal_editar_aluno(r)
+            
+            with c_txt:
+                # Texto identificador discreto
+                st.markdown(f"<p style='font-size:11px; margin-top:5px; color:#64748b;'>{r['ID']} - {r['ALUNO']}</p>", unsafe_allow_html=True)
 
 # --- ABA 3: RELATÓRIOS ---
 with tab_rel:
@@ -426,7 +364,7 @@ with tab_subir:
     if modo == "AUTOMÁTICO":
         df_m = safe_read()
         if not df_m.empty:
-            col_f = df_m.columns[5] # Coluna F
+            col_f = df_m.columns[5]
             df_m[col_f] = pd.to_datetime(df_m[col_f], dayfirst=True, errors='coerce')
             data_sel = st.date_input("Filtrar Cadastro (Coluna F):", value=date.today())
             df_filtrado = df_m[df_m[col_f].dt.date == data_sel]
@@ -453,42 +391,31 @@ with tab_subir:
     with st.expander("🛠️ CONFIGURAR TAGS", expanded=False):
         cursos_tags = ['PREPARATÓRIO JOVEM BANCÁRIO', 'PREPARATÓRIO AGRO', 'JOVEM NO DIREITO', 'INGLÊS', 'PRÉ MILITAR', 'ADMINISTRATIVO', 'INFORMÁTICA', 'PREPARATÓRIO ENCCEJA', 'JOVEM NA AVIAÇÃO', 'TECNOLOGIA']
         cols = st.columns(3); selected_tags = {}
-        
         for i, curso in enumerate(cursos_tags):
             with cols[i % 3]:
                 st.markdown(f"<p style='font-size:10px; margin-bottom:2px; color:#00f2ff; font-weight:bold;'>{curso}</p>", unsafe_allow_html=True)
-                
                 tags_lista = st.session_state.dados_tags.get("tags", {}).get(curso, [])
                 last_sel = st.session_state.dados_tags.get("last_selection", {}).get(curso, "")
                 idx_default = (tags_lista.index(last_sel) + 1) if last_sel in tags_lista else 0
-
                 c_sel, c_del = st.columns([0.4, 0.6])
                 cur_tag = c_sel.selectbox("", [""] + tags_lista, index=idx_default, key=f"sel_{curso}", label_visibility="collapsed")
-                
                 if cur_tag != last_sel:
                     st.session_state.dados_tags["last_selection"][curso] = cur_tag
                     salvar_tags(st.session_state.dados_tags)
-
                 if c_del.button("🗑️", key=f"del_{curso}"):
                     if cur_tag and cur_tag in st.session_state.dados_tags["tags"][curso]:
                         st.session_state.dados_tags["tags"][curso].remove(cur_tag)
                         st.session_state.dados_tags["last_selection"][curso] = ""
-                        salvar_tags(st.session_state.dados_tags)
-                        st.rerun()
-
+                        salvar_tags(st.session_state.dados_tags); st.rerun()
                 c_new, _ = st.columns([0.4, 0.6])
                 new_tag = c_new.text_input("", placeholder="Nova...", key=f"new_{i}", label_visibility="collapsed").upper()
-                
                 if new_tag and new_tag not in tags_lista:
                     if "tags" not in st.session_state.dados_tags: st.session_state.dados_tags["tags"] = {}
                     if curso not in st.session_state.dados_tags["tags"]: st.session_state.dados_tags["tags"][curso] = []
                     st.session_state.dados_tags["tags"][curso].append(new_tag)
                     st.session_state.dados_tags["last_selection"][curso] = new_tag
-                    salvar_tags(st.session_state.dados_tags)
-                    st.rerun()
-                
-                final_tag = (new_tag if new_tag else cur_tag).upper()
-                selected_tags[curso] = final_tag
+                    salvar_tags(st.session_state.dados_tags); st.rerun()
+                selected_tags[curso] = (new_tag if new_tag else cur_tag).upper()
 
     if st.button("🚀 PROCESSAR DADOS", use_container_width=True):
         raw_list = []
@@ -502,7 +429,7 @@ with tab_subir:
                         "Doc": u_doc.strip().split('\n')[i], "City": u_city.strip().split('\n')[i], 
                         "Sell": u_sell.strip().split('\n')[i], "Date": u_date.strip().split('\n')[i]
                     })
-            except: st.error("Erro no processamento manual. Verifique se todas as colunas têm a mesma quantidade de linhas.")
+            except: st.error("Dados incompletos.")
         elif "df_auto_ready" in st.session_state and st.session_state.df_auto_ready is not None:
             for _, r in st.session_state.df_auto_ready.iterrows():
                 raw_list.append({"User": r.iloc[6], "Nome": r.iloc[7], "Cell": r.iloc[9], "Doc": r.iloc[10], "City": r.iloc[11], "Cour": r.iloc[12], "Pay": r.iloc[13], "Sell": r.iloc[14], "Date": r.iloc[15]})
@@ -520,34 +447,23 @@ with tab_subir:
                 if (has_bol and not has_car): p_final = "BOLETO"
                 elif (has_car and not has_bol): p_final = "CARTÃO"
                 obs_final = f"{c_final} | {c_orig} | {p_orig}".upper()
-                ouro_val = "1" if "10 CURSOS PROFISSIONALIZANTES" in obs_final else "0"
                 processed.append({
                     "username": item['User'], "email2": f"{item['User']}@profissionalizaead.com.br", 
                     "name": str(item['Nome']).split(" ")[0].upper(), 
                     "lastname": " ".join(str(item['Nome']).split(" ")[1:]).upper(),
                     "cellphone2": item['Cell'], "document": item['Doc'], "city2": c_map.get(str(item['City']).upper(), item['City']),
                     "courses": c_final, "payment": p_final, "observation": obs_final,
-                    "ouro": ouro_val, "password": "futuro", "role": "1", "secretary": "MGA", 
+                    "ouro": "1" if "10 CURSOS" in obs_final else "0", "password": "futuro", "role": "1", "secretary": "MGA", 
                     "seller": item['Sell'], "contract_date": item['Date'], "active": "1"
                 })
             st.session_state.df_final_processado = pd.DataFrame(processed)
 
     if st.session_state.df_final_processado is not None:
         df = st.session_state.df_final_processado
-        mask = df['payment'] == "PENDENTE"
-        if mask.any():
-            st.warning("⚠️ Confirmação necessária:")
-            df_conf = df.loc[mask, ["username", "name", "observation"]].copy()
-            df_conf.columns = ["ID", "Nome", "Texto Original (Pagamento)"]
-            df_conf["Forma Final"] = "BOLETO"
-            edited = st.data_editor(df_conf, column_config={"Forma Final": st.column_config.SelectboxColumn("Forma", options=["BOLETO", "CARTÃO"], required=True)}, disabled=["ID", "Nome", "Texto Original (Pagamento)"], hide_index=True, use_container_width=True, key="pag_editor")
-            if st.button("✅ CONFIRMAR E GERAR EXCEL"):
-                for _, row in edited.iterrows():
-                    df.loc[df['username'] == row["ID"], "payment"] = row["Forma Final"]
-                st.session_state.df_final_processado = df
-                st.rerun()
-        if not (st.session_state.df_final_processado['payment'] == "PENDENTE").any():
-            output = BytesIO(); wb = Workbook(); ws = wb.active; ws.append(list(st.session_state.df_final_processado.columns))
-            for r in st.session_state.df_final_processado.values.tolist(): ws.append(r)
-            wb.save(output)
-            st.download_button("📥 BAIXAR EXCEL FINAL", output.getvalue(), f"ead_{date.today()}.xlsx", on_click=reset_campos_subir, use_container_width=True)
+        if (df['payment'] == "PENDENTE").any():
+            st.warning("Confirme o pagamento:")
+            st.data_editor(df[df['payment']=="PENDENTE"])
+        output = BytesIO(); wb = Workbook(); ws = wb.active; ws.append(list(df.columns))
+        for r in df.values.tolist(): ws.append(r)
+        wb.save(output)
+        st.download_button("📥 BAIXAR EXCEL FINAL", output.getvalue(), f"ead_{date.today()}.xlsx", on_click=reset_campos_subir, use_container_width=True)
