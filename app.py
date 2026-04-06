@@ -20,20 +20,23 @@ ARQUIVO_TAGS = "tags_salvas.json"
 ARQUIVO_CIDADES = "cidades.xlsx"
 
 def carregar_tags():
+    padrao = {"tags": {}, "last_selection": {}}
     if os.path.exists(ARQUIVO_TAGS):
         try:
             with open(ARQUIVO_TAGS, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                # Garante que as tags e a última seleção sejam carregadas
-                return data if isinstance(data, dict) else {"tags": {}, "last_selection": {}}
-        except: return {"tags": {}, "last_selection": {}}
-    return {"tags": {}, "last_selection": {}}
+                conteudo = json.load(f)
+                if isinstance(conteudo, dict) and "tags" in conteudo:
+                    return conteudo
+                elif isinstance(conteudo, dict):
+                    return {"tags": conteudo, "last_selection": {}}
+        except: 
+            return padrao
+    return padrao
 
 def salvar_tags(dados):
     with open(ARQUIVO_TAGS, "w", encoding="utf-8") as f:
         json.dump(dados, f, ensure_ascii=False, indent=2)
 
-# Inicialização do estado de tags
 if "dados_tags" not in st.session_state:
     st.session_state.dados_tags = carregar_tags()
 
@@ -76,7 +79,6 @@ st.markdown("""
     .neon-purple { color: #bc13fe; border-top: 2px solid #bc13fe; }
     .neon-red { color: #ff4b4b; border-top: 2px solid #ff4b4b; }
     
-    /* BOTÕES GERAIS */
     div.stButton > button {
         background-color: #00f2ff !important;
         color: #000000 !important;
@@ -97,7 +99,6 @@ st.markdown("""
 
     .stTextArea textarea { background-color: white !important; color: black !important; text-transform: uppercase !important; }
     
-    /* CSS Compacto para a Seção de Tags */
     div[data-testid="column"] .stSelectbox div[data-baseweb="select"], 
     div[data-testid="column"] .stTextInput input {
         min-height: 24px !important;
@@ -300,7 +301,7 @@ with tab_subir:
             u_sell = st.text_area("Vendedores", height=100, key="in_sell")
         u_date = st.text_area("Datas", height=100, key="in_date")
 
-    # --- SEÇÃO CONFIGURAR TAGS FIXAS ---
+    # --- SEÇÃO CONFIGURAR TAGS ---
     with st.expander("🛠️ CONFIGURAR TAGS", expanded=False):
         cursos_tags = ['PREPARATÓRIO JOVEM BANCÁRIO', 'PREPARATÓRIO AGRO', 'JOVEM NO DIREITO', 'INGLÊS', 'PRÉ MILITAR', 'ADMINISTRATIVO', 'INFORMÁTICA', 'PREPARATÓRIO ENCCEJA', 'JOVEM NA AVIAÇÃO', 'TECNOLOGIA']
         cols = st.columns(3); selected_tags = {}
@@ -309,15 +310,13 @@ with tab_subir:
             with cols[i % 3]:
                 st.markdown(f"<p style='font-size:10px; margin-bottom:2px; color:#00f2ff; font-weight:bold;'>{curso}</p>", unsafe_allow_html=True)
                 
-                # Gerenciamento de opções e persistência
-                tags_lista = st.session_state.dados_tags["tags"].get(curso, [])
-                last_sel = st.session_state.dados_tags["last_selection"].get(curso, "")
+                tags_lista = st.session_state.dados_tags.get("tags", {}).get(curso, [])
+                last_sel = st.session_state.dados_tags.get("last_selection", {}).get(curso, "")
                 idx_default = (tags_lista.index(last_sel) + 1) if last_sel in tags_lista else 0
 
                 c_sel, c_del = st.columns([0.4, 0.6])
                 cur_tag = c_sel.selectbox("", [""] + tags_lista, index=idx_default, key=f"sel_{curso}", label_visibility="collapsed")
                 
-                # Se mudou a seleção, salva como última usada
                 if cur_tag != last_sel:
                     st.session_state.dados_tags["last_selection"][curso] = cur_tag
                     salvar_tags(st.session_state.dados_tags)
@@ -332,8 +331,8 @@ with tab_subir:
                 c_new, _ = st.columns([0.4, 0.6])
                 new_tag = c_new.text_input("", placeholder="Nova...", key=f"new_{i}", label_visibility="collapsed").upper()
                 
-                # Se digitou nova tag, adiciona na lista e define como última seleção
                 if new_tag and new_tag not in tags_lista:
+                    if "tags" not in st.session_state.dados_tags: st.session_state.dados_tags["tags"] = {}
                     if curso not in st.session_state.dados_tags["tags"]: st.session_state.dados_tags["tags"][curso] = []
                     st.session_state.dados_tags["tags"][curso].append(new_tag)
                     st.session_state.dados_tags["last_selection"][curso] = new_tag
