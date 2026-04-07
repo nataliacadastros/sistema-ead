@@ -60,7 +60,10 @@ st.markdown("""
     .main .block-container { padding-top: 45px !important; max-width: 100% !important; margin: 0 auto !important; }
     
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; display: flex; align-items: center; justify-content: flex-end; }
-    div[data-testid="stTextInput"] { width: 55% !important; }
+    
+    /* MELHORIA 4: Largura aumentada para ocupar o espaço da coluna */
+    div[data-testid="stTextInput"] { width: 100% !important; }
+    
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 18px !important; border-radius: 5px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
 
@@ -154,15 +157,24 @@ def extrair_valor_geral(texto):
     except: return 0.0
 
 def transformar_curso(chave):
+    # MELHORIA 1: Processamento direto para ser mais rápido
     entrada = st.session_state[chave].strip()
     if not entrada: return
     match = re.search(r'(\d+)$', entrada)
     if match:
-        codigo = match.group(1); nome = DIC_CURSOS.get(codigo)
+        codigo = match.group(1)
+        nome = DIC_CURSOS.get(codigo)
         if nome:
             base = entrada[:match.start()].strip().rstrip('+').strip()
             st.session_state[chave] = (f"{base} + {nome}" if base and nome.upper() not in base.upper() else (base if base else nome)).upper()
-    else: st.session_state[chave] = entrada.upper()
+    else: 
+        st.session_state[chave] = entrada.upper()
+
+def formatar_cpf(chave):
+    # MELHORIA 2: Formatação automática de CPF
+    valor = re.sub(r'\D', '', st.session_state[chave])
+    if len(valor) == 11:
+        st.session_state[chave] = f"{valor[:3]}.{valor[3:6]}.{valor[6:9]}-{valor[9:]}"
 
 def atualizar_pagamento():
     suffix = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"
@@ -178,29 +190,48 @@ tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENC
 
 # --- ABA 1: CADASTRO ---
 with tab_cad:
-    _, centro, _ = st.columns([0.5, 5, 0.5])
+    _, centro, _ = st.columns([0.2, 5.6, 0.2])
     with centro:
         s_al = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"; s_ge = f"g_{st.session_state.reset_geral}"
+        # MELHORIA 4: Proporção das colunas ajustada para [1.2, 3.8] para mais espaço de preenchimento
         fields = [("ID:", f"f_id_{s_al}"), ("ALUNO:", f"f_nome_{s_al}"), ("TEL. RESPONSÁVEL:", f"f_tel_resp_{s_al}"),
                   ("TEL. ALUNO:", f"f_tel_aluno_{s_al}"), ("CPF RESPONSÁVEL:", f"f_cpf_{s_al}"), ("CIDADE:", f"f_cid_{s_ge}"),
                   ("CURSO CONTRATADO:", f"input_curso_key_{s_al}"), ("FORMA DE PAGAMENTO:", f"f_pagto_{s_al}"),
                   ("VENDEDOR:", f"f_vend_{s_ge}"), ("DATA DA MATRÍCULA:", f"f_data_{s_ge}")]
+        
         for l, k in fields:
-            cl, ci = st.columns([1.5, 3.5])
+            cl, ci = st.columns([1.2, 3.8])
             cl.markdown(f"<label>{l}</label>", unsafe_allow_html=True)
-            if "curso" in k: ci.text_input(l, key=k, on_change=transformar_curso, args=(k,), label_visibility="collapsed")
-            else: ci.text_input(l, key=k, label_visibility="collapsed")
+            if "curso" in k: 
+                ci.text_input(l, key=k, on_change=transformar_curso, args=(k,), label_visibility="collapsed")
+            elif "f_cpf" in k:
+                # MELHORIA 2: Gatilho de formatação no CPF
+                ci.text_input(l, key=k, on_change=formatar_cpf, args=(k,), label_visibility="collapsed")
+            else: 
+                ci.text_input(l, key=k, label_visibility="collapsed")
+        
         st.write("")
-        _, c1, c2, c3, _ = st.columns([1.5, 1.1, 1.2, 1.2, 0.1])
+        _, c1, c2, c3, _ = st.columns([1.2, 1.2, 1.2, 1.2, 0.2])
         c1.checkbox("LIB. IN-GLÊS", key=f"chk_1_{s_al}", on_change=atualizar_pagamento)
         c2.checkbox("CURSO BÔNUS", key=f"chk_2_{s_al}", on_change=atualizar_pagamento)
         c3.checkbox("CONFIRMAÇÃO", key=f"chk_3_{s_al}", on_change=atualizar_pagamento)
         st.write("")
-        _, b1, b2, _ = st.columns([1.5, 1.75, 1.75, 0.1])
+        _, b1, b2, _ = st.columns([1.2, 1.9, 1.9, 0.2])
         with b1:
             if st.button("💾 SALVAR ALUNO"):
                 if st.session_state[f"f_nome_{s_al}"]:
-                    st.session_state.lista_previa.append({"ID": st.session_state[f"f_id_{s_al}"].upper(), "Aluno": st.session_state[f"f_nome_{s_al}"].upper(), "Tel_Resp": st.session_state[f"f_tel_resp_{s_al}"], "Tel_Aluno": st.session_state[f"f_tel_aluno_{s_al}"], "CPF": st.session_state[f"f_cpf_{s_al}"], "Cidade": st.session_state[f"f_cid_{s_ge}"].upper(), "Course": st.session_state[f"input_curso_key_{s_al}"].upper(), "Pagto": st.session_state[f"f_pagto_{s_al}"].upper(), "Vendedor": st.session_state[f"f_vend_{s_ge}"].upper(), "Data_Mat": st.session_state[f"f_data_{s_ge}"]})
+                    st.session_state.lista_previa.append({
+                        "ID": st.session_state[f"f_id_{s_al}"].upper(), 
+                        "Aluno": st.session_state[f"f_nome_{s_al}"].upper(), 
+                        "Tel_Resp": str(st.session_state[f"f_tel_resp_{s_al}"]), 
+                        "Tel_Aluno": str(st.session_state[f"f_tel_aluno_{s_al}"]), 
+                        "CPF": st.session_state[f"f_cpf_{s_al}"], 
+                        "Cidade": st.session_state[f"f_cid_{s_ge}"].upper(), 
+                        "Course": st.session_state[f"input_curso_key_{s_al}"].upper(), 
+                        "Pagto": st.session_state[f"f_pagto_{s_al}"].upper(), 
+                        "Vendedor": st.session_state[f"f_vend_{s_ge}"].upper(), 
+                        "Data_Mat": st.session_state[f"f_data_{s_ge}"]
+                    })
                     st.session_state.reset_aluno += 1; st.rerun()
         with b2:
             if st.button("📤 ENVIAR PLANILHA"):
@@ -208,11 +239,17 @@ with tab_cad:
                     try:
                         creds = st.secrets["connections"]["gsheets"]; client = gspread.authorize(Credentials.from_service_account_info(creds, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
                         ws = client.open_by_url(creds["spreadsheet"]).get_worksheet(0); d_f = []
-                        for a in st.session_state.lista_previa: d_f.append(["ATIVO", "MGA", "A DEFINIR", "SIM" if "10 CURSOS" in a["Course"] else "NÃO", "A DEFINIR" if "INGLÊS" in a["Course"] else "NÃO", date.today().strftime("%d/%m/%Y"), a["ID"], a["Aluno"], a["Tel_Resp"], a["Tel_Aluno"], a["CPF"], a["Cidade"], a["Course"], a["Pagto"], a["Vendedor"], a["Data_Mat"]])
-                        ws.insert_rows(d_f, row=len(ws.col_values(1)) + 2 if ws.col_values(1) else 2)
+                        for a in st.session_state.lista_previa: 
+                            # AJUSTE: Enviando como String pura para evitar aspas simples do Sheets
+                            d_f.append(["ATIVO", "MGA", "A DEFINIR", "SIM" if "10 CURSOS" in a["Course"] else "NÃO", "A DEFINIR" if "INGLÊS" in a["Course"] else "NÃO", date.today().strftime("%d/%m/%Y"), a["ID"], a["Aluno"], a["Tel_Resp"], a["Tel_Aluno"], a["CPF"], a["Cidade"], a["Course"], a["Pagto"], a["Vendedor"], a["Data_Mat"]])
+                        ws.insert_rows(d_f, row=len(ws.col_values(1)) + 2 if ws.col_values(1) else 2, value_input_option='RAW')
                         st.session_state.lista_previa = []; st.session_state.reset_geral += 1; st.success("Enviado!"); st.cache_data.clear(); st.rerun()
                     except Exception as e: st.error(f"Erro: {e}")
-        if st.session_state.lista_previa: st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
+        
+        if st.session_state.lista_previa: 
+            # MELHORIA 3: Contador de alunos na pré-visualização
+            st.markdown(f"### 📋 PRÉ-VISUALIZAÇÃO ({len(st.session_state.lista_previa)} ALUNOS)")
+            st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
 # --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
@@ -310,7 +347,6 @@ with tab_subir:
             with cols[i % 3]:
                 st.markdown(f"<p style='font-size:10px; margin-bottom:2px; color:#00f2ff; font-weight:bold;'>{curso}</p>", unsafe_allow_html=True)
                 
-                # Acesso seguro às chaves
                 tags_lista = st.session_state.dados_tags.get("tags", {}).get(curso, [])
                 last_sel = st.session_state.dados_tags.get("last_selection", {}).get(curso, "")
                 idx_default = (tags_lista.index(last_sel) + 1) if last_sel in tags_lista else 0
@@ -378,7 +414,7 @@ with tab_subir:
                     "username": item['User'], "email2": f"{item['User']}@profissionalizaead.com.br", 
                     "name": str(item['Nome']).split(" ")[0].upper(), 
                     "lastname": " ".join(str(item['Nome']).split(" ")[1:]).upper(),
-                    "cellphone2": item['Cell'], "document": item['Doc'], "city2": c_map.get(str(item['City']).upper(), item['City']),
+                    "cellphone2": str(item['Cell']), "document": item['Doc'], "city2": c_map.get(str(item['City']).upper(), item['City']),
                     "courses": c_final, "payment": p_final, "observation": obs_final,
                     "ouro": ouro_val, "password": "futuro", "role": "1", "secretary": "MGA", 
                     "seller": item['Sell'], "contract_date": item['Date'], "active": "1"
@@ -401,6 +437,8 @@ with tab_subir:
                 st.rerun()
         if not (st.session_state.df_final_processado['payment'] == "PENDENTE").any():
             output = BytesIO(); wb = Workbook(); ws = wb.active; ws.append(list(st.session_state.df_final_processado.columns))
-            for r in st.session_state.df_final_processado.values.tolist(): ws.append(r)
+            for r in st.session_state.df_final_processado.values.tolist(): 
+                # AJUSTE: Garantindo que o Excel trate como texto puro para evitar as aspas no upload posterior
+                ws.append([str(val) for val in r])
             wb.save(output)
             st.download_button("📥 BAIXAR EXCEL FINAL", output.getvalue(), f"ead_{date.today()}.xlsx", on_click=reset_campos_subir, use_container_width=True)
