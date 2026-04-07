@@ -61,7 +61,6 @@ st.markdown("""
     
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; display: flex; align-items: center; justify-content: flex-end; }
     
-    /* MELHORIA 4: Largura aumentada para ocupar o espaço da coluna */
     div[data-testid="stTextInput"] { width: 100% !important; }
     
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 18px !important; border-radius: 5px !important; }
@@ -70,7 +69,10 @@ st.markdown("""
     .custom-table-wrapper { width: 100%; max-height: 600px; overflow: auto; background-color: #121629; border: 2px solid #1f295a; border-radius: 10px; margin-top: 15px; }
     .custom-table { width: 100%; border-collapse: collapse; min-width: 2500px !important; }
     .custom-table th { background-color: #1f295a; color: #00f2ff; text-align: left; padding: 15px; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; z-index: 99; }
-    .custom-table td { padding: 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: nowrap; }
+    
+    /* AJUSTE: white-space: pre-wrap permite pular linha conforme o texto original */
+    .custom-table td { padding: 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: pre-wrap !important; }
+    
     .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }
     .status-ativo { background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
     .status-cancelado { background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
@@ -157,7 +159,6 @@ def extrair_valor_geral(texto):
     except: return 0.0
 
 def transformar_curso(chave):
-    # MELHORIA 1: Processamento direto para ser mais rápido
     entrada = st.session_state[chave].strip()
     if not entrada: return
     match = re.search(r'(\d+)$', entrada)
@@ -171,7 +172,6 @@ def transformar_curso(chave):
         st.session_state[chave] = entrada.upper()
 
 def formatar_cpf(chave):
-    # MELHORIA 2: Formatação automática de CPF
     valor = re.sub(r'\D', '', st.session_state[chave])
     if len(valor) == 11:
         st.session_state[chave] = f"{valor[:3]}.{valor[3:6]}.{valor[6:9]}-{valor[9:]}"
@@ -193,7 +193,6 @@ with tab_cad:
     _, centro, _ = st.columns([0.2, 5.6, 0.2])
     with centro:
         s_al = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"; s_ge = f"g_{st.session_state.reset_geral}"
-        # MELHORIA 4: Proporção das colunas ajustada para [1.2, 3.8] para mais espaço de preenchimento
         fields = [("ID:", f"f_id_{s_al}"), ("ALUNO:", f"f_nome_{s_al}"), ("TEL. RESPONSÁVEL:", f"f_tel_resp_{s_al}"),
                   ("TEL. ALUNO:", f"f_tel_aluno_{s_al}"), ("CPF RESPONSÁVEL:", f"f_cpf_{s_al}"), ("CIDADE:", f"f_cid_{s_ge}"),
                   ("CURSO CONTRATADO:", f"input_curso_key_{s_al}"), ("FORMA DE PAGAMENTO:", f"f_pagto_{s_al}"),
@@ -205,7 +204,6 @@ with tab_cad:
             if "curso" in k: 
                 ci.text_input(l, key=k, on_change=transformar_curso, args=(k,), label_visibility="collapsed")
             elif "f_cpf" in k:
-                # MELHORIA 2: Gatilho de formatação no CPF
                 ci.text_input(l, key=k, on_change=formatar_cpf, args=(k,), label_visibility="collapsed")
             else: 
                 ci.text_input(l, key=k, label_visibility="collapsed")
@@ -240,14 +238,12 @@ with tab_cad:
                         creds = st.secrets["connections"]["gsheets"]; client = gspread.authorize(Credentials.from_service_account_info(creds, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
                         ws = client.open_by_url(creds["spreadsheet"]).get_worksheet(0); d_f = []
                         for a in st.session_state.lista_previa: 
-                            # AJUSTE: Enviando como String pura para evitar aspas simples do Sheets
                             d_f.append(["ATIVO", "MGA", "A DEFINIR", "SIM" if "10 CURSOS" in a["Course"] else "NÃO", "A DEFINIR" if "INGLÊS" in a["Course"] else "NÃO", date.today().strftime("%d/%m/%Y"), a["ID"], a["Aluno"], a["Tel_Resp"], a["Tel_Aluno"], a["CPF"], a["Cidade"], a["Course"], a["Pagto"], a["Vendedor"], a["Data_Mat"]])
                         ws.insert_rows(d_f, row=len(ws.col_values(1)) + 2 if ws.col_values(1) else 2, value_input_option='RAW')
                         st.session_state.lista_previa = []; st.session_state.reset_geral += 1; st.success("Enviado!"); st.cache_data.clear(); st.rerun()
                     except Exception as e: st.error(f"Erro: {e}")
         
         if st.session_state.lista_previa: 
-            # MELHORIA 3: Contador de alunos na pré-visualização
             st.markdown(f"### 📋 PRÉ-VISUALIZAÇÃO ({len(st.session_state.lista_previa)} ALUNOS)")
             st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
@@ -438,7 +434,6 @@ with tab_subir:
         if not (st.session_state.df_final_processado['payment'] == "PENDENTE").any():
             output = BytesIO(); wb = Workbook(); ws = wb.active; ws.append(list(st.session_state.df_final_processado.columns))
             for r in st.session_state.df_final_processado.values.tolist(): 
-                # AJUSTE: Garantindo que o Excel trate como texto puro para evitar as aspas no upload posterior
                 ws.append([str(val) for val in r])
             wb.save(output)
             st.download_button("📥 BAIXAR EXCEL FINAL", output.getvalue(), f"ead_{date.today()}.xlsx", on_click=reset_campos_subir, use_container_width=True)
