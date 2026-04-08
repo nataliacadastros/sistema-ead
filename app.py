@@ -67,15 +67,15 @@ st.markdown("""
     .stTabs [data-baseweb="tab"] { color: #64748b !important; font-size: 11px !important; padding: 0 30px !important; }
     .stTabs [aria-selected="true"] { color: #00f2ff !important; border-bottom: 2px solid #00f2ff !important; background-color: rgba(0, 242, 255, 0.05) !important; }
     
-    /* Ajuste do container principal */
-    .main .block-container { padding-top: 40px !important; max-width: 100% !important; margin: 0 auto !important; }
+    /* MELHORIA: Padding reduzido para aproximar os frames do menu */
+    .main .block-container { padding-top: 10px !important; max-width: 100% !important; margin: 0 auto !important; }
     
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; display: flex; align-items: center; justify-content: flex-end; }
     div[data-testid="stTextInput"] { width: 100% !important; }
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 18px !important; border-radius: 5px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
 
-    .custom-table-wrapper { width: 100%; max-height: 600px; overflow: auto; background-color: #121629; border: 2px solid #1f295a; border-radius: 10px; margin-top: 15px; }
+    .custom-table-wrapper { width: 100%; max-height: 600px; overflow: auto; background-color: #121629; border: 2px solid #1f295a; border-radius: 10px; margin-top: 5px; }
     .custom-table { width: 100%; border-collapse: collapse; min-width: 2500px !important; }
     .custom-table th { background-color: #1f295a; color: #00f2ff; text-align: left; padding: 15px; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; z-index: 99; }
     .custom-table td { padding: 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: pre-wrap !important; }
@@ -96,21 +96,23 @@ st.markdown("""
 
     header {visibility: hidden;} footer {visibility: hidden;}
     
-    /* Estilo para a logo no canto */
+    /* Estilo para a logo no canto para não empurrar o frame */
     .logo-container {
-        position: relative;
-        top: -10px;
+        position: absolute;
+        top: -45px;
         left: 0px;
-        margin-bottom: 10px;
+        z-index: 1000;
     }
     </style>
     """, unsafe_allow_html=True)
 
 # --- LOGO NO CANTO ESQUERDO ---
 if os.path.exists(caminho_logo):
-    st.markdown('<div class="logo-container">', unsafe_allow_html=True)
-    st.image(caminho_logo, width=90) # Tamanho reduzido para 90px
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="logo-container"><img src="data:image/png;base64,{st.image(caminho_logo, width=80)}" style="display:none;"></div>', unsafe_allow_html=True)
+    # Forma simplificada para não quebrar o fluxo:
+    cols_top = st.columns([0.1, 0.9])
+    with cols_top[0]:
+        st.image(caminho_logo, width=80)
 
 # --- CONEXÃO REFORÇADA ---
 conn = st.connection("gsheets", type=GSheetsConnection)
