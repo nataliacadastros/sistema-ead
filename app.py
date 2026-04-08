@@ -272,7 +272,6 @@ with tab_rel:
                 tm_c = df_f[df_f['Pagamento'].str.contains('CARTÃO|LINK', na=False, case=False)]['v_tic'].mean() or 0.0
                 st.markdown(f'<div class="card-hud neon-purple"><span class="stat-label">TICKET MÉDIO</span><div style="font-size:18px; font-weight:bold; color:#e0e0e0;">BOL: R${tm_b:.0f}<br>CAR: R${tm_c:.0f}</div></div>', unsafe_allow_html=True)
             with c6:
-                # UNIFICAÇÃO DE VENDEDORES (Limpa sufixos tipo "- COLÉGIO")
                 v_count = df_f["Vendedor"].str.split(" - ").str[0].str.strip().value_counts()
                 top_v = v_count.idxmax() if not v_count.empty else "---"
                 st.markdown(f'<div class="card-hud neon-blue"><span class="stat-label">VENDEDOR COM MAIS MATRÍCULAS REALIZADAS</span><h2 style="font-size:16px; margin-top:5px;">{top_v}</h2></div>', unsafe_allow_html=True)
@@ -330,35 +329,46 @@ with tab_rel:
             with col_graf_2:
                 st.markdown("<h4 style='text-align:center; color:#bc13fe;'>⚡ PERFORMANCE DE VENDAS</h4>", unsafe_allow_html=True)
                 
-                # UNIFICAÇÃO NO GRÁFICO
                 df_vend = df_f.copy()
                 df_vend["Vendedor"] = df_vend["Vendedor"].str.split(" - ").str[0].str.strip()
                 df_stats = df_vend["Vendedor"].value_counts().reset_index().head(5)
                 df_stats.columns = ['Vendedor', 'Total']
                 
+                num_vendedores = len(df_stats)
                 max_v = df_stats['Total'].max() if not df_stats.empty else 10
                 
+                # SE HOUVER APENAS 1 VENDEDOR, AJUSTA O MODO PARA APENAS MARCADOR (Evita que o ponto suma)
+                scatter_mode = 'markers+text' if num_vendedores == 1 else 'lines+markers+text'
+                
                 fig_vend = go.Figure(go.Scatter(
-                    x=df_stats['Vendedor'], y=df_stats['Total'], mode='lines+markers+text',
+                    x=df_stats['Vendedor'], y=df_stats['Total'], mode=scatter_mode,
                     text=df_stats['Total'], textposition="top center",
                     line=dict(color='#bc13fe', width=4, shape='spline'), 
                     marker=dict(size=12, color='#ffffff', line=dict(color='#bc13fe', width=3)),
-                    fill='tozeroy', fillcolor='rgba(188, 19, 254, 0.2)',
-                    textfont=dict(size=10, color="#bc13fe", family="Arial Black") # Fonte reduzida para 10
+                    fill='tozeroy' if num_vendedores > 1 else None, 
+                    fillcolor='rgba(188, 19, 254, 0.2)',
+                    textfont=dict(size=10, color="#bc13fe", family="Arial Black")
                 ))
+                
+                # AJUSTE DE RANGE DINÂMICO
+                if num_vendedores == 1:
+                    x_range = [-1, 1]
+                else:
+                    x_range = [-0.5, num_vendedores - 0.5]
+
                 fig_vend.update_layout(
                     template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
                     height=400, 
-                    margin=dict(t=50, l=60, r=60), # Margens aumentadas para 60px para não cortar
+                    margin=dict(t=50, l=60, r=60), 
                     xaxis=dict(
                         showgrid=False, 
-                        range=[-0.5, 4.5], # Aumenta o respiro lateral do eixo
+                        range=x_range,
                         tickfont=dict(size=10)
                     ), 
                     yaxis=dict(
                         showgrid=True, gridcolor="rgba(255,255,255,0.05)", 
                         showticklabels=False, 
-                        range=[0, max_v * 1.35] # Aumenta o respiro superior
+                        range=[0, max_v * 1.35]
                     )
                 )
                 st.plotly_chart(fig_vend, use_container_width=True, config={'displayModeBar': False})
