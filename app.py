@@ -50,7 +50,6 @@ DIC_CURSOS = {
 # --- CSS HUD NEON COMPLETO ---
 st.markdown("""
     <style>
-    /* Estilos Gerais */
     .stApp { background-color: #0b0e1e; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     .stTabs [data-baseweb="tab-list"] { 
         background-color: #121629; border-bottom: 1px solid #1f295a;
@@ -59,53 +58,29 @@ st.markdown("""
     }
     .stTabs [data-baseweb="tab"] { color: #64748b !important; font-size: 11px !important; padding: 0 30px !important; text-transform: uppercase;}
     .stTabs [aria-selected="true"] { color: #00f2ff !important; border-bottom: 2px solid #00f2ff !important; background-color: rgba(0, 242, 255, 0.05) !important; }
-    
     .main .block-container { padding-top: 5px !important; max-width: 100% !important; margin: 0 auto !important; }
-    
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; display: flex; align-items: center; justify-content: flex-end; }
-    
-    /* Configuração Fixa dos Campos de Cadastro (Conforme Ajustes Anteriores) */
     div[data-testid="stTextInput"] { width: 100% !important; margin-bottom: 5px !important; }
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 18px !important; border-radius: 5px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
-
-    /* Estilos da Tabela */
     .custom-table-wrapper { width: 100%; max-height: 600px; overflow: auto; background-color: #121629; border: 1px solid #1f295a; border-radius: 10px; margin-top: 5px; }
     .custom-table { width: 100%; border-collapse: collapse; min-width: 2500px !important; }
     .custom-table th { background-color: #1f295a; color: #00f2ff; text-align: left; padding: 15px; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; z-index: 99; }
     .custom-table td { padding: 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: pre-wrap !important; }
-    
     .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }
     .status-ativo { background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
     .status-cancelado { background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
 
     /* Estilos Relatório HUD */
     .card-hud-new {
-        background: rgba(18, 22, 41, 0.5);
-        border: 1px solid #1f295a;
-        padding: 10px;
-        border-radius: 8px;
-        text-align: left;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        position: relative;
-        height: 80px;
+        background: rgba(18, 22, 41, 0.5); border: 1px solid #1f295a; padding: 10px; border-radius: 8px; text-align: left; display: flex; flex-direction: column; justify-content: space-between; position: relative; height: 80px;
     }
     .card-hud-new::before { content: ''; position: absolute; top: 0; left: 0; width: 8px; height: 8px; border-top: 2px solid currentColor; border-left: 2px solid currentColor; }
     .hud-title { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 1px;}
     .hud-value { font-size: 22px; font-weight: bold; margin-top: -5px; text-shadow: 0 0 8px currentColor;}
     .hud-sub { font-size: 9px; color: #64748b; margin-top: -5px;}
     .hud-cyan { color: #00f2ff; } .hud-purple { color: #bc13fe; } .hud-pink { color: #ff007a; } .hud-green { color: #2ecc71; }
-
-    .chart-container-hud {
-        background: rgba(18, 22, 41, 0.3);
-        border: 1px solid #1f295a;
-        border-radius: 8px;
-        padding: 15px;
-        margin-top: 10px;
-    }
-
+    .chart-container-hud { background: rgba(18, 22, 41, 0.3); border: 1px solid #1f295a; border-radius: 8px; padding: 15px; margin-top: 10px; }
     .hud-city-bar-container { background: rgba(31, 41, 90, 0.2); height: 10px; border-radius: 5px; width: 100%; position: relative; margin: 10px 0; border: 1px solid #1f295a; overflow: hidden;}
     .hud-city-segment { height: 100%; float: left; border-right: 1px solid #0b0e1e;}
     .hud-city-legend { display: flex; flex-wrap: wrap; gap: 15px; font-size: 9px; margin-top: 5px;}
@@ -166,6 +141,10 @@ def formatar_cpf(chave):
     if len(valor) == 11:
         st.session_state[chave] = f"{valor[:3]}.{valor[3:6]}.{valor[6:9]}-{valor[9:]}"
 
+def limpar_vendedor(nome):
+    if not nome: return "N/A"
+    return str(nome).split('-')[0].strip().upper()
+
 # --- NAVEGAÇÃO ---
 tab_cad, tab_ger, tab_rel = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"])
 
@@ -202,7 +181,6 @@ with tab_cad:
                         ws.insert_rows(d_f, row=len(ws.col_values(1)) + 2 if ws.col_values(1) else 2, value_input_option='RAW')
                         st.session_state.lista_previa = []; st.session_state.reset_geral += 1; st.cache_data.clear(); st.success("Enviado!"); st.rerun()
                     except Exception as e: st.error(f"Erro: {e}")
-        
         if st.session_state.lista_previa: 
             st.markdown(f"### 📋 PRÉ-VISUALIZAÇÃO ({len(st.session_state.lista_previa)} ALUNOS)")
             st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
@@ -238,6 +216,7 @@ with tab_rel:
             df_f = df_r.loc[(df_r[dt_col].dt.date >= iv[0]) & (df_r[dt_col].dt.date <= iv[1])].copy()
             df_f['v_rec'] = df_f['Pagamento'].apply(extrair_valor_recebido)
             df_f['v_tic'] = df_f['Pagamento'].apply(extrair_valor_geral)
+            df_f['Vend_Clean'] = df_f['Vendedor'].apply(limpar_vendedor)
             
             c1, c2, c3, c4, c5 = st.columns(5)
             with c1: st.markdown(f'<div class="card-hud-new hud-cyan"><div class="hud-title">Matrículas</div><div class="hud-value">{len(df_f)}</div></div>', unsafe_allow_html=True)
@@ -249,17 +228,17 @@ with tab_rel:
 
             g1, g2 = st.columns(2)
             with g1:
-                st.markdown('<div class="chart-container-hud"><p class="hud-title hud-cyan">Status</p>', unsafe_allow_html=True)
+                st.markdown('<div class="chart-container-hud"><p class="hud-title hud-cyan">Status Geral</p>', unsafe_allow_html=True)
                 figp = go.Figure(data=[go.Pie(labels=df_f['STATUS'].value_counts().index, values=df_f['STATUS'].value_counts().values, hole=0.6, marker=dict(colors=['#2ecc71', '#ff007a']))])
                 figp.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', showlegend=False, height=220, margin=dict(t=0,b=0,l=0,r=0))
                 st.plotly_chart(figp, use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
             with g2:
-                st.markdown('<div class="chart-container-hud"><p class="hud-title hud-purple">Vendedores</p>', unsafe_allow_html=True)
-                dfv = df_f["Vendedor"].value_counts().reset_index().head(5)
-                figv = px.bar(dfv, x='Vendedor', y='count', text='count')
-                figv.update_traces(marker_color='#bc13fe', textposition='outside')
-                figv.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(title=''), yaxis=dict(visible=False), height=220, margin=dict(t=20,b=0,l=0,r=0))
+                st.markdown('<div class="chart-container-hud"><p class="hud-title hud-purple">Top Vendedores</p>', unsafe_allow_html=True)
+                # Agrupamento por vendedor limpo
+                df_v_pie = df_f['Vend_Clean'].value_counts().reset_index()
+                figv = go.Figure(data=[go.Pie(labels=df_v_pie['Vend_Clean'], values=df_v_pie['count'], hole=0.6, marker=dict(colors=['#00f2ff', '#bc13fe', '#ff007a', '#2ecc71', '#ff9f43']))])
+                figv.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', showlegend=True, height=220, margin=dict(t=0,b=0,l=0,r=0), legend=dict(font=dict(size=9)))
                 st.plotly_chart(figv, use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
 
