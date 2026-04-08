@@ -13,7 +13,6 @@ from openpyxl import Workbook, load_workbook
 from io import BytesIO
 
 # --- DEFINIÇÃO DO CAMINHO DA LOGO ---
-# Isso garante que o Streamlit encontre o arquivo no servidor
 diretorio_atual = os.path.dirname(os.path.abspath(__file__))
 caminho_logo = os.path.join(diretorio_atual, "logo.png")
 
@@ -67,7 +66,9 @@ st.markdown("""
     }
     .stTabs [data-baseweb="tab"] { color: #64748b !important; font-size: 11px !important; padding: 0 30px !important; }
     .stTabs [aria-selected="true"] { color: #00f2ff !important; border-bottom: 2px solid #00f2ff !important; background-color: rgba(0, 242, 255, 0.05) !important; }
-    .main .block-container { padding-top: 50px !important; max-width: 100% !important; margin: 0 auto !important; }
+    
+    /* Ajuste do container principal */
+    .main .block-container { padding-top: 40px !important; max-width: 100% !important; margin: 0 auto !important; }
     
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; display: flex; align-items: center; justify-content: flex-end; }
     div[data-testid="stTextInput"] { width: 100% !important; }
@@ -94,14 +95,22 @@ st.markdown("""
     div.stButton > button:hover { background-color: #00d4df !important; box-shadow: 0 0 15px rgba(0, 242, 255, 0.6) !important; color: #000000 !important; }
 
     header {visibility: hidden;} footer {visibility: hidden;}
+    
+    /* Estilo para a logo no canto */
+    .logo-container {
+        position: relative;
+        top: -10px;
+        left: 0px;
+        margin-bottom: 10px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# --- LOGO NO TOPO (CONTROLE DE ERRO) ---
-_, col_logo, _ = st.columns([1, 0.4, 1])
-with col_logo:
-    if os.path.exists(caminho_logo):
-        st.image(caminho_logo, width=150)
+# --- LOGO NO CANTO ESQUERDO ---
+if os.path.exists(caminho_logo):
+    st.markdown('<div class="logo-container">', unsafe_allow_html=True)
+    st.image(caminho_logo, width=90) # Tamanho reduzido para 90px
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # --- CONEXÃO REFORÇADA ---
 conn = st.connection("gsheets", type=GSheetsConnection)
