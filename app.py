@@ -248,7 +248,7 @@ with tab_ger:
             rows += f"<tr><td><span class='{sc}'>{r['STATUS']}</span></td><td>{r['UNID.']}</td><td>{r['TURMA']}</td><td>{r['10C']}</td><td>{r['ING']}</td><td>{r['DT_CAD']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ID']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ALUNO']}</td><td>{r['TEL_RESP']}</td><td>{r['TEL_ALU']}</td><td>{r['CPF']}</td><td>{r['CIDADE']}</td><td>{r['CURSO']}</td><td>{r['PAGTO']}</td><td>{r['VEND.']}</td><td>{r['DT_MAT']}</td></tr>"
         st.markdown(f'<div class="custom-table-wrapper"><table class="custom-table"><thead><tr>' + ''.join([f'<th>{h}</th>' for h in df_g.columns]) + f'</tr></thead><tbody>{rows}</tbody></table></div>', unsafe_allow_html=True)
 
-# --- ABA 3: RELATÓRIOS (RESTAURAÇÃO VISUAL PREMIUM) ---
+# --- ABA 3: RELATÓRIOS ---
 with tab_rel:
     df_r = safe_read()
     if not df_r.empty:
@@ -273,7 +273,7 @@ with tab_rel:
                 st.markdown(f'<div class="card-hud neon-purple"><span class="stat-label">TICKET MÉDIO</span><div style="font-size:18px; font-weight:bold; color:#e0e0e0;">BOL: R${tm_b:.0f}<br>CAR: R${tm_c:.0f}</div></div>', unsafe_allow_html=True)
             with c6: st.markdown(f'<div class="card-hud neon-blue"><span class="stat-label">VENDEDOR COM MAIS MATRÍCULAS REALIZADAS</span><h2 style="font-size:16px; margin-top:5px;">{df_f["Vendedor"].value_counts().idxmax() if not df_f.empty else "---"}</h2></div>', unsafe_allow_html=True)
 
-            # --- B: STATUS DA OPERAÇÃO (BARRA DE ENERGIA PREMIUM) ---
+            # --- B: STATUS DA OPERAÇÃO ---
             st.write("")
             total_st = len(df_f)
             if total_st > 0:
@@ -281,13 +281,11 @@ with tab_rel:
                 can_c = len(df_f[df_f["STATUS"].str.upper()=="CANCELADO"])
                 
                 fig_status = go.Figure()
-                # Barra de Ativos (Verde Neon)
                 fig_status.add_trace(go.Bar(
                     y=["STATUS"], x=[at_c], orientation='h', name="ATIVOS",
                     marker=dict(color='#2ecc71', line=dict(color='#2ecc71', width=0)),
                     text=[f"<b>ATIVOS: {at_c}</b>"], textposition='inside', insidetextanchor='start'
                 ))
-                # Barra de Cancelados (Vermelho Neon)
                 fig_status.add_trace(go.Bar(
                     y=["STATUS"], x=[can_c], orientation='h', name="CANCELADOS",
                     marker=dict(color='#ff4b4b', line=dict(color='#ff4b4b', width=0)),
@@ -337,12 +335,13 @@ with tab_rel:
                     line=dict(color='#bc13fe', width=4, shape='spline'), 
                     marker=dict(size=12, color='#ffffff', line=dict(color='#bc13fe', width=3)),
                     fill='tozeroy', fillcolor='rgba(188, 19, 254, 0.2)',
-                    textfont=dict(size=14, color="#bc13fe", family="Arial Black")
+                    # REDUÇÃO DA FONTE: size=11
+                    textfont=dict(size=11, color="#bc13fe", family="Arial Black")
                 ))
                 fig_vend.update_layout(
                     template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
-                    height=400, margin=dict(t=50),
-                    xaxis=dict(showgrid=False), 
+                    height=400, margin=dict(t=50, l=40, r=40), # AUMENTO DAS MARGENS LATERAIS (L e R)
+                    xaxis=dict(showgrid=False, range=[-0.3, 4.3]), # EXPANSÃO DO RANGE PARA NÃO CORTAR TEXTO
                     yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", showticklabels=False, range=[0, max_v * 1.3])
                 )
                 st.plotly_chart(fig_vend, use_container_width=True, config={'displayModeBar': False})
