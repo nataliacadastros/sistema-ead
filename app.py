@@ -12,12 +12,17 @@ from google.oauth2.service_account import Credentials
 from openpyxl import Workbook, load_workbook
 from io import BytesIO
 
+# --- DEFINIÇÃO DO CAMINHO DA LOGO ---
+# Isso garante que o Streamlit encontre o arquivo no servidor
+diretorio_atual = os.path.dirname(os.path.abspath(__file__))
+caminho_logo = os.path.join(diretorio_atual, "logo.png")
+
 # --- CONFIGURAÇÕES DA PÁGINA ---
 st.set_page_config(
     page_title="SISTEMA ADM | PROFISSIONALIZA", 
     layout="wide", 
     initial_sidebar_state="collapsed",
-    page_icon="logo.png"  # Logo na aba do navegador
+    page_icon=caminho_logo if os.path.exists(caminho_logo) else None
 )
 
 # --- ARQUIVOS E PERSISTÊNCIA ---
@@ -62,8 +67,6 @@ st.markdown("""
     }
     .stTabs [data-baseweb="tab"] { color: #64748b !important; font-size: 11px !important; padding: 0 30px !important; }
     .stTabs [aria-selected="true"] { color: #00f2ff !important; border-bottom: 2px solid #00f2ff !important; background-color: rgba(0, 242, 255, 0.05) !important; }
-    
-    /* Ajuste do container principal para acomodar a logo no topo */
     .main .block-container { padding-top: 50px !important; max-width: 100% !important; margin: 0 auto !important; }
     
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; display: flex; align-items: center; justify-content: flex-end; }
@@ -94,13 +97,11 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- LOGO NO TOPO (MINIMALISTA) ---
+# --- LOGO NO TOPO (CONTROLE DE ERRO) ---
 _, col_logo, _ = st.columns([1, 0.4, 1])
 with col_logo:
-    try:
-        st.image("logo.png", width=150)
-    except:
-        pass
+    if os.path.exists(caminho_logo):
+        st.image(caminho_logo, width=150)
 
 # --- CONEXÃO REFORÇADA ---
 conn = st.connection("gsheets", type=GSheetsConnection)
