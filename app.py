@@ -24,6 +24,11 @@ st.set_page_config(
     page_icon=caminho_logo if os.path.exists(caminho_logo) else None
 )
 
+# --- ESTADOS DE SESSÃO PARA PERSONALIZAÇÃO ---
+if "cfg_width" not in st.session_state: st.session_state.cfg_width = 100
+if "cfg_height" not in st.session_state: st.session_state.cfg_height = 18
+if "cfg_margin" not in st.session_state: st.session_state.cfg_margin = 5
+
 # --- ARQUIVOS E PERSISTÊNCIA ---
 ARQUIVO_TAGS = "tags_salvas.json"
 ARQUIVO_CIDADES = "cidades.xlsx"
@@ -55,39 +60,45 @@ DIC_CURSOS = {
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- CSS HUD NEON COMPLETO ---
-st.markdown("""
+# --- CSS HUD NEON DINÂMICO ---
+st.markdown(f"""
     <style>
-    .stApp { background-color: #0b0e1e; color: #e0e0e0; }
-    .stTabs [data-baseweb="tab-list"] { 
+    .stApp {{ background-color: #0b0e1e; color: #e0e0e0; }}
+    .stTabs [data-baseweb="tab-list"] {{ 
         background-color: #121629; border-bottom: 1px solid #1f295a;
         position: fixed; top: 0; left: 0 !important; width: 100vw !important;
         z-index: 999; justify-content: center; height: 35px !important;
-    }
-    .stTabs [data-baseweb="tab"] { color: #64748b !important; font-size: 11px !important; padding: 0 30px !important; }
-    .stTabs [aria-selected="true"] { color: #00f2ff !important; border-bottom: 2px solid #00f2ff !important; background-color: rgba(0, 242, 255, 0.05) !important; }
+    }}
+    .stTabs [data-baseweb="tab"] {{ color: #64748b !important; font-size: 11px !important; padding: 0 30px !important; }}
+    .stTabs [aria-selected="true"] {{ color: #00f2ff !important; border-bottom: 2px solid #00f2ff !important; background-color: rgba(0, 242, 255, 0.05) !important; }}
     
-    .main .block-container { padding-top: 5px !important; max-width: 100% !important; margin: 0 auto !important; }
+    .main .block-container {{ padding-top: 5px !important; max-width: 100% !important; margin: 0 auto !important; }}
     
-    label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; display: flex; align-items: center; justify-content: flex-end; }
+    label {{ color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; display: flex; align-items: center; justify-content: flex-end; }}
     
-    /* AJUSTE: Pequeno espaçamento (margin-bottom) entre os campos */
-    div[data-testid="stTextInput"] { 
-        width: 100% !important; 
-        margin-bottom: 5px !important; 
-    }
+    /* AJUSTES DINÂMICOS CONTROLADOS PELA ABA AJUSTES */
+    div[data-testid="stTextInput"] {{ 
+        width: {st.session_state.cfg_width}% !important; 
+        margin-bottom: {st.session_state.cfg_margin}px !important; 
+    }}
     
-    .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 18px !important; border-radius: 5px !important; }
-    .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
-
-    .custom-table-wrapper { width: 100%; max-height: 600px; overflow: auto; background-color: #121629; border: 2px solid #1f295a; border-radius: 10px; margin-top: 5px; }
-    .custom-table { width: 100%; border-collapse: collapse; min-width: 2500px !important; }
-    .custom-table th { background-color: #1f295a; color: #00f2ff; text-align: left; padding: 15px; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; z-index: 99; }
-    .custom-table td { padding: 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: pre-wrap !important; }
+    .stTextInput input {{ 
+        background-color: white !important; 
+        color: black !important; 
+        text-transform: uppercase !important; 
+        font-size: 12px !important; 
+        height: {st.session_state.cfg_height}px !important; 
+        border-radius: 5px !important; 
+    }}
     
-    header {visibility: hidden;} footer {visibility: hidden;}
+    .stCheckbox label p {{ color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }}
+    .custom-table-wrapper {{ width: 100%; max-height: 600px; overflow: auto; background-color: #121629; border: 2px solid #1f295a; border-radius: 10px; margin-top: 5px; }}
+    .custom-table {{ width: 100%; border-collapse: collapse; min-width: 2500px !important; }}
+    .custom-table th {{ background-color: #1f295a; color: #00f2ff; text-align: left; padding: 15px; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; z-index: 99; }}
+    .custom-table td {{ padding: 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: pre-wrap !important; }}
     
-    [data-testid="stVerticalBlock"] > div:first-child { margin-top: -15px !important; }
+    header {{visibility: hidden;}} footer {{visibility: hidden;}}
+    [data-testid="stVerticalBlock"] > div:first-child {{ margin-top: -15px !important; }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -107,7 +118,7 @@ def safe_read():
         st.error(f"Erro de conexão: {e}")
         return pd.DataFrame()
 
-# --- ESTADOS DE SESSÃO ---
+# --- ESTADOS DE SESSÃO GERAIS ---
 if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
 if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
@@ -125,10 +136,8 @@ def extrair_valor_recebido(texto):
     if not texto: return 0.0
     match = re.search(r'PAG[OA]S?\s*(?:R\$)?\s*([\d\.,]+)', str(texto).upper())
     if match:
-        try:
-            return float(match.group(1).replace('.', '').replace(',', '.'))
-        except:
-            return 0.0
+        try: return float(match.group(1).replace('.', '').replace(',', '.'))
+        except: return 0.0
     return 0.0
 
 def extrair_valor_geral(texto):
@@ -164,7 +173,7 @@ def atualizar_pagamento():
     st.session_state[f"f_pagto_{suffix}"] = novo.upper()
 
 # --- NAVEGAÇÃO ---
-tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
+tab_cad, tab_ger, tab_rel, tab_subir, tab_adj = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS", "⚙️ AJUSTES"])
 
 # --- ABA 1: CADASTRO ---
 with tab_cad:
@@ -193,10 +202,7 @@ with tab_cad:
         with b1:
             if st.button("💾 SALVAR ALUNO"):
                 if st.session_state[f"f_nome_{s_al}"]:
-                    st.session_state.lista_previa.append({
-                        "ID": st.session_state[f"f_id_{s_al}"].upper(), "Aluno": st.session_state[f"f_nome_{s_al}"].upper(), "Tel_Resp": str(st.session_state[f"f_tel_resp_{s_al}"]), 
-                        "Tel_Aluno": str(st.session_state[f"f_tel_aluno_{s_al}"]), "CPF": st.session_state[f"f_cpf_{s_al}"], "Cidade": st.session_state[f"f_cid_{s_ge}"].upper(), 
-                        "Course": st.session_state[f"input_curso_key_{s_al}"].upper(), "Pagto": st.session_state[f"f_pagto_{s_al}"].upper(), "Vendedor": st.session_state[f"f_vend_{s_ge}"].upper(), "Data_Mat": st.session_state[f"f_data_{s_ge}"]})
+                    st.session_state.lista_previa.append({"ID": st.session_state[f"f_id_{s_al}"].upper(), "Aluno": st.session_state[f"f_nome_{s_al}"].upper(), "Tel_Resp": str(st.session_state[f"f_tel_resp_{s_al}"]), "Tel_Aluno": str(st.session_state[f"f_tel_aluno_{s_al}"]), "CPF": st.session_state[f"f_cpf_{s_al}"], "Cidade": st.session_state[f"f_cid_{s_ge}"].upper(), "Course": st.session_state[f"input_curso_key_{s_al}"].upper(), "Pagto": st.session_state[f"f_pagto_{s_al}"].upper(), "Vendedor": st.session_state[f"f_vend_{s_ge}"].upper(), "Data_Mat": st.session_state[f"f_data_{s_ge}"]})
                     st.session_state.reset_aluno += 1; st.rerun()
         with b2:
             if st.button("📤 ENVIAR PLANILHA"):
@@ -206,7 +212,7 @@ with tab_cad:
                         ws = client.open_by_url(creds["spreadsheet"]).get_worksheet(0); d_f = []
                         for a in st.session_state.lista_previa: d_f.append(["ATIVO", "MGA", "A DEFINIR", "SIM" if "10 CURSOS" in a["Course"] else "NÃO", "A DEFINIR" if "INGLÊS" in a["Course"] else "NÃO", date.today().strftime("%d/%m/%Y"), a["ID"], a["Aluno"], a["Tel_Resp"], a["Tel_Aluno"], a["CPF"], a["Cidade"], a["Course"], a["Pagto"], a["Vendedor"], a["Data_Mat"]])
                         ws.insert_rows(d_f, row=len(ws.col_values(1)) + 2 if ws.col_values(1) else 2, value_input_option='RAW')
-                        st.session_state.lista_previa = []; st.session_state.reset_geral += 1; st.success("Enviado!"); st.cache_data.clear(); st.rerun()
+                        st.session_state.lista_previa = []; st.session_state.reset_geral += 1; st.cache_data.clear(); st.success("Enviado!"); st.rerun()
                     except Exception as e: st.error(f"Erro: {e}")
         
         if st.session_state.lista_previa: 
@@ -359,3 +365,11 @@ with tab_subir:
             output = BytesIO(); wb = Workbook(); ws = wb.active; ws.append(list(st.session_state.df_final_processado.columns))
             for r in st.session_state.df_final_processado.values.tolist(): ws.append([str(val) for val in r])
             wb.save(output); st.download_button("📥 BAIXAR EXCEL FINAL", output.getvalue(), f"ead_{date.today()}.xlsx", on_click=reset_campos_subir, use_container_width=True)
+
+# --- ABA 5: AJUSTES (PERSONALIZAÇÃO) ---
+with tab_adj:
+    st.markdown("### ⚙️ AJUSTES DE INTERFACE (CADASTRO)")
+    st.session_state.cfg_width = st.slider("Largura dos Campos (%)", 10, 100, st.session_state.cfg_width)
+    st.session_state.cfg_height = st.slider("Altura dos Campos (px)", 10, 60, st.session_state.cfg_height)
+    st.session_state.cfg_margin = st.slider("Distância entre Campos (px)", 0, 50, st.session_state.cfg_margin)
+    st.info("Os ajustes acima refletem automaticamente na aba de Cadastro.")
