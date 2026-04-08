@@ -70,7 +70,6 @@ st.markdown("""
     .custom-table { width: 100%; border-collapse: collapse; min-width: 2500px !important; }
     .custom-table th { background-color: #1f295a; color: #00f2ff; text-align: left; padding: 15px; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; z-index: 99; }
     
-    /* AJUSTE: white-space: pre-wrap permite pular linha conforme o texto original */
     .custom-table td { padding: 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: pre-wrap !important; }
     
     .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }
@@ -149,10 +148,17 @@ def reset_campos_subir():
     st.session_state.df_auto_ready = None
 
 def extrair_valor_recebido(texto):
+    if not texto: return 0.0
     match = re.search(r'PAG[OA]S?\s*(?:R\$)?\s*([\d\.,]+)', str(texto).upper())
-    return float(match.group(1).replace('.', '').replace(',', '.')) if match else 0.0
+    if match:
+        try:
+            return float(match.group(1).replace('.', '').replace(',', '.'))
+        except:
+            return 0.0
+    return 0.0
 
 def extrair_valor_geral(texto):
+    if not texto: return 0.0
     try:
         v = re.findall(r'\d+(?:\.\d+)?(?:,\d+)?', str(texto).replace('.', '').replace(',', '.'))
         return float(v[0]) if v else 0.0
@@ -276,6 +282,7 @@ with tab_rel:
         iv = st.date_input("Filtro", value=(date.today()-timedelta(days=7), date.today()), format="DD/MM/YYYY")
         if len(iv) == 2:
             df_f = df_r.loc[(df_r[dt_col].dt.date >= iv[0]) & (df_r[dt_col].dt.date <= iv[1])].copy()
+            # As funções de extração abaixo agora possuem proteção try/except
             df_f['v_rec'] = df_f['Pagamento'].apply(extrair_valor_recebido); df_f['v_tic'] = df_f['Pagamento'].apply(extrair_valor_geral)
             c1, c2, c3, c4, c5, c6 = st.columns(6)
             with c1: st.markdown(f'<div class="card-hud neon-pink"><small>Mats</small><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
@@ -379,13 +386,28 @@ with tab_subir:
         raw_list = []
         if modo == "MANUAL":
             l_ids = u_user.strip().split('\n')
+            l_nomes = u_nome.strip().split('\n')
+            l_pays = u_pay.strip().split('\n')
+            l_cours = u_cour.strip().split('\n')
+            l_cells = u_cell.strip().split('\n')
+            l_docs = u_doc.strip().split('\n')
+            l_citys = u_city.strip().split('\n')
+            l_sells = u_sell.strip().split('\n')
+            l_dates = u_date.strip().split('\n')
+            
             for i in range(len(l_ids)):
                 try:
+                    # Proteção para garantir que todas as colunas tenham o mesmo índice i
                     raw_list.append({
-                        "User": l_ids[i], "Nome": u_nome.strip().split('\n')[i], "Pay": u_pay.strip().split('\n')[i], 
-                        "Cour": u_cour.strip().split('\n')[i], "Cell": u_cell.strip().split('\n')[i], 
-                        "Doc": u_doc.strip().split('\n')[i], "City": u_city.strip().split('\n')[i], 
-                        "Sell": u_sell.strip().split('\n')[i], "Date": u_date.strip().split('\n')[i]
+                        "User": l_ids[i], 
+                        "Nome": l_nomes[i] if i < len(l_nomes) else "", 
+                        "Pay": l_pays[i] if i < len(l_pays) else "", 
+                        "Cour": l_cours[i] if i < len(l_cours) else "", 
+                        "Cell": l_cells[i] if i < len(l_cells) else "", 
+                        "Doc": l_docs[i] if i < len(l_docs) else "", 
+                        "City": l_citys[i] if i < len(l_citys) else "", 
+                        "Sell": l_sells[i] if i < len(l_sells) else "", 
+                        "Date": l_dates[i] if i < len(l_dates) else ""
                     })
                 except: continue
         elif "df_auto_ready" in st.session_state and st.session_state.df_auto_ready is not None:
@@ -393,8 +415,11 @@ with tab_subir:
                 raw_list.append({"User": r.iloc[6], "Nome": r.iloc[7], "Cell": r.iloc[9], "Doc": r.iloc[10], "City": r.iloc[11], "Cour": r.iloc[12], "Pay": r.iloc[13], "Sell": r.iloc[14], "Date": r.iloc[15]})
 
         if raw_list:
-            wb_c = load_workbook(ARQUIVO_CIDADES); ws_c = wb_c.active
-            c_map = {str(r[1]).strip().upper(): str(r[2]) for r in ws_c.iter_rows(min_row=2, values_only=True) if r[1]}
+            try:
+                wb_c = load_workbook(ARQUIVO_CIDADES); ws_c = wb_c.active
+                c_map = {str(r[1]).strip().upper(): str(r[2]) for r in ws_c.iter_rows(min_row=2, values_only=True) if r[1]}
+            except: c_map = {}
+            
             processed = []
             for item in raw_list:
                 c_orig = str(item['Cour']).upper(); p_orig = str(item['Pay']).upper()
