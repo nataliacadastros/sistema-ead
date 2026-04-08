@@ -248,7 +248,7 @@ with tab_ger:
             rows += f"<tr><td><span class='{sc}'>{r['STATUS']}</span></td><td>{r['UNID.']}</td><td>{r['TURMA']}</td><td>{r['10C']}</td><td>{r['ING']}</td><td>{r['DT_CAD']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ID']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ALUNO']}</td><td>{r['TEL_RESP']}</td><td>{r['TEL_ALU']}</td><td>{r['CPF']}</td><td>{r['CIDADE']}</td><td>{r['CURSO']}</td><td>{r['PAGTO']}</td><td>{r['VEND.']}</td><td>{r['DT_MAT']}</td></tr>"
         st.markdown(f'<div class="custom-table-wrapper"><table class="custom-table"><thead><tr>' + ''.join([f'<th>{h}</th>' for h in df_g.columns]) + f'</tr></thead><tbody>{rows}</tbody></table></div>', unsafe_allow_html=True)
 
-# --- ABA 3: RELATÓRIOS (CORREÇÃO DE ERRO NO PLOTLY) ---
+# --- ABA 3: RELATÓRIOS (RESTAURAÇÃO VISUAL PREMIUM) ---
 with tab_rel:
     df_r = safe_read()
     if not df_r.empty:
@@ -273,7 +273,7 @@ with tab_rel:
                 st.markdown(f'<div class="card-hud neon-purple"><span class="stat-label">TICKET MÉDIO</span><div style="font-size:18px; font-weight:bold; color:#e0e0e0;">BOL: R${tm_b:.0f}<br>CAR: R${tm_c:.0f}</div></div>', unsafe_allow_html=True)
             with c6: st.markdown(f'<div class="card-hud neon-blue"><span class="stat-label">VENDEDOR COM MAIS MATRÍCULAS REALIZADAS</span><h2 style="font-size:16px; margin-top:5px;">{df_f["Vendedor"].value_counts().idxmax() if not df_f.empty else "---"}</h2></div>', unsafe_allow_html=True)
 
-            # --- B: STATUS DA OPERAÇÃO (VERSÃO CORRIGIDA) ---
+            # --- B: STATUS DA OPERAÇÃO (BARRA DE ENERGIA PREMIUM) ---
             st.write("")
             total_st = len(df_f)
             if total_st > 0:
@@ -281,22 +281,23 @@ with tab_rel:
                 can_c = len(df_f[df_f["STATUS"].str.upper()=="CANCELADO"])
                 
                 fig_status = go.Figure()
-                # Linha Neon Sólida (Ciano) para evitar ValueError
-                fig_status.add_trace(go.Scatter(
-                    x=[0, total_st], y=[0, 0], mode='lines+markers',
-                    line=dict(color='#00f2ff', width=4),
-                    marker=dict(size=12, color=['#ff4b4b', '#2ecc71'], line=dict(color='white', width=2)),
-                    showlegend=False
+                # Barra de Ativos (Verde Neon)
+                fig_status.add_trace(go.Bar(
+                    y=["STATUS"], x=[at_c], orientation='h', name="ATIVOS",
+                    marker=dict(color='#2ecc71', line=dict(color='#2ecc71', width=0)),
+                    text=[f"<b>ATIVOS: {at_c}</b>"], textposition='inside', insidetextanchor='start'
+                ))
+                # Barra de Cancelados (Vermelho Neon)
+                fig_status.add_trace(go.Bar(
+                    y=["STATUS"], x=[can_c], orientation='h', name="CANCELADOS",
+                    marker=dict(color='#ff4b4b', line=dict(color='#ff4b4b', width=0)),
+                    text=[f"<b>CANCELADOS: {can_c}</b>"], textposition='inside', insidetextanchor='end'
                 ))
                 fig_status.update_layout(
-                    annotations=[
-                        dict(x=0, y=0.5, text=f"<b>CANCELADOS: {can_c}</b>", showarrow=False, font=dict(color='#ff4b4b', size=13)),
-                        dict(x=total_st, y=0.5, text=f"<b>ATIVOS: {at_c}</b>", showarrow=False, font=dict(color='#2ecc71', size=13))
-                    ],
-                    height=70, margin=dict(t=5, b=5, l=10, r=10),
+                    barmode='stack', showlegend=False, height=50, margin=dict(t=5, b=5, l=10, r=10),
                     paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                    xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-total_st*0.1, total_st*1.1]),
-                    yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-1, 1])
+                    xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                    yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
                 )
                 st.plotly_chart(fig_status, use_container_width=True, config={'displayModeBar': False})
 
@@ -310,25 +311,43 @@ with tab_rel:
                 fig_city = go.Figure(go.Bar(
                     x=df_city['Cidade'], y=df_city['Qtd'],
                     text=df_city['Qtd'], textposition='outside',
-                    marker=dict(color=df_city['Qtd'], colorscale='Blues', line=dict(width=0))
+                    marker=dict(
+                        color=df_city['Qtd'], 
+                        colorscale=[[0, '#1f295a'], [1, '#00f2ff']], 
+                        line=dict(width=0)
+                    ),
+                    textfont=dict(size=14, color="#00f2ff", family="Arial Black")
                 ))
-                fig_city.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=400)
-                st.plotly_chart(fig_city, use_container_width=True)
+                fig_city.update_layout(
+                    template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
+                    height=400, margin=dict(t=50),
+                    xaxis=dict(showgrid=False), yaxis=dict(showgrid=False, showticklabels=False)
+                )
+                st.plotly_chart(fig_city, use_container_width=True, config={'displayModeBar': False})
 
             with col_graf_2:
                 st.markdown("<h4 style='text-align:center; color:#bc13fe;'>⚡ PERFORMANCE DE VENDAS</h4>", unsafe_allow_html=True)
                 df_vend = df_f["Vendedor"].value_counts().reset_index().head(5)
                 df_vend.columns = ['Vendedor', 'Total']
                 max_v = df_vend['Total'].max() if not df_vend.empty else 10
+                
                 fig_vend = go.Figure(go.Scatter(
                     x=df_vend['Vendedor'], y=df_vend['Total'], mode='lines+markers+text',
                     text=df_vend['Total'], textposition="top center",
-                    line=dict(color='#bc13fe', width=4), fill='tozeroy', fillcolor='rgba(188, 19, 254, 0.1)'
+                    line=dict(color='#bc13fe', width=4, shape='spline'), 
+                    marker=dict(size=12, color='#ffffff', line=dict(color='#bc13fe', width=3)),
+                    fill='tozeroy', fillcolor='rgba(188, 19, 254, 0.2)',
+                    textfont=dict(size=14, color="#bc13fe", family="Arial Black")
                 ))
-                fig_vend.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=400, yaxis=dict(range=[0, max_v * 1.3]))
-                st.plotly_chart(fig_vend, use_container_width=True)
+                fig_vend.update_layout(
+                    template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
+                    height=400, margin=dict(t=50),
+                    xaxis=dict(showgrid=False), 
+                    yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", showticklabels=False, range=[0, max_v * 1.3])
+                )
+                st.plotly_chart(fig_vend, use_container_width=True, config={'displayModeBar': False})
 
-# --- ABA 4: SUBIR ALUNOS (REFORÇADA) ---
+# --- ABA 4: SUBIR ALUNOS ---
 with tab_subir:
     st.markdown("### 📤 IMPORTAÇÃO EAD")
     modo = st.radio("Método:", ["MANUAL", "AUTOMÁTICO"], horizontal=True)
