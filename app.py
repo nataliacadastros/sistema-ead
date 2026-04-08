@@ -67,7 +67,6 @@ st.markdown("""
     .stTabs [data-baseweb="tab"] { color: #64748b !important; font-size: 11px !important; padding: 0 30px !important; }
     .stTabs [aria-selected="true"] { color: #00f2ff !important; border-bottom: 2px solid #00f2ff !important; background-color: rgba(0, 242, 255, 0.05) !important; }
     
-    /* Ajuste do container principal */
     .main .block-container { padding-top: 40px !important; max-width: 100% !important; margin: 0 auto !important; }
     
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; display: flex; align-items: center; justify-content: flex-end; }
@@ -96,7 +95,6 @@ st.markdown("""
 
     header {visibility: hidden;} footer {visibility: hidden;}
     
-    /* Estilo para a logo no canto */
     .logo-container {
         position: relative;
         top: -10px;
@@ -109,7 +107,7 @@ st.markdown("""
 # --- LOGO NO CANTO ESQUERDO ---
 if os.path.exists(caminho_logo):
     st.markdown('<div class="logo-container">', unsafe_allow_html=True)
-    st.image(caminho_logo, width=90) # Tamanho reduzido para 90px
+    st.image(caminho_logo, width=90)
     st.markdown('</div>', unsafe_allow_html=True)
 
 # --- CONEXÃO REFORÇADA ---
@@ -248,7 +246,7 @@ with tab_ger:
             rows += f"<tr><td><span class='{sc}'>{r['STATUS']}</span></td><td>{r['UNID.']}</td><td>{r['TURMA']}</td><td>{r['10C']}</td><td>{r['ING']}</td><td>{r['DT_CAD']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ID']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ALUNO']}</td><td>{r['TEL_RESP']}</td><td>{r['TEL_ALU']}</td><td>{r['CPF']}</td><td>{r['CIDADE']}</td><td>{r['CURSO']}</td><td>{r['PAGTO']}</td><td>{r['VEND.']}</td><td>{r['DT_MAT']}</td></tr>"
         st.markdown(f'<div class="custom-table-wrapper"><table class="custom-table"><thead><tr>' + ''.join([f'<th>{h}</th>' for h in df_g.columns]) + f'</tr></thead><tbody>{rows}</tbody></table></div>', unsafe_allow_html=True)
 
-# --- ABA 3: RELATÓRIOS ---
+# --- ABA 3: RELATÓRIOS (ALTERADA) ---
 with tab_rel:
     df_r = safe_read()
     if not df_r.empty:
@@ -258,6 +256,8 @@ with tab_rel:
         if len(iv) == 2:
             df_f = df_r.loc[(df_r[dt_col].dt.date >= iv[0]) & (df_r[dt_col].dt.date <= iv[1])].copy()
             df_f['v_rec'] = df_f['Pagamento'].apply(extrair_valor_recebido); df_f['v_tic'] = df_f['Pagamento'].apply(extrair_valor_geral)
+            
+            # --- INDICADORES ---
             c1, c2, c3, c4, c5, c6 = st.columns(6)
             with c1: st.markdown(f'<div class="card-hud neon-pink"><small>Mats</small><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
             with c2: st.markdown(f'<div class="card-hud neon-green"><small>Ativos</small><h2>{len(df_f[df_f["STATUS"].str.upper()=="ATIVO"])}</h2></div>', unsafe_allow_html=True)
@@ -266,22 +266,74 @@ with tab_rel:
             with c5:
                 tm_b = df_f[df_f['Pagamento'].str.contains('BOLETO', na=False, case=False)]['v_tic'].mean() or 0.0
                 tm_c = df_f[df_f['Pagamento'].str.contains('CARTÃO|LINK', na=False, case=False)]['v_tic'].mean() or 0.0
-                st.markdown(f'<div class="card-hud neon-purple"><small>Ticket Médio</small><div style="font-size:10px">Bol: R${tm_b:.0f} | Car: R${tm_c:.0f}</div></div>', unsafe_allow_html=True)
-            with c6: st.markdown(f'<div class="card-hud neon-blue"><small>Top</small><h2 style="font-size:14px">{df_f["Vendedor"].value_counts().idxmax() if not df_f.empty else "N/A"}</h2></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="card-hud neon-purple"><small>Ticket Médio</small><div style="font-size:15px; font-weight:bold; margin-top:5px;">Bol: R${tm_b:.0f}<br>Car: R${tm_c:.0f}</div></div>', unsafe_allow_html=True)
+            with c6: st.markdown(f'<div class="card-hud neon-blue"><small>Vendedor com mais matriculas realizadas</small><h2 style="font-size:14px">{df_f["Vendedor"].value_counts().idxmax() if not df_f.empty else "N/A"}</h2></div>', unsafe_allow_html=True)
+
+            # --- B: NOVO GRÁFICO DE STATUS EM LINHA (LOGOTIPO ABAIXO DOS CARDS) ---
+            st.write("")
+            st.markdown("### 📊 STATUS DA OPERAÇÃO")
+            total_status = len(df_f)
+            if total_status > 0:
+                ativos_count = len(df_f[df_f["STATUS"].str.upper()=="ATIVO"])
+                cancel_count = len(df_f[df_f["STATUS"].str.upper()=="CANCELADO"])
+                perc_ativo = (ativos_count / total_status) * 100
+                perc_cancel = (cancel_count / total_status) * 100
+
+                fig_status = go.Figure()
+                fig_status.add_trace(go.Bar(
+                    y=["Status"], x=[ativos_count], name="Ativos", orientation='h',
+                    text=f"ATIVOS: {ativos_count} ({perc_ativo:.1f}%)", textposition='inside',
+                    marker=dict(color='#2ecc71', line=dict(color='#2ecc71', width=1))
+                ))
+                fig_status.add_trace(go.Bar(
+                    y=["Status"], x=[cancel_count], name="Cancelados", orientation='h',
+                    text=f"CANCELADOS: {cancel_count} ({perc_cancel:.1f}%)", textposition='inside',
+                    marker=dict(color='#ff4b4b', line=dict(color='#ff4b4b', width=1))
+                ))
+                fig_status.update_layout(
+                    barmode='stack', showlegend=False, height=100, margin=dict(t=0, b=0, l=0, r=0),
+                    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                    xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                    yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
+                )
+                st.plotly_chart(fig_status, use_container_width=True, config={'displayModeBar': False})
+
             st.write("---")
-            df_cv = df_f['Cidade'].value_counts().head(4)
-            if not df_cv.empty:
-                t_c = df_cv.sum(); cores = ["#ff007a", "#2ecc71", "#00f2ff", "#bc13fe"]
-                s_html = "".join([f'<div class="hud-segment" style="width:{(q/t_c)*100}%; background:{cores[i%4]};"><div class="hud-label" style="color:{cores[i%4]};">{q}</div><div class="hud-city-name" style="color:{cores[i%4]};">{n}</div></div>' for i, (n, q) in enumerate(df_cv.items())])
-                st.markdown(f'<div class="hud-bar-container">{s_html}</div>', unsafe_allow_html=True)
+
             g1, g2 = st.columns(2)
+            
+            # --- A: GRÁFICO DE BARRAS POR CIDADE ---
             with g1:
-                figp = go.Figure(data=[go.Pie(labels=df_f['STATUS'].value_counts().index, values=df_f['STATUS'].value_counts().values, hole=0.5, marker=dict(colors=['#2ecc71', '#ff4b4b']))])
-                figp.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=400); st.plotly_chart(figp, use_container_width=True)
+                st.markdown("#### 📍 MATRÍCULAS POR CIDADE")
+                df_cv = df_f['Cidade'].value_counts().head(5).reset_index()
+                df_cv.columns = ['Cidade', 'Matrículas']
+                fig_city = px.bar(df_cv, x='Cidade', y='Matrículas', text='Matrículas',
+                                  color='Matrículas', color_continuous_scale=['#00f2ff', '#bc13fe'])
+                fig_city.update_traces(textposition='outside', marker_line_color='rgba(0,0,0,0)', marker_line_width=0)
+                fig_city.update_layout(
+                    template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                    coloraxis_showscale=False, height=400,
+                    xaxis=dict(showgrid=False, title=""), yaxis=dict(showgrid=False, title="", showticklabels=False)
+                )
+                st.plotly_chart(fig_city, use_container_width=True)
+
+            # --- C: GRÁFICO DE LINHA MODERNIZADO (VENDEDORES) ---
             with g2:
+                st.markdown("#### ⚡ PERFORMANCE DE VENDAS")
                 dfv = df_f["Vendedor"].value_counts().reset_index().head(5)
+                dfv.columns = ['Vendedor', 'count']
                 figv = px.line(dfv, x='Vendedor', y='count', markers=True, text='count')
-                figv.update_traces(line_color='#00f2ff'); figv.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=400); st.plotly_chart(figv, use_container_width=True)
+                figv.update_traces(
+                    line=dict(color='#00f2ff', width=4),
+                    marker=dict(size=12, color='#00f2ff', symbol='circle', line=dict(color='#e0e0e0', width=2)),
+                    textposition="top center",
+                    fill='tozeroy', fillcolor='rgba(0, 242, 255, 0.1)'
+                )
+                figv.update_layout(
+                    template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                    height=400, xaxis=dict(showgrid=False, title=""), yaxis=dict(showgrid=False, title="", showticklabels=False)
+                )
+                st.plotly_chart(figv, use_container_width=True)
 
 # --- ABA 4: SUBIR ALUNOS ---
 with tab_subir:
