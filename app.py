@@ -67,11 +67,16 @@ st.markdown("""
     .stTabs [data-baseweb="tab"] { color: #64748b !important; font-size: 11px !important; padding: 0 30px !important; }
     .stTabs [aria-selected="true"] { color: #00f2ff !important; border-bottom: 2px solid #00f2ff !important; background-color: rgba(0, 242, 255, 0.05) !important; }
     
-    /* Layout compacto: conteúdo colado no menu superior */
     .main .block-container { padding-top: 5px !important; max-width: 100% !important; margin: 0 auto !important; }
     
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; display: flex; align-items: center; justify-content: flex-end; }
-    div[data-testid="stTextInput"] { width: 100% !important; }
+    
+    /* AJUSTE: Pequeno espaçamento (margin-bottom) entre os campos */
+    div[data-testid="stTextInput"] { 
+        width: 100% !important; 
+        margin-bottom: 5px !important; 
+    }
+    
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 18px !important; border-radius: 5px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
 
@@ -80,18 +85,13 @@ st.markdown("""
     .custom-table th { background-color: #1f295a; color: #00f2ff; text-align: left; padding: 15px; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; z-index: 99; }
     .custom-table td { padding: 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: pre-wrap !important; }
     
-    .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }
-    .status-ativo { background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
-    .status-cancelado { background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
-
     header {visibility: hidden;} footer {visibility: hidden;}
     
-    /* Remove espaço extra acima da logo */
     [data-testid="stVerticalBlock"] > div:first-child { margin-top: -15px !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- CABEÇALHO COM LOGO ÚNICA À ESQUERDA ---
+# --- CABEÇALHO COM LOGO ---
 if os.path.exists(caminho_logo):
     c_logo, c_vazio = st.columns([0.1, 0.9])
     with c_logo:
