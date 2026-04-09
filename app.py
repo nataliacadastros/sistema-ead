@@ -205,24 +205,57 @@ with tab_cad:
         c3.checkbox("CONFIRMAÇÃO", key=f"chk_3_{s_al}", on_change=atualizar_pagamento)
         st.write("")
         _, b1, b2, _ = st.columns([1.2, 1.9, 1.9, 0.2])
+        
         with b1:
             if st.button("💾 SALVAR ALUNO"):
                 if st.session_state[f"f_nome_{s_al}"]:
                     st.session_state.lista_previa.append({
-                        "ID": st.session_state[f"f_id_{s_al}"].upper(), "Aluno": st.session_state[f"f_nome_{s_al}"].upper(), "Tel_Resp": str(st.session_state[f"f_tel_resp_{s_al}"]), 
-                        "Tel_Aluno": str(st.session_state[f"f_tel_aluno_{s_al}"]), "CPF": st.session_state[f"f_cpf_{s_al}"], "Cidade": st.session_state[f"f_cid_{s_ge}"].upper(), 
-                        "Course": st.session_state[f"input_curso_key_{s_al}"].upper(), "Pagto": st.session_state[f"f_pagto_{s_al}"].upper(), "Vendedor": st.session_state[f"f_vend_{s_ge}"].upper(), "Data_Mat": st.session_state[f"f_data_{s_ge}"]})
-                    st.session_state.reset_aluno += 1; st.rerun()
+                        "ID": st.session_state[f"f_id_{s_al}"].upper(),
+                        "Aluno": st.session_state[f"f_nome_{s_al}"].upper(),
+                        "Tel_Resp": str(st.session_state[f"f_tel_resp_{s_al}"]), 
+                        "Tel_Aluno": str(st.session_state[f"f_tel_aluno_{s_al}"]),
+                        "CPF": st.session_state[f"f_cpf_{s_al}"],
+                        "Cidade": st.session_state[f"f_cid_{s_ge}"].upper(), 
+                        "Course": st.session_state[f"input_curso_key_{s_al}"].upper(),
+                        "Pagto": st.session_state[f"f_pagto_{s_al}"].upper(),
+                        "Vendedor": st.session_state[f"f_vend_{s_ge}"].upper(),
+                        "Data_Mat": st.session_state[f"f_data_{s_ge}"]
+                    })
+                    st.session_state.reset_aluno += 1
+                    st.rerun()
+                else:
+                    st.warning("Preencha pelo menos o nome do aluno.")
+                    
         with b2:
             if st.button("📤 ENVIAR PLANILHA"):
                 if st.session_state.lista_previa:
                     try:
-                        creds = st.secrets["connections"]["gsheets"]; client = gspread.authorize(Credentials.from_service_account_info(creds, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
-                        ws = client.open_by_url(creds["spreadsheet"]).get_worksheet(0); d_f = []
-                        for a in st.session_state.lista_previa: d_f.append(["ATIVO", "MGA", "A DEFINIR", "SIM" if "10 CURSOS" in a["Course"] else "NÃO", "A DEFINIR" if "INGLÊS" in a["Course"] else "NÃO", date.today().strftime("%d/%m/%Y"), a["ID"], a["Aluno"], a["Tel_Resp"], a["Tel_Aluno"], a["CPF"], a["Cidade"], a["Course"], a["Pagto"], a["Vendedor"], a["Data_Mat"]])
-                        ws.insert_rows(d_f, row=len(ws.col_values(1)) + 2 if ws.col_values(1) else 2, value_input_option='RAW')
-                        st.session_state.lista_previa = []; st.session_state.reset_geral += 1; st.success("Enviado!"); st.cache_data.clear(); st.rerun()
-                    except Exception as e: st.error(f"Erro: {e}")
+                        creds_info = st.secrets["connections"]["gsheets"]
+                        client = gspread.authorize(Credentials.from_service_account_info(creds_info, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
+                        ws = client.open_by_url(creds_info["spreadsheet"]).get_worksheet(0)
+                        
+                        d_f = []
+                        for a in st.session_state.lista_previa:
+                            d_f.append([
+                                "ATIVO", "MGA", "A DEFINIR", 
+                                "SIM" if "10 CURSOS" in a["Course"] else "NÃO", 
+                                "A DEFINIR" if "INGLÊS" in a["Course"] else "NÃO", 
+                                date.today().strftime("%d/%m/%Y"), 
+                                a["ID"], a["Aluno"], a["Tel_Resp"], a["Tel_Aluno"], 
+                                a["CPF"], a["Cidade"], a["Course"], a["Pagto"], 
+                                a["Vendedor"], a["Data_Mat"]
+                            ])
+                        
+                        ws.append_rows(d_f, value_input_option='RAW')
+                        st.session_state.lista_previa = []
+                        st.session_state.reset_geral += 1
+                        st.success("Enviado com sucesso!")
+                        st.cache_data.clear()
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erro ao enviar: {e}")
+                else:
+                    st.info("Nenhum aluno na lista de pré-visualização.")
         
         if st.session_state.lista_previa: 
             st.markdown(f"### 📋 PRÉ-VISUALIZAÇÃO ({len(st.session_state.lista_previa)} ALUNOS)")
@@ -261,7 +294,6 @@ with tab_rel:
             df_f['v_rec'] = df_f['Pagamento'].apply(extrair_valor_recebido)
             df_f['v_tic'] = df_f['Pagamento'].apply(extrair_valor_geral)
             
-            # --- INDICADORES ---
             c1, c2, c3, c4, c5, c6 = st.columns(6)
             with c1: st.markdown(f'<div class="card-hud neon-pink"><span class="stat-label">MATRÍCULAS</span><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
             with c2: st.markdown(f'<div class="card-hud neon-green"><span class="stat-label">ATIVOS</span><h2>{len(df_f[df_f["STATUS"].str.upper()=="ATIVO"])}</h2></div>', unsafe_allow_html=True)
@@ -276,101 +308,39 @@ with tab_rel:
                 top_v = v_count.idxmax() if not v_count.empty else "---"
                 st.markdown(f'<div class="card-hud neon-blue"><span class="stat-label">VENDEDOR COM MAIS MATRÍCULAS REALIZADAS</span><h2 style="font-size:16px; margin-top:5px;">{top_v}</h2></div>', unsafe_allow_html=True)
 
-            # --- B: STATUS DA OPERAÇÃO ---
             st.write("")
             total_st = len(df_f)
             if total_st > 0:
                 at_c = len(df_f[df_f["STATUS"].str.upper()=="ATIVO"])
                 can_c = len(df_f[df_f["STATUS"].str.upper()=="CANCELADO"])
-                
                 fig_status = go.Figure()
-                fig_status.add_trace(go.Bar(
-                    y=["STATUS"], x=[at_c], orientation='h', name="ATIVOS",
-                    marker=dict(color='#2ecc71', line=dict(color='#2ecc71', width=0)),
-                    text=[f"<b>ATIVOS: {at_c}</b>"], textposition='inside', insidetextanchor='start'
-                ))
-                fig_status.add_trace(go.Bar(
-                    y=["STATUS"], x=[can_c], orientation='h', name="CANCELADOS",
-                    marker=dict(color='#ff4b4b', line=dict(color='#ff4b4b', width=0)),
-                    text=[f"<b>CANCELADOS: {can_c}</b>"], textposition='inside', insidetextanchor='end'
-                ))
-                fig_status.update_layout(
-                    barmode='stack', showlegend=False, height=50, margin=dict(t=5, b=5, l=10, r=10),
-                    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                    xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                    yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
-                )
+                fig_status.add_trace(go.Bar(y=["STATUS"], x=[at_c], orientation='h', marker=dict(color='#2ecc71'), text=[f"<b>ATIVOS: {at_c}</b>"], textposition='inside', insidetextanchor='start'))
+                fig_status.add_trace(go.Bar(y=["STATUS"], x=[can_c], orientation='h', marker=dict(color='#ff4b4b'), text=[f"<b>CANCELADOS: {can_c}</b>"], textposition='inside', insidetextanchor='end'))
+                fig_status.update_layout(barmode='stack', showlegend=False, height=50, margin=dict(t=5, b=5, l=10, r=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(showgrid=False, zeroline=False, showticklabels=False), yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
                 st.plotly_chart(fig_status, use_container_width=True, config={'displayModeBar': False})
 
             st.write("---")
             col_graf_1, col_graf_2 = st.columns(2)
-            
             with col_graf_1:
                 st.markdown("<h4 style='text-align:center; color:#00f2ff;'>📍 DISTRIBUIÇÃO POR CIDADE</h4>", unsafe_allow_html=True)
                 df_city = df_f['Cidade'].value_counts().head(5).reset_index()
                 df_city.columns = ['Cidade', 'Qtd']
-                fig_city = go.Figure(go.Bar(
-                    x=df_city['Cidade'], y=df_city['Qtd'],
-                    text=df_city['Qtd'], textposition='outside',
-                    marker=dict(
-                        color=df_city['Qtd'], 
-                        colorscale=[[0, '#1f295a'], [1, '#00f2ff']], 
-                        line=dict(width=0)
-                    ),
-                    textfont=dict(size=14, color="#00f2ff", family="Arial Black")
-                ))
-                fig_city.update_layout(
-                    template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
-                    height=400, margin=dict(t=50),
-                    xaxis=dict(showgrid=False), yaxis=dict(showgrid=False, showticklabels=False)
-                )
+                fig_city = go.Figure(go.Bar(x=df_city['Cidade'], y=df_city['Qtd'], text=df_city['Qtd'], textposition='outside', marker=dict(color=df_city['Qtd'], colorscale=[[0, '#1f295a'], [1, '#00f2ff']], line=dict(width=0)), textfont=dict(size=14, color="#00f2ff", family="Arial Black")))
+                fig_city.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=400, margin=dict(t=50), xaxis=dict(showgrid=False), yaxis=dict(showgrid=False, showticklabels=False))
                 st.plotly_chart(fig_city, use_container_width=True, config={'displayModeBar': False})
 
             with col_graf_2:
                 st.markdown("<h4 style='text-align:center; color:#bc13fe;'>⚡ PERFORMANCE DE VENDAS</h4>", unsafe_allow_html=True)
-                
-                df_vend = df_f.copy()
-                df_vend["Vendedor"] = df_vend["Vendedor"].str.split(" - ").str[0].str.strip()
-                df_stats = df_vend["Vendedor"].value_counts().reset_index().head(5)
+                df_temp = df_f.copy()
+                df_temp["Vendedor"] = df_temp["Vendedor"].str.split(" - ").str[0].str.strip()
+                df_stats = df_temp["Vendedor"].value_counts().reset_index().head(5)
                 df_stats.columns = ['Vendedor', 'Total']
-                
                 num_vendedores = len(df_stats)
                 max_v = df_stats['Total'].max() if not df_stats.empty else 10
-                
-                # SE HOUVER APENAS 1 VENDEDOR, AJUSTA O MODO PARA APENAS MARCADOR (Evita que o ponto suma)
                 scatter_mode = 'markers+text' if num_vendedores == 1 else 'lines+markers+text'
-                
-                fig_vend = go.Figure(go.Scatter(
-                    x=df_stats['Vendedor'], y=df_stats['Total'], mode=scatter_mode,
-                    text=df_stats['Total'], textposition="top center",
-                    line=dict(color='#bc13fe', width=4, shape='spline'), 
-                    marker=dict(size=12, color='#ffffff', line=dict(color='#bc13fe', width=3)),
-                    fill='tozeroy' if num_vendedores > 1 else None, 
-                    fillcolor='rgba(188, 19, 254, 0.2)',
-                    textfont=dict(size=10, color="#bc13fe", family="Arial Black")
-                ))
-                
-                # AJUSTE DE RANGE DINÂMICO
-                if num_vendedores == 1:
-                    x_range = [-1, 1]
-                else:
-                    x_range = [-0.5, num_vendedores - 0.5]
-
-                fig_vend.update_layout(
-                    template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
-                    height=400, 
-                    margin=dict(t=50, l=60, r=60), 
-                    xaxis=dict(
-                        showgrid=False, 
-                        range=x_range,
-                        tickfont=dict(size=10)
-                    ), 
-                    yaxis=dict(
-                        showgrid=True, gridcolor="rgba(255,255,255,0.05)", 
-                        showticklabels=False, 
-                        range=[0, max_v * 1.35]
-                    )
-                )
+                fig_vend = go.Figure(go.Scatter(x=df_stats['Vendedor'], y=df_stats['Total'], mode=scatter_mode, text=df_stats['Total'], textposition="top center", line=dict(color='#bc13fe', width=4, shape='spline'), marker=dict(size=12, color='#ffffff', line=dict(color='#bc13fe', width=3)), fill='tozeroy' if num_vendedores > 1 else None, fillcolor='rgba(188, 19, 254, 0.2)', textfont=dict(size=10, color="#bc13fe", family="Arial Black")))
+                x_range = [-1, 1] if num_vendedores == 1 else [-0.5, num_vendedores - 0.5]
+                fig_vend.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=400, margin=dict(t=50, l=60, r=60), xaxis=dict(showgrid=False, range=x_range, tickfont=dict(size=10)), yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", showticklabels=False, range=[0, max_v * 1.35]))
                 st.plotly_chart(fig_vend, use_container_width=True, config={'displayModeBar': False})
 
 # --- ABA 4: SUBIR ALUNOS ---
@@ -400,7 +370,6 @@ with tab_subir:
             u_cour = st.text_area("Cursos", height=100, key="in_cour"); u_sell = st.text_area("Vendedores", height=100, key="in_sell")
         u_date = st.text_area("Datas", height=100, key="in_date")
 
-    # --- SEÇÃO CONFIGURAR TAGS ---
     with st.expander("🛠️ CONFIGURAR TAGS", expanded=False):
         cursos_tags = ['PREPARATÓRIO JOVEM BANCÁRIO', 'PREPARATÓRIO AGRO', 'JOVEM NO DIREITO', 'INGLÊS', 'PRÉ MILITAR', 'ADMINISTRATIVO', 'INFORMÁTICA', 'PREPARATÓRIO ENCCEJA', 'JOVEM NA AVIAÇÃO', 'TECNOLOGIA']
         cols = st.columns(3); selected_tags = {}
@@ -433,8 +402,7 @@ with tab_subir:
             min_len = len(l_ids)
             if min_len > 0:
                 for i in range(min_len):
-                    try:
-                        raw_list.append({"User": l_ids[i], "Nome": l_nomes[i] if i < len(l_nomes) else "", "Pay": l_pays[i] if i < len(l_pays) else "", "Cour": l_cours[i] if i < len(l_cours) else "", "Cell": l_cells[i] if i < len(l_cells) else "", "Doc": l_docs[i] if i < len(l_docs) else "", "City": l_citys[i] if i < len(l_citys) else "", "Sell": l_sells[i] if i < len(l_sells) else "", "Date": l_dates[i] if i < len(l_dates) else ""})
+                    try: raw_list.append({"User": l_ids[i], "Nome": l_nomes[i] if i < len(l_nomes) else "", "Pay": l_pays[i] if i < len(l_pays) else "", "Cour": l_cours[i] if i < len(l_cours) else "", "Cell": l_cells[i] if i < len(l_cells) else "", "Doc": l_docs[i] if i < len(l_docs) else "", "City": l_citys[i] if i < len(l_citys) else "", "Sell": l_sells[i] if i < len(l_sells) else "", "Date": l_dates[i] if i < len(l_dates) else ""})
                     except: continue
         elif "df_auto_ready" in st.session_state and st.session_state.df_auto_ready is not None:
             for _, r in st.session_state.df_auto_ready.iterrows(): raw_list.append({"User": r.iloc[6], "Nome": r.iloc[7], "Cell": r.iloc[9], "Doc": r.iloc[10], "City": r.iloc[11], "Cour": r.iloc[12], "Pay": r.iloc[13], "Sell": r.iloc[14], "Date": r.iloc[15]})
