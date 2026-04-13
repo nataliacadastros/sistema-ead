@@ -67,21 +67,16 @@ st.markdown("""
     .stTabs [data-baseweb="tab"] { color: #64748b !important; font-size: 11px !important; padding: 0 30px !important; }
     .stTabs [aria-selected="true"] { color: #00f2ff !important; border-bottom: 2px solid #00f2ff !important; background-color: rgba(0, 242, 255, 0.05) !important; }
     
-    .main .block-container { padding-top: 40px !important; max-width: 100% !important; margin: 0 auto !important; }
+    .main .block-container { padding-top: 40px !important; max-width: 98% !important; margin: 0 auto !important; }
     
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; display: flex; align-items: center; justify-content: flex-end; }
     div[data-testid="stTextInput"] { width: 100% !important; }
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 18px !important; border-radius: 5px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
 
-    .custom-table-wrapper { width: 100%; max-height: 600px; overflow: auto; background-color: #121629; border: 2px solid #1f295a; border-radius: 10px; margin-top: 15px; }
-    .custom-table { width: 100%; border-collapse: collapse; min-width: 2500px !important; }
-    .custom-table th { background-color: #1f295a; color: #00f2ff; text-align: left; padding: 15px; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; z-index: 99; }
-    .custom-table td { padding: 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: pre-wrap !important; }
-    
-    .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }
-    .status-ativo { background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
-    .status-cancelado { background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
+    /* Ajuste para tabela ocupar a tela toda e sem quebra de linha */
+    [data-testid="stDataFrame"] { width: 100% !important; }
+    [data-testid="stTable"] td { white-space: nowrap !important; }
 
     .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 110px; display: flex; flex-direction: column; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
     .neon-pink { color: #ff007a; border-top: 2px solid #ff007a; }
@@ -261,36 +256,68 @@ with tab_cad:
             st.markdown(f"### 📋 PRÉ-VISUALIZAÇÃO ({len(st.session_state.lista_previa)} ALUNOS)")
             st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
-# --- ABA 2: GERENCIAMENTO ---
+# --- ABA 2: GERENCIAMENTO (SISTEMA ATIVO) ---
 with tab_ger:
-    cf1, cf2, cf3, cf4 = st.columns([2.5, 1.5, 1.5, 0.5])
+    cf1, cf2, cf3, cf4, cf5 = st.columns([2.0, 1.2, 1.2, 0.4, 1.2])
     with cf1: bu = st.text_input("🔍 Buscar...", key="busca_ger", placeholder="Nome ou ID", label_visibility="collapsed")
     with cf2: fs = st.selectbox("Status", ["Todos", "ATIVO", "CANCELADO"], key="filtro_status", label_visibility="collapsed")
     with cf3: fu = st.selectbox("Unidade", ["Todos", "MGA"], key="filtro_unid", label_visibility="collapsed")
     with cf4: 
         if st.button("🔄", key="btn_ref"): st.cache_data.clear(); st.rerun()
+    
     df_g = safe_read()
     if not df_g.empty:
+        # Padronização de colunas para exibição amigável
+        orig_cols = df_g.columns.tolist()
         df_g.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
-        if bu: df_g = df_g[df_g['ALUNO'].str.contains(bu, case=False) | df_g['ID'].str.contains(bu, case=False)]
+        
+        # Filtros
+        if bu: df_g = df_g[df_g['ALUNO'].str.contains(bu, case=False, na=False) | df_g['ID'].str.contains(bu, case=False, na=False)]
         if fs != "Todos": df_g = df_g[df_g['STATUS'] == fs]
         if fu != "Todos": df_g = df_g[df_g['UNID.'] == fu]
-        rows = ""
-        for _, r in df_g.iloc[::-1].iterrows():
-            sc = "status-badge status-ativo" if r['STATUS'] == "ATIVO" else "status-badge status-cancelado"
-            rows += f"<tr><td><span class='{sc}'>{r['STATUS']}</span></td><td>{r['UNID.']}</td><td>{r['TURMA']}</td><td>{r['10C']}</td><td>{r['ING']}</td><td>{r['DT_CAD']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ID']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ALUNO']}</td><td>{r['TEL_RESP']}</td><td>{r['TEL_ALU']}</td><td>{r['CPF']}</td><td>{r['CIDADE']}</td><td>{r['CURSO']}</td><td>{r['PAGTO']}</td><td>{r['VEND.']}</td><td>{r['DT_MAT']}</td></tr>"
-        st.markdown(f'<div class="custom-table-wrapper"><table class="custom-table"><thead><tr>' + ''.join([f'<th>{h}</th>' for h in df_g.columns]) + f'</tr></thead><tbody>{rows}</tbody></table></div>', unsafe_allow_html=True)
+        
+        # Editor de Dados (Sistema Ativo)
+        df_editado = st.data_editor(
+            df_g,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "STATUS": st.column_config.SelectboxColumn("STATUS", options=["ATIVO", "CANCELADO"], required=True),
+                "ID": st.column_config.TextColumn("ID", disabled=True),
+                "DT_CAD": st.column_config.TextColumn("DT_CAD", disabled=True),
+                "10C": st.column_config.SelectboxColumn("10C", options=["SIM", "NÃO"]),
+                "ING": st.column_config.SelectboxColumn("ING", options=["SIM", "NÃO", "A DEFINIR"])
+            },
+            key="editor_geral"
+        )
+        
+        with cf5:
+            if st.button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
+                try:
+                    creds_info = st.secrets["connections"]["gsheets"]
+                    client = gspread.authorize(Credentials.from_service_account_info(creds_info, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
+                    sheet = client.open_by_url(creds_info["spreadsheet"]).get_worksheet(0)
+                    
+                    # Prepara os dados para salvar (retornando aos nomes de coluna originais)
+                    data_to_save = df_editado.copy()
+                    data_to_save.columns = orig_cols
+                    
+                    # Sobrescreve a aba inteira para garantir sincronia (mais seguro para edições em massa)
+                    sheet.update([data_to_save.columns.values.tolist()] + data_to_save.values.tolist())
+                    
+                    st.success("Dados atualizados com sucesso!")
+                    st.cache_data.clear()
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Erro ao salvar: {e}")
 
 # --- ABA 3: RELATÓRIOS ---
 with tab_rel:
     df_r = safe_read()
     if not df_r.empty:
         df_r.columns = [c.strip() for c in df_r.columns]
-        
-        # Filtro baseado em Data de Matrícula conforme solicitado
         dt_col = "Data Matrícula"
         df_r[dt_col] = pd.to_datetime(df_r[dt_col], dayfirst=True, errors='coerce')
-        
         iv = st.date_input("Filtrar Período (Data de Matrícula)", value=(date.today()-timedelta(days=7), date.today()), format="DD/MM/YYYY")
         
         if len(iv) == 2:
@@ -308,7 +335,6 @@ with tab_rel:
                 tm_c = df_f[df_f['Pagamento'].str.contains('CARTÃO|LINK', na=False, case=False)]['v_tic'].mean() or 0.0
                 st.markdown(f'<div class="card-hud neon-purple"><span class="stat-label">TICKET MÉDIO</span><div style="font-size:18px; font-weight:bold; color:#e0e0e0;">BOL: R${tm_b:.0f}<br>CAR: R${tm_c:.0f}</div></div>', unsafe_allow_html=True)
             with c6:
-                # UNIFICAÇÃO E AUMENTO DE FONTE: Card de Matrículas por Curso
                 c_banc = len(df_f[df_f["Curso"].str.contains("BANCÁRIO", case=False, na=False)])
                 c_agro = len(df_f[df_f["Curso"].str.contains("AGRO", case=False, na=False)])
                 c_ing = len(df_f[df_f["Curso"].str.contains("INGLÊS", case=False, na=False)])
@@ -340,23 +366,14 @@ with tab_rel:
                 df_city_full = df_f.copy()
                 df_city_full["Vendedor_Limpo"] = df_city_full["Vendedor"].str.split(" - ").str[0].str.strip()
                 top_cities = df_city_full['Cidade'].value_counts().head(5).index
-                
                 df_city_vends = []
                 for city in top_cities:
                     vends = df_city_full[df_city_full['Cidade'] == city]['Vendedor_Limpo'].unique()
                     vends_str = ", ".join(list(vends))
                     count = len(df_city_full[df_city_full['Cidade'] == city])
                     df_city_vends.append({"Cidade": city, "Qtd": count, "Vendedores": vends_str})
-                
                 df_city_plot = pd.DataFrame(df_city_vends)
-                
-                fig_city = go.Figure(go.Bar(
-                    x=df_city_plot['Cidade'], 
-                    y=df_city_plot['Qtd'], 
-                    text=df_city_plot.apply(lambda r: f"<b>{r['Qtd']}</b><br><span style='font-size:11px; color:#ff007a;'>{r['Vendedores']}</span>", axis=1),
-                    textposition='outside', 
-                    marker=dict(color=df_city_plot['Qtd'], colorscale=[[0, '#1f295a'], [1, '#00f2ff']], line=dict(width=0))
-                ))
+                fig_city = go.Figure(go.Bar(x=df_city_plot['Cidade'], y=df_city_plot['Qtd'], text=df_city_plot.apply(lambda r: f"<b>{r['Qtd']}</b><br><span style='font-size:11px; color:#ff007a;'>{r['Vendedores']}</span>", axis=1), textposition='outside', marker=dict(color=df_city_plot['Qtd'], colorscale=[[0, '#1f295a'], [1, '#00f2ff']], line=dict(width=0))))
                 fig_city.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=450, margin=dict(t=50), xaxis=dict(showgrid=False), yaxis=dict(showgrid=False, showticklabels=False))
                 st.plotly_chart(fig_city, use_container_width=True, config={'displayModeBar': False})
 
