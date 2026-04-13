@@ -286,8 +286,12 @@ with tab_rel:
     df_r = safe_read()
     if not df_r.empty:
         df_r.columns = [c.strip() for c in df_r.columns]
-        dt_col = "Data Matrícula"; df_r[dt_col] = pd.to_datetime(df_r[dt_col], dayfirst=True, errors='coerce')
-        iv = st.date_input("Filtrar Período", value=(date.today()-timedelta(days=7), date.today()), format="DD/MM/YYYY")
+        
+        # AJUSTE: Agora utilizando a coluna 'Data Matrícula' para o filtro de período
+        dt_col = "Data Matrícula"
+        df_r[dt_col] = pd.to_datetime(df_r[dt_col], dayfirst=True, errors='coerce')
+        
+        iv = st.date_input("Filtrar Período (Data de Matrícula)", value=(date.today()-timedelta(days=7), date.today()), format="DD/MM/YYYY")
         
         if len(iv) == 2:
             df_f = df_r.loc[(df_r[dt_col].dt.date >= iv[0]) & (df_r[dt_col].dt.date <= iv[1])].copy()
@@ -306,7 +310,22 @@ with tab_rel:
             with c6:
                 v_count = df_f["Vendedor"].str.split(" - ").str[0].str.strip().value_counts()
                 top_v = v_count.idxmax() if not v_count.empty else "---"
-                st.markdown(f'<div class="card-hud neon-blue"><span class="stat-label">VENDEDOR COM MAIS MATRÍCULAS REALIZADAS</span><h2 style="font-size:16px; margin-top:5px;">{top_v}</h2></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="card-hud neon-blue"><span class="stat-label">TOP VENDEDOR</span><h2 style="font-size:16px; margin-top:5px;">{top_v}</h2></div>', unsafe_allow_html=True)
+
+            # --- NOVA SEÇÃO: MATRÍCULAS POR CURSO ESPECÍFICO ---
+            st.write("")
+            col_banc, col_agro, col_ing, col_tec = st.columns(4)
+            
+            # Contagens baseadas na coluna 'Curso'
+            count_banc = len(df_f[df_f["Curso"].str.contains("BANCÁRIO", case=False, na=False)])
+            count_agro = len(df_f[df_f["Curso"].str.contains("AGRO", case=False, na=False)])
+            count_ing = len(df_f[df_f["Curso"].str.contains("INGLÊS", case=False, na=False)])
+            count_tec = len(df_f[df_f["Curso"].str.contains("TECNOLOGIA|INFORMÁTICA", case=False, na=False)])
+
+            with col_banc: st.markdown(f'<div class="card-hud neon-blue"><span class="stat-label">JOVEM BANCÁRIO</span><h2>{count_banc}</h2></div>', unsafe_allow_html=True)
+            with col_agro: st.markdown(f'<div class="card-hud neon-green"><span class="stat-label">AGRONEGÓCIO</span><h2>{count_agro}</h2></div>', unsafe_allow_html=True)
+            with col_ing: st.markdown(f'<div class="card-hud neon-purple"><span class="stat-label">INGLÊS</span><h2>{count_ing}</h2></div>', unsafe_allow_html=True)
+            with col_tec: st.markdown(f'<div class="card-hud neon-pink"><span class="stat-label">TECNOLOGIA</span><h2>{count_tec}</h2></div>', unsafe_allow_html=True)
 
             st.write("")
             total_st = len(df_f)
