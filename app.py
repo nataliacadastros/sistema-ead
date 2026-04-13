@@ -27,6 +27,7 @@ st.set_page_config(
 # --- ARQUIVOS E PERSISTÊNCIA ---
 ARQUIVO_TAGS = "tags_salvas.json"
 ARQUIVO_CIDADES = "cidades.xlsx"
+ARQUIVO_AJUSTES = "ajustes_pagamento.json" # NOVO ARQUIVO PARA NÃO MEXER NA PLANILHA
 
 def carregar_tags():
     padrao = {"tags": {}, "last_selection": {}}
@@ -45,6 +46,19 @@ def carregar_tags():
 def salvar_tags(dados):
     with open(ARQUIVO_TAGS, "w", encoding="utf-8") as f:
         json.dump(dados, f, ensure_ascii=False, indent=2)
+
+# NOVAS FUNÇÕES PARA AJUSTE DE PAGAMENTO SEM ALTERAR PLANILHA
+def carregar_ajustes():
+    if os.path.exists(ARQUIVO_AJUSTES):
+        with open(ARQUIVO_AJUSTES, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+def salvar_ajuste(aluno_id, novo_pagamento):
+    ajustes = carregar_ajustes()
+    ajustes[aluno_id] = novo_pagamento.upper()
+    with open(ARQUIVO_AJUSTES, "w", encoding="utf-8") as f:
+        json.dump(ajustes, f, ensure_ascii=False, indent=2)
 
 if "dados_tags" not in st.session_state:
     st.session_state.dados_tags = carregar_tags()
@@ -269,9 +283,26 @@ with tab_ger:
     with cf3: fu = st.selectbox("Unidade", ["Todos", "MGA"], key="filtro_unid", label_visibility="collapsed")
     with cf4: 
         if st.button("🔄", key="btn_ref"): st.cache_data.clear(); st.rerun()
+    
+    # --- NOVO: CAMADA DE AJUSTE DINÂMICO ---
+    with st.expander("📝 AJUSTAR PAGAMENTO (PARA RELATÓRIO)"):
+        col_id, col_txt, col_btn = st.columns([1, 2, 1])
+        id_ajuste = col_id.text_input("ID do Aluno", key="id_ajuste_input")
+        novo_pag = col_txt.text_input("Novo Detalhe de Pagamento", placeholder="Ex: CARTÃO PAGO 12X80", key="novo_pag_input")
+        if col_btn.button("ATUALIZAR RELATÓRIO"):
+            if id_ajuste and novo_pag:
+                salvar_ajuste(id_ajuste, novo_pag)
+                st.success("Ajuste salvo! O relatório refletirá a mudança.")
+                st.rerun()
+    
     df_g = safe_read()
     if not df_g.empty:
         df_g.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
+        
+        # Aplicar visualização dos ajustes na tabela de gerenciamento (Opcional, apenas visual)
+        ajustes_existentes = carregar_ajustes()
+        df_g['PAGTO'] = df_g.apply(lambda r: ajustes_existentes.get(str(r['ID']), r['PAGTO']), axis=1)
+
         if bu: df_g = df_g[df_g['ALUNO'].str.contains(bu, case=False) | df_g['ID'].str.contains(bu, case=False)]
         if fs != "Todos": df_g = df_g[df_g['STATUS'] == fs]
         if fu != "Todos": df_g = df_g[df_g['UNID.'] == fu]
@@ -286,6 +317,11 @@ with tab_rel:
     df_r = safe_read()
     if not df_r.empty:
         df_r.columns = [c.strip() for c in df_r.columns]
+        
+        # --- APLICAÇÃO DOS AJUSTES NO RELATÓRIO ---
+        ajustes_relatorio = carregar_ajustes()
+        # Mapeia o ID para o novo pagamento. Se não existir no JSON, mantém o original da planilha.
+        df_r['Pagamento'] = df_r.apply(lambda r: ajustes_relatorio.get(str(r['ID']), r['Pagamento']), axis=1)
         
         # Filtro baseado em Data de Matrícula conforme solicitado
         dt_col = "Data Matrícula"
@@ -308,7 +344,6 @@ with tab_rel:
                 tm_c = df_f[df_f['Pagamento'].str.contains('CARTÃO|LINK', na=False, case=False)]['v_tic'].mean() or 0.0
                 st.markdown(f'<div class="card-hud neon-purple"><span class="stat-label">TICKET MÉDIO</span><div style="font-size:18px; font-weight:bold; color:#e0e0e0;">BOL: R${tm_b:.0f}<br>CAR: R${tm_c:.0f}</div></div>', unsafe_allow_html=True)
             with c6:
-                # UNIFICAÇÃO E AUMENTO DE FONTE: Card de Matrículas por Curso
                 c_banc = len(df_f[df_f["Curso"].str.contains("BANCÁRIO", case=False, na=False)])
                 c_agro = len(df_f[df_f["Curso"].str.contains("AGRO", case=False, na=False)])
                 c_ing = len(df_f[df_f["Curso"].str.contains("INGLÊS", case=False, na=False)])
