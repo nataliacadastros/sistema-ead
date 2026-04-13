@@ -74,15 +74,8 @@ st.markdown("""
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 18px !important; border-radius: 5px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
 
-    /* Forçar o editor a usar a tela toda em altura e largura */
-    [data-testid="stDataFrame"] {
-        height: 75vh !important;
-        width: 100% !important;
-    }
-    div[data-testid="stVerticalBlock"] > div:has(div[data-testid="stDataFrame"]) {
-        width: 100% !important;
-    }
-
+    [data-testid="stDataFrame"] { height: 75vh !important; width: 100% !important; }
+    
     .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 110px; display: flex; flex-direction: column; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
     .neon-pink { color: #ff007a; border-top: 2px solid #ff007a; }
     .neon-green { color: #2ecc71; border-top: 2px solid #2ecc71; }
@@ -94,23 +87,9 @@ st.markdown("""
     div.stButton > button:hover { background-color: #00d4df !important; box-shadow: 0 0 15px rgba(0, 242, 255, 0.6) !important; color: #000000 !important; }
 
     header {visibility: hidden;} footer {visibility: hidden;}
-    
-    .logo-container {
-        position: relative;
-        top: -10px;
-        left: 0px;
-        margin-bottom: 10px;
-    }
-
     .stat-label { font-size: 12px; font-weight: bold; margin-bottom: 4px; display: block; }
     </style>
     """, unsafe_allow_html=True)
-
-# --- LOGO NO CANTO ESQUERDO ---
-if os.path.exists(caminho_logo):
-    st.markdown('<div class="logo-container">', unsafe_allow_html=True)
-    st.image(caminho_logo, width=90)
-    st.markdown('</div>', unsafe_allow_html=True)
 
 # --- CONEXÃO REFORÇADA ---
 conn = st.connection("gsheets", type=GSheetsConnection)
@@ -128,39 +107,39 @@ if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
 if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
 if "df_final_processado" not in st.session_state: st.session_state.df_final_processado = None
 if "df_auto_ready" not in st.session_state: st.session_state.df_auto_ready = None
-
-# Estados do Histórico
 if "history" not in st.session_state: st.session_state.history = []
 if "history_idx" not in st.session_state: st.session_state.history_idx = -1
 
-# --- FUNÇÕES AUXILIARES ---
+# --- FUNÇÕES AUXILIARES DE GERENCIAMENTO ---
 def sync_to_sheets(df):
     try:
         creds_info = st.secrets["connections"]["gsheets"]
         client = gspread.authorize(Credentials.from_service_account_info(creds_info, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
         sheet = client.open_by_url(creds_info["spreadsheet"]).get_worksheet(0)
-        # Nomes de colunas originais da planilha
-        cols_planilha = ['STATUS', 'UNIDADE', 'TURMA', '10 CURSOS', 'INGLÊS', 'DATA CADASTRO', 'ID', 'ALUNO', 'TELEFONE RESPONSÁVEL', 'TELEFONE ALUNO', 'CPF RESPONSÁVEL', 'CIDADE', 'CURSO', 'FORMA DE PAGAMENTO', 'VENDEDOR', 'DATA MATRÍCULA']
-        df_to_save = df.copy()
-        df_to_save.columns = cols_planilha
-        sheet.update([df_to_save.columns.values.tolist()] + df_to_save.values.tolist())
+        
+        # CORREÇÃO DO ERRO 'nan': Preencher nulos com vazio antes de enviar
+        df_sync = df.copy().fillna("")
+        
+        # Converter tudo para string para evitar problemas de conformidade JSON
+        data_to_send = [df_sync.columns.values.tolist()] + df_sync.astype(str).values.tolist()
+        
+        sheet.update(data_to_send)
         st.cache_data.clear()
     except Exception as e:
         st.error(f"Erro na sincronização: {e}")
 
 def add_to_history(df):
-    # Cortar histórico futuro se estivermos no meio de um undo
     st.session_state.history = st.session_state.history[:st.session_state.history_idx + 1]
     st.session_state.history.append(df.copy())
     if len(st.session_state.history) > 30: st.session_state.history.pop(0)
     st.session_state.history_idx = len(st.session_state.history) - 1
 
 def handle_editor_change():
-    changes = st.session_state.editor_geral
-    if changes['edited_rows'] or changes['added_rows'] or changes['deleted_rows']:
-        # Se houve mudança, o dataframe atualizado estará em st.session_state.df_gerenciamento
-        sync_to_sheets(st.session_state.df_gerenciamento)
-        add_to_history(st.session_state.df_gerenciamento)
+    # O df atualizado já está refletido no editor
+    # Vamos capturar o estado atual e sincronizar
+    new_df = st.session_state.df_gerenciamento
+    sync_to_sheets(new_df)
+    add_to_history(new_df)
 
 def reset_campos_subir():
     for c in ["in_user", "in_nome", "in_cell", "in_doc", "in_city", "in_cour", "in_pay", "in_sell", "in_date"]:
@@ -246,7 +225,6 @@ with tab_cad:
                     })
                     st.session_state.reset_aluno += 1
                     st.rerun()
-                else: st.warning("Preencha pelo menos o nome do aluno.")
         with b2:
             if st.button("📤 ENVIAR PLANILHA"):
                 if st.session_state.lista_previa:
@@ -261,17 +239,11 @@ with tab_cad:
                         st.session_state.lista_previa = []; st.session_state.reset_geral += 1
                         st.success("Enviado com sucesso!"); st.cache_data.clear(); st.rerun()
                     except Exception as e: st.error(f"Erro ao enviar: {e}")
-                else: st.info("Nenhum aluno na lista de pré-visualização.")
-        if st.session_state.lista_previa: 
-            st.markdown(f"### 📋 PRÉ-VISUALIZAÇÃO ({len(st.session_state.lista_previa)} ALUNOS)")
-            st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
 # --- ABA 2: GERENCIAMENTO (SISTEMA INTEGRAL) ---
 with tab_ger:
-    # Cabeçalho de Controle
     c_undo, c_redo, c_search, c_st, c_un, c_ref = st.columns([0.3, 0.3, 2.0, 1.0, 1.0, 0.3])
     
-    # Lógica de Desfazer/Refazer
     if c_undo.button("↩️"):
         if st.session_state.history_idx > 0:
             st.session_state.history_idx -= 1
@@ -286,13 +258,12 @@ with tab_ger:
             sync_to_sheets(st.session_state.df_gerenciamento)
             st.rerun()
 
-    with c_search: bu = st.text_input("Buscar", placeholder="Nome ou ID", label_visibility="collapsed")
-    with c_st: fs = st.selectbox("Status", ["Todos", "ATIVO", "CANCELADO"], label_visibility="collapsed")
-    with c_un: fu = st.selectbox("Unidade", ["Todos", "MGA"], label_visibility="collapsed")
+    with c_search: bu = st.text_input("Buscar", placeholder="Nome ou ID", label_visibility="collapsed", key="search_input")
+    with c_st: fs = st.selectbox("Status", ["Todos", "ATIVO", "CANCELADO"], label_visibility="collapsed", key="status_filter")
+    with c_un: fu = st.selectbox("Unidade", ["Todos", "MGA"], label_visibility="collapsed", key="unid_filter")
     with c_ref: 
-        if st.button("🔄"): st.cache_data.clear(); st.rerun()
+        if st.button("🔄", key="refresh_btn"): st.cache_data.clear(); st.rerun()
 
-    # Carregamento Inicial
     if "df_gerenciamento" not in st.session_state:
         df_raw = safe_read()
         if not df_raw.empty:
@@ -304,12 +275,10 @@ with tab_ger:
 
     if not st.session_state.df_gerenciamento.empty:
         df_view = st.session_state.df_gerenciamento.copy()
-        # Filtros Visuais (não afetam o dataframe principal na session_state)
         if bu: df_view = df_view[df_view['ALUNO'].str.contains(bu, case=False, na=False) | df_view['ID'].str.contains(bu, case=False, na=False)]
         if fs != "Todos": df_view = df_view[df_view['STATUS'] == fs]
         if fu != "Todos": df_view = df_view[df_view['UNID.'] == fu]
 
-        # Editor de Dados em Tela Cheia
         st.session_state.df_gerenciamento = st.data_editor(
             df_view,
             use_container_width=True,
@@ -353,46 +322,11 @@ with tab_rel:
                 c_ing = len(df_f[df_f["Curso"].str.contains("INGLÊS", case=False, na=False)])
                 c_tec = len(df_f[df_f["Curso"].str.contains("TECNOLOGIA|INFORMÁTICA", case=False, na=False)])
                 st.markdown(f'''<div class="card-hud neon-blue"><span class="stat-label">POR ÁREA</span><div style="font-size:15px; text-align:left; color:#e0e0e0; line-height:1.4; padding-left:5px;">BANC: <b style="color:#00f2ff;">{c_banc}</b> | AGRO: <b style="color:#00f2ff;">{c_agro}</b><br>INGL: <b style="color:#00f2ff;">{c_ing}</b> | TECN: <b style="color:#00f2ff;">{c_tec}</b></div></div>''', unsafe_allow_html=True)
-            st.write("")
-            total_st = len(df_f)
-            if total_st > 0:
-                at_c = len(df_f[df_f["STATUS"].str.upper()=="ATIVO"]); can_c = len(df_f[df_f["STATUS"].str.upper()=="CANCELADO"])
-                fig_status = go.Figure()
-                fig_status.add_trace(go.Bar(y=["STATUS"], x=[at_c], orientation='h', marker=dict(color='#2ecc71'), text=[f"<b>ATIVOS: {at_c}</b>"], textposition='inside', insidetextanchor='start'))
-                fig_status.add_trace(go.Bar(y=["STATUS"], x=[can_c], orientation='h', marker=dict(color='#ff4b4b'), text=[f"<b>CANCELADOS: {can_c}</b>"], textposition='inside', insidetextanchor='end'))
-                fig_status.update_layout(barmode='stack', showlegend=False, height=40, margin=dict(t=5, b=5, l=10, r=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(showgrid=False, zeroline=False, showticklabels=False), yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
-                st.plotly_chart(fig_status, use_container_width=True, config={'displayModeBar': False})
-            st.write("---")
-            col_graf_1, col_graf_2 = st.columns(2)
-            with col_graf_1:
-                st.markdown("<h4 style='text-align:center; color:#00f2ff;'>📍 CIDADES E VENDEDORES</h4>", unsafe_allow_html=True)
-                df_city_full = df_f.copy(); df_city_full["Vendedor_Limpo"] = df_city_full["Vendedor"].str.split(" - ").str[0].str.strip()
-                top_cities = df_city_full['Cidade'].value_counts().head(5).index
-                df_city_vends = []
-                for city in top_cities:
-                    vends = df_city_full[df_city_full['Cidade'] == city]['Vendedor_Limpo'].unique(); vends_str = ", ".join(list(vends))
-                    count = len(df_city_full[df_city_full['Cidade'] == city])
-                    df_city_vends.append({"Cidade": city, "Qtd": count, "Vendedores": vends_str})
-                df_city_plot = pd.DataFrame(df_city_vends)
-                fig_city = go.Figure(go.Bar(x=df_city_plot['Cidade'], y=df_city_plot['Qtd'], text=df_city_plot.apply(lambda r: f"<b>{r['Qtd']}</b><br><span style='font-size:11px; color:#ff007a;'>{r['Vendedores']}</span>", axis=1), textposition='outside', marker=dict(color=df_city_plot['Qtd'], colorscale=[[0, '#1f295a'], [1, '#00f2ff']], line=dict(width=0))))
-                fig_city.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=450, margin=dict(t=50), xaxis=dict(showgrid=False), yaxis=dict(showgrid=False, showticklabels=False))
-                st.plotly_chart(fig_city, use_container_width=True, config={'displayModeBar': False})
-            with col_graf_2:
-                st.markdown("<h4 style='text-align:center; color:#bc13fe;'>⚡ PERFORMANCE DE VENDAS</h4>", unsafe_allow_html=True)
-                df_temp = df_f.copy(); df_temp["Vendedor"] = df_temp["Vendedor"].str.split(" - ").str[0].str.strip()
-                df_stats = df_temp["Vendedor"].value_counts().reset_index().head(5); df_stats.columns = ['Vendedor', 'Total']
-                num_vendedores = len(df_stats); max_v = df_stats['Total'].max() if not df_stats.empty else 10
-                scatter_mode = 'markers+text' if num_vendedores == 1 else 'lines+markers+text'
-                fig_vend = go.Figure(go.Scatter(x=df_stats['Vendedor'], y=df_stats['Total'], mode=scatter_mode, text=df_stats['Total'], textposition="top center", line=dict(color='#bc13fe', width=4, shape='spline'), marker=dict(size=12, color='#ffffff', line=dict(color='#bc13fe', width=3)), fill='tozeroy' if num_vendedores > 1 else None, fillcolor='rgba(188, 19, 254, 0.2)', textfont=dict(size=10, color="#bc13fe", family="Arial Black")))
-                x_range = [-1, 1] if num_vendedores == 1 else [-0.5, num_vendedores - 0.5]
-                fig_vend.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=400, margin=dict(t=50, l=60, r=60), xaxis=dict(showgrid=False, range=x_range, tickfont=dict(size=10)), yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", showticklabels=False, range=[0, max_v * 1.35]))
-                st.plotly_chart(fig_vend, use_container_width=True, config={'displayModeBar': False})
 
 # --- ABA 4: SUBIR ALUNOS ---
 with tab_subir:
     st.markdown("### 📤 IMPORTAÇÃO EAD")
     modo = st.radio("Método:", ["MANUAL", "AUTOMÁTICO"], horizontal=True)
-    st.write("---")
     if modo == "AUTOMÁTICO":
         df_m = safe_read()
         if not df_m.empty:
@@ -403,8 +337,7 @@ with tab_subir:
                 if not df_filtrado.empty:
                     cids = sorted(df_filtrado[df_m.columns[11]].unique()); sel_cids = st.multiselect("Cidades:", cids)
                     st.session_state.df_auto_ready = df_filtrado[df_filtrado[df_m.columns[11]].isin(sel_cids)]
-                    st.info(f"{len(st.session_state.df_auto_ready)} alunos encontrados.")
-            except: st.error("Erro ao processar colunas.")
+            except: pass
     else:
         c1, c2 = st.columns(2)
         with c1:
@@ -414,7 +347,42 @@ with tab_subir:
             u_nome = st.text_area("Nomes", height=100, key="in_nome"); u_doc = st.text_area("Documentos", height=100, key="in_doc")
             u_cour = st.text_area("Cursos", height=100, key="in_cour"); u_sell = st.text_area("Vendedores", height=100, key="in_sell")
         u_date = st.text_area("Datas", height=100, key="in_date")
-    # Tags e Processamento mantidos conforme lógica ok.
+
+    with st.expander("🛠️ CONFIGURAR TAGS"):
+        cursos_tags = ['PREPARATÓRIO JOVEM BANCÁRIO', 'PREPARATÓRIO AGRO', 'JOVEM NO DIREITO', 'INGLÊS', 'PRÉ MILITAR', 'ADMINISTRATIVO', 'INFORMÁTICA', 'PREPARATÓRIO ENCCEJA', 'JOVEM NA AVIAÇÃO', 'TECNOLOGIA']
+        cols = st.columns(3); selected_tags = {}
+        for i, curso in enumerate(cursos_tags):
+            with cols[i % 3]:
+                tags_lista = st.session_state.dados_tags.get("tags", {}).get(curso, [])
+                cur_tag = st.selectbox(curso, [""] + tags_lista, key=f"sel_{curso}")
+                selected_tags[curso] = cur_tag
+
     if st.button("🚀 PROCESSAR DADOS", use_container_width=True):
-        # ... (Logica de processamento mantida intacta)
-        pass
+        raw_list = []
+        if modo == "MANUAL":
+            l_ids = u_user.strip().split('\n'); l_nomes = u_nome.strip().split('\n'); l_pays = u_pay.strip().split('\n')
+            l_cours = u_cour.strip().split('\n'); l_cells = u_cell.strip().split('\n'); l_docs = u_doc.strip().split('\n')
+            l_citys = u_city.strip().split('\n'); l_sells = u_sell.strip().split('\n'); l_dates = u_date.strip().split('\n')
+            for i in range(len(l_ids)):
+                try: raw_list.append({"User": l_ids[i], "Nome": l_nomes[i], "Pay": l_pays[i], "Cour": l_cours[i], "Cell": l_cells[i], "Doc": l_docs[i], "City": l_citys[i], "Sell": l_sells[i], "Date": l_dates[i]})
+                except: continue
+        elif "df_auto_ready" in st.session_state and st.session_state.df_auto_ready is not None:
+            for _, r in st.session_state.df_auto_ready.iterrows(): 
+                raw_list.append({"User": r.iloc[6], "Nome": r.iloc[7], "Cell": r.iloc[9], "Doc": r.iloc[10], "City": r.iloc[11], "Cour": r.iloc[12], "Pay": r.iloc[13], "Sell": r.iloc[14], "Date": r.iloc[15]})
+        
+        if raw_list:
+            processed = []
+            for item in raw_list:
+                c_orig = str(item['Cour']).upper(); p_orig = str(item['Pay']).upper()
+                tags_f = [selected_tags[k] for k in cursos_tags if k in c_orig and selected_tags.get(k)]
+                c_final = ",".join(tags_f).upper() if tags_f else c_orig
+                p_final = "BOLETO" if "BOLETO" in p_orig else "CARTÃO"
+                processed.append({"username": item['User'], "email2": f"{item['User']}@ead.com", "name": str(item['Nome']).split(" ")[0].upper(), "lastname": " ".join(str(item['Nome']).split(" ")[1:]).upper(), "cellphone2": str(item['Cell']), "document": item['Doc'], "city2": item['City'], "courses": c_final, "payment": p_final, "observation": c_orig, "ouro": "0", "password": "123", "role": "1", "secretary": "MGA", "seller": item['Sell'], "contract_date": item['Date'], "active": "1"})
+            st.session_state.df_final_processado = pd.DataFrame(processed)
+
+    if st.session_state.df_final_processado is not None:
+        output = BytesIO(); wb = Workbook(); ws = wb.active
+        ws.append(list(st.session_state.df_final_processado.columns))
+        for r in st.session_state.df_final_processado.values.tolist(): ws.append(r)
+        wb.save(output)
+        st.download_button("📥 BAIXAR EXCEL FINAL", output.getvalue(), f"ead_{date.today()}.xlsx", on_click=reset_campos_subir, use_container_width=True)
