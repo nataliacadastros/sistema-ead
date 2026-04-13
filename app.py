@@ -27,7 +27,7 @@ st.set_page_config(
 # --- ARQUIVOS E PERSISTÊNCIA ---
 ARQUIVO_TAGS = "tags_salvas.json"
 ARQUIVO_CIDADES = "cidades.xlsx"
-ARQUIVO_AJUSTES = "ajustes_pagamento.json" # NOVO ARQUIVO PARA NÃO MEXER NA PLANILHA
+ARQUIVO_AJUSTES = "ajustes_pagamento.json"
 
 def carregar_tags():
     padrao = {"tags": {}, "last_selection": {}}
@@ -47,16 +47,19 @@ def salvar_tags(dados):
     with open(ARQUIVO_TAGS, "w", encoding="utf-8") as f:
         json.dump(dados, f, ensure_ascii=False, indent=2)
 
-# NOVAS FUNÇÕES PARA AJUSTE DE PAGAMENTO SEM ALTERAR PLANILHA
+# FUNÇÕES DE AJUSTE (RELATÓRIO DINÂMICO)
 def carregar_ajustes():
     if os.path.exists(ARQUIVO_AJUSTES):
-        with open(ARQUIVO_AJUSTES, "r", encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(ARQUIVO_AJUSTES, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            return {}
     return {}
 
 def salvar_ajuste(aluno_id, novo_pagamento):
     ajustes = carregar_ajustes()
-    ajustes[aluno_id] = novo_pagamento.upper()
+    ajustes[str(aluno_id).strip().upper()] = novo_pagamento.upper()
     with open(ARQUIVO_AJUSTES, "w", encoding="utf-8") as f:
         json.dump(ajustes, f, ensure_ascii=False, indent=2)
 
@@ -284,24 +287,27 @@ with tab_ger:
     with cf4: 
         if st.button("🔄", key="btn_ref"): st.cache_data.clear(); st.rerun()
     
-    # --- NOVO: CAMADA DE AJUSTE DINÂMICO ---
-    with st.expander("📝 AJUSTAR PAGAMENTO (PARA RELATÓRIO)"):
+    # --- CAMADA DE AJUSTE DINÂMICO ---
+    with st.expander("📝 AJUSTAR PAGAMENTO (SÓ PARA RELATÓRIO)"):
         col_id, col_txt, col_btn = st.columns([1, 2, 1])
         id_ajuste = col_id.text_input("ID do Aluno", key="id_ajuste_input")
-        novo_pag = col_txt.text_input("Novo Detalhe de Pagamento", placeholder="Ex: CARTÃO PAGO 12X80", key="novo_pag_input")
-        if col_btn.button("ATUALIZAR RELATÓRIO"):
+        novo_pag = col_txt.text_input("Novo Detalhe (Ex: CARTÃO 12X)", key="novo_pag_input")
+        if col_btn.button("✅ ATUALIZAR"):
             if id_ajuste and novo_pag:
                 salvar_ajuste(id_ajuste, novo_pag)
-                st.success("Ajuste salvo! O relatório refletirá a mudança.")
+                st.cache_data.clear() # Limpa o cache para forçar releitura
+                st.success(f"Ajuste aplicado para o ID {id_ajuste.upper()}")
                 st.rerun()
-    
+            else:
+                st.warning("Preencha ID e o novo detalhe.")
+
     df_g = safe_read()
     if not df_g.empty:
         df_g.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
         
-        # Aplicar visualização dos ajustes na tabela de gerenciamento (Opcional, apenas visual)
+        # Aplicar visualização dos ajustes
         ajustes_existentes = carregar_ajustes()
-        df_g['PAGTO'] = df_g.apply(lambda r: ajustes_existentes.get(str(r['ID']), r['PAGTO']), axis=1)
+        df_g['PAGTO'] = df_g.apply(lambda r: ajustes_existentes.get(str(r['ID']).strip().upper(), r['PAGTO']), axis=1)
 
         if bu: df_g = df_g[df_g['ALUNO'].str.contains(bu, case=False) | df_g['ID'].str.contains(bu, case=False)]
         if fs != "Todos": df_g = df_g[df_g['STATUS'] == fs]
@@ -318,15 +324,12 @@ with tab_rel:
     if not df_r.empty:
         df_r.columns = [c.strip() for c in df_r.columns]
         
-        # --- APLICAÇÃO DOS AJUSTES NO RELATÓRIO ---
+        # --- APLICAÇÃO DOS AJUSTES ---
         ajustes_relatorio = carregar_ajustes()
-        # Mapeia o ID para o novo pagamento. Se não existir no JSON, mantém o original da planilha.
-        df_r['Pagamento'] = df_r.apply(lambda r: ajustes_relatorio.get(str(r['ID']), r['Pagamento']), axis=1)
+        df_r['Pagamento'] = df_r.apply(lambda r: ajustes_relatorio.get(str(r['ID']).strip().upper(), r['Pagamento']), axis=1)
         
-        # Filtro baseado em Data de Matrícula conforme solicitado
         dt_col = "Data Matrícula"
         df_r[dt_col] = pd.to_datetime(df_r[dt_col], dayfirst=True, errors='coerce')
-        
         iv = st.date_input("Filtrar Período (Data de Matrícula)", value=(date.today()-timedelta(days=7), date.today()), format="DD/MM/YYYY")
         
         if len(iv) == 2:
@@ -375,23 +378,14 @@ with tab_rel:
                 df_city_full = df_f.copy()
                 df_city_full["Vendedor_Limpo"] = df_city_full["Vendedor"].str.split(" - ").str[0].str.strip()
                 top_cities = df_city_full['Cidade'].value_counts().head(5).index
-                
                 df_city_vends = []
                 for city in top_cities:
                     vends = df_city_full[df_city_full['Cidade'] == city]['Vendedor_Limpo'].unique()
                     vends_str = ", ".join(list(vends))
                     count = len(df_city_full[df_city_full['Cidade'] == city])
                     df_city_vends.append({"Cidade": city, "Qtd": count, "Vendedores": vends_str})
-                
                 df_city_plot = pd.DataFrame(df_city_vends)
-                
-                fig_city = go.Figure(go.Bar(
-                    x=df_city_plot['Cidade'], 
-                    y=df_city_plot['Qtd'], 
-                    text=df_city_plot.apply(lambda r: f"<b>{r['Qtd']}</b><br><span style='font-size:11px; color:#ff007a;'>{r['Vendedores']}</span>", axis=1),
-                    textposition='outside', 
-                    marker=dict(color=df_city_plot['Qtd'], colorscale=[[0, '#1f295a'], [1, '#00f2ff']], line=dict(width=0))
-                ))
+                fig_city = go.Figure(go.Bar(x=df_city_plot['Cidade'], y=df_city_plot['Qtd'], text=df_city_plot.apply(lambda r: f"<b>{r['Qtd']}</b><br><span style='font-size:11px; color:#ff007a;'>{r['Vendedores']}</span>", axis=1), textposition='outside', marker=dict(color=df_city_plot['Qtd'], colorscale=[[0, '#1f295a'], [1, '#00f2ff']], line=dict(width=0))))
                 fig_city.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=450, margin=dict(t=50), xaxis=dict(showgrid=False), yaxis=dict(showgrid=False, showticklabels=False))
                 st.plotly_chart(fig_city, use_container_width=True, config={'displayModeBar': False})
 
@@ -436,40 +430,17 @@ with tab_subir:
             u_cour = st.text_area("Cursos", height=100, key="in_cour"); u_sell = st.text_area("Vendedores", height=100, key="in_sell")
         u_date = st.text_area("Datas", height=100, key="in_date")
 
-    with st.expander("🛠️ CONFIGURAR TAGS", expanded=False):
-        cursos_tags = ['PREPARATÓRIO JOVEM BANCÁRIO', 'PREPARATÓRIO AGRO', 'JOVEM NO DIREITO', 'INGLÊS', 'PRÉ MILITAR', 'ADMINISTRATIVO', 'INFORMÁTICA', 'PREPARATÓRIO ENCCEJA', 'JOVEM NA AVIAÇÃO', 'TECNOLOGIA']
-        cols = st.columns(3); selected_tags = {}
-        for i, curso in enumerate(cursos_tags):
-            with cols[i % 3]:
-                st.markdown(f"<p style='font-size:10px; margin-bottom:2px; color:#00f2ff; font-weight:bold;'>{curso}</p>", unsafe_allow_html=True)
-                tags_lista = st.session_state.dados_tags.get("tags", {}).get(curso, [])
-                last_sel = st.session_state.dados_tags.get("last_selection", {}).get(curso, "")
-                idx_default = (tags_lista.index(last_sel) + 1) if last_sel in tags_lista else 0
-                c_sel, c_del = st.columns([0.4, 0.6])
-                cur_tag = c_sel.selectbox("", [""] + tags_lista, index=idx_default, key=f"sel_{curso}", label_visibility="collapsed")
-                if cur_tag != last_sel:
-                    st.session_state.dados_tags["last_selection"][curso] = cur_tag; salvar_tags(st.session_state.dados_tags)
-                if c_del.button("🗑️", key=f"del_{curso}"):
-                    if cur_tag and cur_tag in st.session_state.dados_tags["tags"][curso]:
-                        st.session_state.dados_tags["tags"][curso].remove(cur_tag); st.session_state.dados_tags["last_selection"][curso] = ""; salvar_tags(st.session_state.dados_tags); st.rerun()
-                c_new, _ = st.columns([0.4, 0.6]); new_tag = c_new.text_input("", placeholder="Nova...", key=f"new_{i}", label_visibility="collapsed").upper()
-                if new_tag and new_tag not in tags_lista:
-                    if "tags" not in st.session_state.dados_tags: st.session_state.dados_tags["tags"] = {}
-                    if curso not in st.session_state.dados_tags["tags"]: st.session_state.dados_tags["tags"][curso] = []
-                    st.session_state.dados_tags["tags"][curso].append(new_tag); st.session_state.dados_tags["last_selection"][curso] = new_tag; salvar_tags(st.session_state.dados_tags); st.rerun()
-                final_tag = (new_tag if new_tag else cur_tag).upper(); selected_tags[curso] = final_tag
-
     if st.button("🚀 PROCESSAR DADOS", use_container_width=True):
         raw_list = []
         if modo == "MANUAL":
-            l_ids = u_user.strip().split('\n'); l_nomes = u_nome.strip().split('\n'); l_pays = u_pay.strip().split('\n')
-            l_cours = u_cour.strip().split('\n'); l_cells = u_cell.strip().split('\n'); l_docs = u_doc.strip().split('\n')
-            l_citys = u_city.strip().split('\n'); l_sells = u_sell.strip().split('\n'); l_dates = u_date.strip().split('\n')
-            min_len = len(l_ids)
-            if min_len > 0:
-                for i in range(min_len):
-                    try: raw_list.append({"User": l_ids[i], "Nome": l_nomes[i] if i < len(l_nomes) else "", "Pay": l_pays[i] if i < len(l_pays) else "", "Cour": l_cours[i] if i < len(l_cours) else "", "Cell": l_cells[i] if i < len(l_cells) else "", "Doc": l_docs[i] if i < len(l_docs) else "", "City": l_citys[i] if i < len(l_citys) else "", "Sell": l_sells[i] if i < len(l_sells) else "", "Date": l_dates[i] if i < len(l_dates) else ""})
-                    except: continue
+            l_ids = u_user.strip().split('\n'); l_nomes = u_nome.strip().split('\n')
+            l_pays = u_pay.strip().split('\n'); l_cours = u_cour.strip().split('\n')
+            l_cells = u_cell.strip().split('\n'); l_docs = u_doc.strip().split('\n')
+            l_citys = u_city.strip().split('\n'); l_sells = u_sell.strip().split('\n')
+            l_dates = u_date.strip().split('\n')
+            for i in range(len(l_ids)):
+                try: raw_list.append({"User": l_ids[i], "Nome": l_nomes[i], "Pay": l_pays[i], "Cour": l_cours[i], "Cell": l_cells[i], "Doc": l_docs[i], "City": l_citys[i], "Sell": l_sells[i], "Date": l_dates[i]})
+                except: continue
         elif "df_auto_ready" in st.session_state and st.session_state.df_auto_ready is not None:
             for _, r in st.session_state.df_auto_ready.iterrows(): raw_list.append({"User": r.iloc[6], "Nome": r.iloc[7], "Cell": r.iloc[9], "Doc": r.iloc[10], "City": r.iloc[11], "Cour": r.iloc[12], "Pay": r.iloc[13], "Sell": r.iloc[14], "Date": r.iloc[15]})
         
@@ -481,25 +452,9 @@ with tab_subir:
             processed = []
             for item in raw_list:
                 c_orig = str(item['Cour']).upper(); p_orig = str(item['Pay']).upper()
-                tags_f = [selected_tags[k] for k in cursos_tags if k in c_orig and selected_tags.get(k)]
-                c_final = ",".join(tags_f).upper() if tags_f else c_orig
-                p_final = "PENDENTE"; has_bol = "BOLETO" in p_orig; has_car = "CARTÃO" in p_orig or "LINK" in p_orig
-                if (has_bol and not has_car): p_final = "BOLETO"
-                elif (has_car and not has_bol): p_final = "CARTÃO"
-                obs_final = f"{c_final} | {c_orig} | {p_orig}".upper(); ouro_val = "1" if "10 CURSOS PROFISSIONALIZANTES" in obs_final else "0"
-                processed.append({"username": item['User'], "email2": f"{item['User']}@profissionalizaead.com.br", "name": str(item['Nome']).split(" ")[0].upper(), "lastname": " ".join(str(item['Nome']).split(" ")[1:]).upper(), "cellphone2": str(item['Cell']), "document": item['Doc'], "city2": c_map.get(str(item['City']).upper(), item['City']), "courses": c_final, "payment": p_final, "observation": obs_final, "ouro": ouro_val, "password": "futuro", "role": "1", "secretary": "MGA", "seller": item['Sell'], "contract_date": item['Date'], "active": "1"})
+                p_final = "BOLETO" if "BOLETO" in p_orig else ("CARTÃO" if ("CARTÃO" in p_orig or "LINK" in p_orig) else "PENDENTE")
+                processed.append({"username": item['User'], "email2": f"{item['User']}@profissionalizaead.com.br", "name": str(item['Nome']).split(" ")[0].upper(), "lastname": " ".join(str(item['Nome']).split(" ")[1:]).upper(), "cellphone2": str(item['Cell']), "document": item['Doc'], "city2": c_map.get(str(item['City']).upper(), item['City']), "courses": c_orig, "payment": p_final, "observation": f"{c_orig} | {p_orig}", "ouro": "0", "password": "futuro", "role": "1", "secretary": "MGA", "seller": item['Sell'], "contract_date": item['Date'], "active": "1"})
             st.session_state.df_final_processado = pd.DataFrame(processed)
 
     if st.session_state.df_final_processado is not None:
-        df = st.session_state.df_final_processado; mask = df['payment'] == "PENDENTE"
-        if mask.any():
-            st.warning("⚠️ Confirmação necessária:")
-            df_conf = df.loc[mask, ["username", "name", "observation"]].copy(); df_conf.columns = ["ID", "Nome", "Texto Original (Pagamento)"]; df_conf["Forma Final"] = "BOLETO"
-            edited = st.data_editor(df_conf, column_config={"Forma Final": st.column_config.SelectboxColumn("Forma", options=["BOLETO", "CARTÃO"], required=True)}, disabled=["ID", "Nome", "Texto Original (Pagamento)"], hide_index=True, use_container_width=True, key="pag_editor")
-            if st.button("✅ CONFIRMAR E GERAR EXCEL"):
-                for _, row in edited.iterrows(): df.loc[df['username'] == row["ID"], "payment"] = row["Forma Final"]
-                st.session_state.df_final_processado = df; st.rerun()
-        if not (st.session_state.df_final_processado['payment'] == "PENDENTE").any():
-            output = BytesIO(); wb = Workbook(); ws = wb.active; ws.append(list(st.session_state.df_final_processado.columns))
-            for r in st.session_state.df_final_processado.values.tolist(): ws.append([str(val) for val in r])
-            wb.save(output); st.download_button("📥 BAIXAR EXCEL FINAL", output.getvalue(), f"ead_{date.today()}.xlsx", on_click=reset_campos_subir, use_container_width=True)
+        st.dataframe(st.session_state.df_final_processado)
