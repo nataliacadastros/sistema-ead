@@ -287,7 +287,7 @@ with tab_rel:
     if not df_r.empty:
         df_r.columns = [c.strip() for c in df_r.columns]
         
-        # Filtro baseado em Data de Matrícula
+        # Filtro baseado em Data de Matrícula conforme solicitado
         dt_col = "Data Matrícula"
         df_r[dt_col] = pd.to_datetime(df_r[dt_col], dayfirst=True, errors='coerce')
         
@@ -308,7 +308,7 @@ with tab_rel:
                 tm_c = df_f[df_f['Pagamento'].str.contains('CARTÃO|LINK', na=False, case=False)]['v_tic'].mean() or 0.0
                 st.markdown(f'<div class="card-hud neon-purple"><span class="stat-label">TICKET MÉDIO</span><div style="font-size:18px; font-weight:bold; color:#e0e0e0;">BOL: R${tm_b:.0f}<br>CAR: R${tm_c:.0f}</div></div>', unsafe_allow_html=True)
             with c6:
-                # UNIFICAÇÃO: Card de Matrículas por Curso
+                # UNIFICAÇÃO E AUMENTO DE FONTE: Card de Matrículas por Curso
                 c_banc = len(df_f[df_f["Curso"].str.contains("BANCÁRIO", case=False, na=False)])
                 c_agro = len(df_f[df_f["Curso"].str.contains("AGRO", case=False, na=False)])
                 c_ing = len(df_f[df_f["Curso"].str.contains("INGLÊS", case=False, na=False)])
@@ -316,9 +316,9 @@ with tab_rel:
                 st.markdown(f'''
                     <div class="card-hud neon-blue">
                         <span class="stat-label">POR ÁREA</span>
-                        <div style="font-size:11px; text-align:left; color:#e0e0e0; line-height:1.2;">
-                            BANC: <b>{c_banc}</b> | AGRO: <b>{c_agro}</b><br>
-                            INGL: <b>{c_ing}</b> | TECN: <b>{c_tec}</b>
+                        <div style="font-size:15px; text-align:left; color:#e0e0e0; line-height:1.4; padding-left:5px;">
+                            BANC: <b style="color:#00f2ff;">{c_banc}</b> | AGRO: <b style="color:#00f2ff;">{c_agro}</b><br>
+                            INGL: <b style="color:#00f2ff;">{c_ing}</b> | TECN: <b style="color:#00f2ff;">{c_tec}</b>
                         </div>
                     </div>''', unsafe_allow_html=True)
 
@@ -337,7 +337,6 @@ with tab_rel:
             col_graf_1, col_graf_2 = st.columns(2)
             with col_graf_1:
                 st.markdown("<h4 style='text-align:center; color:#00f2ff;'>📍 CIDADES E VENDEDORES</h4>", unsafe_allow_html=True)
-                # Lógica para pegar cidades e quem vendeu nelas
                 df_city_full = df_f.copy()
                 df_city_full["Vendedor_Limpo"] = df_city_full["Vendedor"].str.split(" - ").str[0].str.strip()
                 top_cities = df_city_full['Cidade'].value_counts().head(5).index
@@ -354,11 +353,11 @@ with tab_rel:
                 fig_city = go.Figure(go.Bar(
                     x=df_city_plot['Cidade'], 
                     y=df_city_plot['Qtd'], 
-                    text=df_city_plot.apply(lambda r: f"{r['Qtd']}<br><span style='font-size:10px'>{r['Vendedores']}</span>", axis=1),
+                    text=df_city_plot.apply(lambda r: f"<b>{r['Qtd']}</b><br><span style='font-size:11px; color:#ff007a;'>{r['Vendedores']}</span>", axis=1),
                     textposition='outside', 
                     marker=dict(color=df_city_plot['Qtd'], colorscale=[[0, '#1f295a'], [1, '#00f2ff']], line=dict(width=0))
                 ))
-                fig_city.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=400, margin=dict(t=50), xaxis=dict(showgrid=False), yaxis=dict(showgrid=False, showticklabels=False))
+                fig_city.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=450, margin=dict(t=50), xaxis=dict(showgrid=False), yaxis=dict(showgrid=False, showticklabels=False))
                 st.plotly_chart(fig_city, use_container_width=True, config={'displayModeBar': False})
 
             with col_graf_2:
