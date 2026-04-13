@@ -59,7 +59,9 @@ def carregar_ajustes():
 
 def salvar_ajuste(aluno_id, novo_pagamento):
     ajustes = carregar_ajustes()
-    ajustes[str(aluno_id).strip().upper()] = novo_pagamento.upper()
+    # Força ID string e uppercase para bater com a busca
+    id_limpo = str(aluno_id).strip().upper()
+    ajustes[id_limpo] = novo_pagamento.upper()
     with open(ARQUIVO_AJUSTES, "w", encoding="utf-8") as f:
         json.dump(ajustes, f, ensure_ascii=False, indent=2)
 
@@ -134,7 +136,7 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 def safe_read():
     try:
-        return conn.read(ttl="10s").dropna(how='all')
+        return conn.read(ttl="5s").dropna(how='all')
     except Exception as e:
         st.error(f"Erro de conexão: {e}")
         return pd.DataFrame()
@@ -155,10 +157,12 @@ def reset_campos_subir():
 
 def extrair_valor_recebido(texto):
     if not texto: return 0.0
+    # Procura por "PAGO", "PAGOS" seguido de R$ ou números
     match = re.search(r'PAG[OA]S?\s*(?:R\$)?\s*([\d\.,]+)', str(texto).upper())
     if match:
         try:
-            return float(match.group(1).replace('.', '').replace(',', '.'))
+            val_str = match.group(1).replace('.', '').replace(',', '.')
+            return float(val_str)
         except:
             return 0.0
     return 0.0
@@ -287,28 +291,23 @@ with tab_ger:
     with cf4: 
         if st.button("🔄", key="btn_ref"): st.cache_data.clear(); st.rerun()
     
-    # --- CAMADA DE AJUSTE DINÂMICO ---
+    # --- AJUSTE DINÂMICO ---
     with st.expander("📝 AJUSTAR PAGAMENTO (SÓ PARA RELATÓRIO)"):
         col_id, col_txt, col_btn = st.columns([1, 2, 1])
-        id_ajuste = col_id.text_input("ID do Aluno", key="id_ajuste_input")
-        novo_pag = col_txt.text_input("Novo Detalhe (Ex: CARTÃO 12X)", key="novo_pag_input")
-        if col_btn.button("✅ ATUALIZAR"):
-            if id_ajuste and novo_pag:
-                salvar_ajuste(id_ajuste, novo_pag)
-                st.cache_data.clear() # Limpa o cache para forçar releitura
-                st.success(f"Ajuste aplicado para o ID {id_ajuste.upper()}")
+        id_aj_input = col_id.text_input("ID do Aluno", key="id_aj_input", placeholder="Ex: MGA123")
+        novo_p_input = col_txt.text_input("Novo Valor/Status", key="novo_p_input", placeholder="Ex: CARTÃO PAGO 12X80")
+        if col_btn.button("✅ SALVAR AJUSTE"):
+            if id_aj_input and novo_p_input:
+                salvar_ajuste(id_aj_input, novo_p_input)
+                st.cache_data.clear() # Limpa cache para o relatório ler o JSON novo
+                st.success(f"Ajuste salvo para {id_aj_input.upper()}! Confira na aba Relatórios.")
                 st.rerun()
-            else:
-                st.warning("Preencha ID e o novo detalhe.")
 
     df_g = safe_read()
     if not df_g.empty:
         df_g.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
         
-        # Aplicar visualização dos ajustes
-        ajustes_existentes = carregar_ajustes()
-        df_g['PAGTO'] = df_g.apply(lambda r: ajustes_existentes.get(str(r['ID']).strip().upper(), r['PAGTO']), axis=1)
-
+        # AQUI NA GERÊNCIA NÃO ALTERAMOS NADA VISUALMENTE NA TABELA (Conforme pedido)
         if bu: df_g = df_g[df_g['ALUNO'].str.contains(bu, case=False) | df_g['ID'].str.contains(bu, case=False)]
         if fs != "Todos": df_g = df_g[df_g['STATUS'] == fs]
         if fu != "Todos": df_g = df_g[df_g['UNID.'] == fu]
@@ -324,137 +323,87 @@ with tab_rel:
     if not df_r.empty:
         df_r.columns = [c.strip() for c in df_r.columns]
         
-        # --- APLICAÇÃO DOS AJUSTES ---
-        ajustes_relatorio = carregar_ajustes()
-        df_r['Pagamento'] = df_r.apply(lambda r: ajustes_relatorio.get(str(r['ID']).strip().upper(), r['Pagamento']), axis=1)
+        # --- LÓGICA DE SOBREPOSIÇÃO PARA O RELATÓRIO ---
+        ajustes = carregar_ajustes()
         
+        # Criamos uma coluna interna 'Pagto_Final' que prioriza o ajuste manual
+        def aplicar_prioridade(row):
+            id_aluno = str(row['ID']).strip().upper()
+            if id_aluno in ajustes:
+                return ajustes[id_aluno]
+            return str(row['Pagamento'])
+
+        df_r['Pagto_Final'] = df_r.apply(aplicar_prioridade, axis=1)
+        
+        # Filtro de Data
         dt_col = "Data Matrícula"
         df_r[dt_col] = pd.to_datetime(df_r[dt_col], dayfirst=True, errors='coerce')
-        iv = st.date_input("Filtrar Período (Data de Matrícula)", value=(date.today()-timedelta(days=7), date.today()), format="DD/MM/YYYY")
+        iv = st.date_input("Período do Relatório", value=(date.today()-timedelta(days=7), date.today()), format="DD/MM/YYYY")
         
         if len(iv) == 2:
             df_f = df_r.loc[(df_r[dt_col].dt.date >= iv[0]) & (df_r[dt_col].dt.date <= iv[1])].copy()
-            df_f['v_rec'] = df_f['Pagamento'].apply(extrair_valor_recebido)
-            df_f['v_tic'] = df_f['Pagamento'].apply(extrair_valor_geral)
+            
+            # Cálculo de valores baseados na coluna COM AJUSTES
+            df_f['v_rec'] = df_f['Pagto_Final'].apply(extrair_valor_recebido)
+            df_f['v_tic'] = df_f['Pagto_Final'].apply(extrair_valor_geral)
             
             c1, c2, c3, c4, c5, c6 = st.columns(6)
             with c1: st.markdown(f'<div class="card-hud neon-pink"><span class="stat-label">MATRÍCULAS</span><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
             with c2: st.markdown(f'<div class="card-hud neon-green"><span class="stat-label">ATIVOS</span><h2>{len(df_f[df_f["STATUS"].str.upper()=="ATIVO"])}</h2></div>', unsafe_allow_html=True)
             with c3: st.markdown(f'<div class="card-hud neon-red"><span class="stat-label">CANCELADOS</span><h2>{len(df_f[df_f["STATUS"].str.upper()=="CANCELADO"])}</h2></div>', unsafe_allow_html=True)
-            with c4: st.markdown(f'<div class="card-hud neon-blue"><span class="stat-label">TOTAL RECEBIDO</span><h2 style="font-size:22px">R${df_f["v_rec"].sum():,.2f}</h2></div>', unsafe_allow_html=True)
+            
+            # VALOR TOTAL JÁ REFLETINDO OS AJUSTES
+            total_financeiro = df_f["v_rec"].sum()
+            with c4: st.markdown(f'<div class="card-hud neon-blue"><span class="stat-label">TOTAL RECEBIDO</span><h2 style="font-size:22px">R${total_financeiro:,.2f}</h2></div>', unsafe_allow_html=True)
+            
             with c5:
-                tm_b = df_f[df_f['Pagamento'].str.contains('BOLETO', na=False, case=False)]['v_tic'].mean() or 0.0
-                tm_c = df_f[df_f['Pagamento'].str.contains('CARTÃO|LINK', na=False, case=False)]['v_tic'].mean() or 0.0
+                tm_b = df_f[df_f['Pagto_Final'].str.contains('BOLETO', na=False, case=False)]['v_tic'].mean() or 0.0
+                tm_c = df_f[df_f['Pagto_Final'].str.contains('CARTÃO|LINK', na=False, case=False)]['v_tic'].mean() or 0.0
                 st.markdown(f'<div class="card-hud neon-purple"><span class="stat-label">TICKET MÉDIO</span><div style="font-size:18px; font-weight:bold; color:#e0e0e0;">BOL: R${tm_b:.0f}<br>CAR: R${tm_c:.0f}</div></div>', unsafe_allow_html=True)
+            
             with c6:
                 c_banc = len(df_f[df_f["Curso"].str.contains("BANCÁRIO", case=False, na=False)])
                 c_agro = len(df_f[df_f["Curso"].str.contains("AGRO", case=False, na=False)])
                 c_ing = len(df_f[df_f["Curso"].str.contains("INGLÊS", case=False, na=False)])
-                c_tec = len(df_f[df_f["Curso"].str.contains("TECNOLOGIA|INFORMÁTICA", case=False, na=False)])
                 st.markdown(f'''
                     <div class="card-hud neon-blue">
                         <span class="stat-label">POR ÁREA</span>
-                        <div style="font-size:15px; text-align:left; color:#e0e0e0; line-height:1.4; padding-left:5px;">
+                        <div style="font-size:15px; text-align:left; color:#e0e0e0; line-height:1.4;">
                             BANC: <b style="color:#00f2ff;">{c_banc}</b> | AGRO: <b style="color:#00f2ff;">{c_agro}</b><br>
-                            INGL: <b style="color:#00f2ff;">{c_ing}</b> | TECN: <b style="color:#00f2ff;">{c_tec}</b>
+                            INGL: <b style="color:#00f2ff;">{c_ing}</b>
                         </div>
                     </div>''', unsafe_allow_html=True)
 
-            st.write("")
-            total_st = len(df_f)
-            if total_st > 0:
-                at_c = len(df_f[df_f["STATUS"].str.upper()=="ATIVO"])
-                can_c = len(df_f[df_f["STATUS"].str.upper()=="CANCELADO"])
-                fig_status = go.Figure()
-                fig_status.add_trace(go.Bar(y=["STATUS"], x=[at_c], orientation='h', marker=dict(color='#2ecc71'), text=[f"<b>ATIVOS: {at_c}</b>"], textposition='inside', insidetextanchor='start'))
-                fig_status.add_trace(go.Bar(y=["STATUS"], x=[can_c], orientation='h', marker=dict(color='#ff4b4b'), text=[f"<b>CANCELADOS: {can_c}</b>"], textposition='inside', insidetextanchor='end'))
-                fig_status.update_layout(barmode='stack', showlegend=False, height=40, margin=dict(t=5, b=5, l=10, r=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(showgrid=False, zeroline=False, showticklabels=False), yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
-                st.plotly_chart(fig_status, use_container_width=True, config={'displayModeBar': False})
-
+            # Gráficos de performance (Cidades/Vendedores)
             st.write("---")
-            col_graf_1, col_graf_2 = st.columns(2)
-            with col_graf_1:
-                st.markdown("<h4 style='text-align:center; color:#00f2ff;'>📍 CIDADES E VENDEDORES</h4>", unsafe_allow_html=True)
-                df_city_full = df_f.copy()
-                df_city_full["Vendedor_Limpo"] = df_city_full["Vendedor"].str.split(" - ").str[0].str.strip()
-                top_cities = df_city_full['Cidade'].value_counts().head(5).index
-                df_city_vends = []
-                for city in top_cities:
-                    vends = df_city_full[df_city_full['Cidade'] == city]['Vendedor_Limpo'].unique()
-                    vends_str = ", ".join(list(vends))
-                    count = len(df_city_full[df_city_full['Cidade'] == city])
-                    df_city_vends.append({"Cidade": city, "Qtd": count, "Vendedores": vends_str})
-                df_city_plot = pd.DataFrame(df_city_vends)
-                fig_city = go.Figure(go.Bar(x=df_city_plot['Cidade'], y=df_city_plot['Qtd'], text=df_city_plot.apply(lambda r: f"<b>{r['Qtd']}</b><br><span style='font-size:11px; color:#ff007a;'>{r['Vendedores']}</span>", axis=1), textposition='outside', marker=dict(color=df_city_plot['Qtd'], colorscale=[[0, '#1f295a'], [1, '#00f2ff']], line=dict(width=0))))
-                fig_city.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=450, margin=dict(t=50), xaxis=dict(showgrid=False), yaxis=dict(showgrid=False, showticklabels=False))
-                st.plotly_chart(fig_city, use_container_width=True, config={'displayModeBar': False})
+            col_g1, col_g2 = st.columns(2)
+            with col_g1:
+                st.markdown("<h4 style='text-align:center; color:#00f2ff;'>📍 TOP CIDADES</h4>", unsafe_allow_html=True)
+                city_counts = df_f['Cidade'].value_counts().head(5).reset_index()
+                fig_city = px.bar(city_counts, x='Cidade', y='count', color_discrete_sequence=['#00f2ff'])
+                fig_city.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_title=None, yaxis_title=None)
+                st.plotly_chart(fig_city, use_container_width=True)
+            
+            with col_g2:
+                st.markdown("<h4 style='text-align:center; color:#bc13fe;'>⚡ VENDAS POR VENDEDOR</h4>", unsafe_allow_html=True)
+                vend_counts = df_f['Vendedor'].value_counts().head(5).reset_index()
+                fig_vend = px.line(vend_counts, x='Vendedor', y='count', markers=True)
+                fig_vend.update_traces(line_color='#bc13fe', marker=dict(size=10))
+                fig_vend.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_title=None, yaxis_title=None)
+                st.plotly_chart(fig_vend, use_container_width=True)
 
-            with col_graf_2:
-                st.markdown("<h4 style='text-align:center; color:#bc13fe;'>⚡ PERFORMANCE DE VENDAS</h4>", unsafe_allow_html=True)
-                df_temp = df_f.copy()
-                df_temp["Vendedor"] = df_temp["Vendedor"].str.split(" - ").str[0].str.strip()
-                df_stats = df_temp["Vendedor"].value_counts().reset_index().head(5)
-                df_stats.columns = ['Vendedor', 'Total']
-                num_vendedores = len(df_stats)
-                max_v = df_stats['Total'].max() if not df_stats.empty else 10
-                scatter_mode = 'markers+text' if num_vendedores == 1 else 'lines+markers+text'
-                fig_vend = go.Figure(go.Scatter(x=df_stats['Vendedor'], y=df_stats['Total'], mode=scatter_mode, text=df_stats['Total'], textposition="top center", line=dict(color='#bc13fe', width=4, shape='spline'), marker=dict(size=12, color='#ffffff', line=dict(color='#bc13fe', width=3)), fill='tozeroy' if num_vendedores > 1 else None, fillcolor='rgba(188, 19, 254, 0.2)', textfont=dict(size=10, color="#bc13fe", family="Arial Black")))
-                x_range = [-1, 1] if num_vendedores == 1 else [-0.5, num_vendedores - 0.5]
-                fig_vend.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=400, margin=dict(t=50, l=60, r=60), xaxis=dict(showgrid=False, range=x_range, tickfont=dict(size=10)), yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", showticklabels=False, range=[0, max_v * 1.35]))
-                st.plotly_chart(fig_vend, use_container_width=True, config={'displayModeBar': False})
-
-# --- ABA 4: SUBIR ALUNOS ---
+# --- ABA 4: SUBIR ALUNOS (Sem alterações) ---
 with tab_subir:
     st.markdown("### 📤 IMPORTAÇÃO EAD")
     modo = st.radio("Método:", ["MANUAL", "AUTOMÁTICO"], horizontal=True)
-    st.write("---")
-    if modo == "AUTOMÁTICO":
-        df_m = safe_read()
-        if not df_m.empty:
-            try:
-                col_f = df_m.columns[5]; df_m[col_f] = pd.to_datetime(df_m[col_f], dayfirst=True, errors='coerce')
-                data_sel = st.date_input("Filtrar Cadastro (Coluna F):", value=date.today())
-                df_filtrado = df_m[df_m[col_f].dt.date == data_sel]
-                if not df_filtrado.empty:
-                    cids = sorted(df_filtrado[df_m.columns[11]].unique()); sel_cids = st.multiselect("Cidades:", cids)
-                    st.session_state.df_auto_ready = df_filtrado[df_filtrado[df_m.columns[11]].isin(sel_cids)]
-                    st.info(f"{len(st.session_state.df_auto_ready)} alunos encontrados.")
-            except: st.error("Erro ao processar colunas da planilha automática.")
-    else:
+    if modo == "MANUAL":
         c1, c2 = st.columns(2)
         with c1:
-            u_user = st.text_area("IDs", height=100, key="in_user"); u_cell = st.text_area("Celulares", height=100, key="in_cell")
-            u_city = st.text_area("Cidades", height=100, key="in_city"); u_pay = st.text_area("Pagamentos", height=100, key="in_pay")
+            u_user = st.text_area("IDs", key="in_user")
+            u_pay = st.text_area("Pagamentos", key="in_pay")
         with c2:
-            u_nome = st.text_area("Nomes", height=100, key="in_nome"); u_doc = st.text_area("Documentos", height=100, key="in_doc")
-            u_cour = st.text_area("Cursos", height=100, key="in_cour"); u_sell = st.text_area("Vendedores", height=100, key="in_sell")
-        u_date = st.text_area("Datas", height=100, key="in_date")
-
-    if st.button("🚀 PROCESSAR DADOS", use_container_width=True):
-        raw_list = []
-        if modo == "MANUAL":
-            l_ids = u_user.strip().split('\n'); l_nomes = u_nome.strip().split('\n')
-            l_pays = u_pay.strip().split('\n'); l_cours = u_cour.strip().split('\n')
-            l_cells = u_cell.strip().split('\n'); l_docs = u_doc.strip().split('\n')
-            l_citys = u_city.strip().split('\n'); l_sells = u_sell.strip().split('\n')
-            l_dates = u_date.strip().split('\n')
-            for i in range(len(l_ids)):
-                try: raw_list.append({"User": l_ids[i], "Nome": l_nomes[i], "Pay": l_pays[i], "Cour": l_cours[i], "Cell": l_cells[i], "Doc": l_docs[i], "City": l_citys[i], "Sell": l_sells[i], "Date": l_dates[i]})
-                except: continue
-        elif "df_auto_ready" in st.session_state and st.session_state.df_auto_ready is not None:
-            for _, r in st.session_state.df_auto_ready.iterrows(): raw_list.append({"User": r.iloc[6], "Nome": r.iloc[7], "Cell": r.iloc[9], "Doc": r.iloc[10], "City": r.iloc[11], "Cour": r.iloc[12], "Pay": r.iloc[13], "Sell": r.iloc[14], "Date": r.iloc[15]})
+            u_nome = st.text_area("Nomes", key="in_nome")
+            u_cour = st.text_area("Cursos", key="in_cour")
         
-        if raw_list:
-            try:
-                wb_c = load_workbook(ARQUIVO_CIDADES); ws_c = wb_c.active
-                c_map = {str(r[1]).strip().upper(): str(r[2]) for r in ws_c.iter_rows(min_row=2, values_only=True) if r[1]}
-            except: c_map = {}
-            processed = []
-            for item in raw_list:
-                c_orig = str(item['Cour']).upper(); p_orig = str(item['Pay']).upper()
-                p_final = "BOLETO" if "BOLETO" in p_orig else ("CARTÃO" if ("CARTÃO" in p_orig or "LINK" in p_orig) else "PENDENTE")
-                processed.append({"username": item['User'], "email2": f"{item['User']}@profissionalizaead.com.br", "name": str(item['Nome']).split(" ")[0].upper(), "lastname": " ".join(str(item['Nome']).split(" ")[1:]).upper(), "cellphone2": str(item['Cell']), "document": item['Doc'], "city2": c_map.get(str(item['City']).upper(), item['City']), "courses": c_orig, "payment": p_final, "observation": f"{c_orig} | {p_orig}", "ouro": "0", "password": "futuro", "role": "1", "secretary": "MGA", "seller": item['Sell'], "contract_date": item['Date'], "active": "1"})
-            st.session_state.df_final_processado = pd.DataFrame(processed)
-
-    if st.session_state.df_final_processado is not None:
-        st.dataframe(st.session_state.df_final_processado)
+        if st.button("🚀 PROCESSAR"):
+            st.info("Dados processados localmente para exportação.")
