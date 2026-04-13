@@ -287,7 +287,7 @@ with tab_rel:
     if not df_r.empty:
         df_r.columns = [c.strip() for c in df_r.columns]
         
-        # AJUSTE: Agora utilizando a coluna 'Data Matrícula' para o filtro de período
+        # Filtro baseado em Data de Matrícula
         dt_col = "Data Matrícula"
         df_r[dt_col] = pd.to_datetime(df_r[dt_col], dayfirst=True, errors='coerce')
         
@@ -308,24 +308,19 @@ with tab_rel:
                 tm_c = df_f[df_f['Pagamento'].str.contains('CARTÃO|LINK', na=False, case=False)]['v_tic'].mean() or 0.0
                 st.markdown(f'<div class="card-hud neon-purple"><span class="stat-label">TICKET MÉDIO</span><div style="font-size:18px; font-weight:bold; color:#e0e0e0;">BOL: R${tm_b:.0f}<br>CAR: R${tm_c:.0f}</div></div>', unsafe_allow_html=True)
             with c6:
-                v_count = df_f["Vendedor"].str.split(" - ").str[0].str.strip().value_counts()
-                top_v = v_count.idxmax() if not v_count.empty else "---"
-                st.markdown(f'<div class="card-hud neon-blue"><span class="stat-label">TOP VENDEDOR</span><h2 style="font-size:16px; margin-top:5px;">{top_v}</h2></div>', unsafe_allow_html=True)
-
-            # --- NOVA SEÇÃO: MATRÍCULAS POR CURSO ESPECÍFICO ---
-            st.write("")
-            col_banc, col_agro, col_ing, col_tec = st.columns(4)
-            
-            # Contagens baseadas na coluna 'Curso'
-            count_banc = len(df_f[df_f["Curso"].str.contains("BANCÁRIO", case=False, na=False)])
-            count_agro = len(df_f[df_f["Curso"].str.contains("AGRO", case=False, na=False)])
-            count_ing = len(df_f[df_f["Curso"].str.contains("INGLÊS", case=False, na=False)])
-            count_tec = len(df_f[df_f["Curso"].str.contains("TECNOLOGIA|INFORMÁTICA", case=False, na=False)])
-
-            with col_banc: st.markdown(f'<div class="card-hud neon-blue"><span class="stat-label">JOVEM BANCÁRIO</span><h2>{count_banc}</h2></div>', unsafe_allow_html=True)
-            with col_agro: st.markdown(f'<div class="card-hud neon-green"><span class="stat-label">AGRONEGÓCIO</span><h2>{count_agro}</h2></div>', unsafe_allow_html=True)
-            with col_ing: st.markdown(f'<div class="card-hud neon-purple"><span class="stat-label">INGLÊS</span><h2>{count_ing}</h2></div>', unsafe_allow_html=True)
-            with col_tec: st.markdown(f'<div class="card-hud neon-pink"><span class="stat-label">TECNOLOGIA</span><h2>{count_tec}</h2></div>', unsafe_allow_html=True)
+                # UNIFICAÇÃO: Card de Matrículas por Curso
+                c_banc = len(df_f[df_f["Curso"].str.contains("BANCÁRIO", case=False, na=False)])
+                c_agro = len(df_f[df_f["Curso"].str.contains("AGRO", case=False, na=False)])
+                c_ing = len(df_f[df_f["Curso"].str.contains("INGLÊS", case=False, na=False)])
+                c_tec = len(df_f[df_f["Curso"].str.contains("TECNOLOGIA|INFORMÁTICA", case=False, na=False)])
+                st.markdown(f'''
+                    <div class="card-hud neon-blue">
+                        <span class="stat-label">POR ÁREA</span>
+                        <div style="font-size:11px; text-align:left; color:#e0e0e0; line-height:1.2;">
+                            BANC: <b>{c_banc}</b> | AGRO: <b>{c_agro}</b><br>
+                            INGL: <b>{c_ing}</b> | TECN: <b>{c_tec}</b>
+                        </div>
+                    </div>''', unsafe_allow_html=True)
 
             st.write("")
             total_st = len(df_f)
@@ -335,16 +330,34 @@ with tab_rel:
                 fig_status = go.Figure()
                 fig_status.add_trace(go.Bar(y=["STATUS"], x=[at_c], orientation='h', marker=dict(color='#2ecc71'), text=[f"<b>ATIVOS: {at_c}</b>"], textposition='inside', insidetextanchor='start'))
                 fig_status.add_trace(go.Bar(y=["STATUS"], x=[can_c], orientation='h', marker=dict(color='#ff4b4b'), text=[f"<b>CANCELADOS: {can_c}</b>"], textposition='inside', insidetextanchor='end'))
-                fig_status.update_layout(barmode='stack', showlegend=False, height=50, margin=dict(t=5, b=5, l=10, r=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(showgrid=False, zeroline=False, showticklabels=False), yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
+                fig_status.update_layout(barmode='stack', showlegend=False, height=40, margin=dict(t=5, b=5, l=10, r=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(showgrid=False, zeroline=False, showticklabels=False), yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
                 st.plotly_chart(fig_status, use_container_width=True, config={'displayModeBar': False})
 
             st.write("---")
             col_graf_1, col_graf_2 = st.columns(2)
             with col_graf_1:
-                st.markdown("<h4 style='text-align:center; color:#00f2ff;'>📍 DISTRIBUIÇÃO POR CIDADE</h4>", unsafe_allow_html=True)
-                df_city = df_f['Cidade'].value_counts().head(5).reset_index()
-                df_city.columns = ['Cidade', 'Qtd']
-                fig_city = go.Figure(go.Bar(x=df_city['Cidade'], y=df_city['Qtd'], text=df_city['Qtd'], textposition='outside', marker=dict(color=df_city['Qtd'], colorscale=[[0, '#1f295a'], [1, '#00f2ff']], line=dict(width=0)), textfont=dict(size=14, color="#00f2ff", family="Arial Black")))
+                st.markdown("<h4 style='text-align:center; color:#00f2ff;'>📍 CIDADES E VENDEDORES</h4>", unsafe_allow_html=True)
+                # Lógica para pegar cidades e quem vendeu nelas
+                df_city_full = df_f.copy()
+                df_city_full["Vendedor_Limpo"] = df_city_full["Vendedor"].str.split(" - ").str[0].str.strip()
+                top_cities = df_city_full['Cidade'].value_counts().head(5).index
+                
+                df_city_vends = []
+                for city in top_cities:
+                    vends = df_city_full[df_city_full['Cidade'] == city]['Vendedor_Limpo'].unique()
+                    vends_str = ", ".join(list(vends))
+                    count = len(df_city_full[df_city_full['Cidade'] == city])
+                    df_city_vends.append({"Cidade": city, "Qtd": count, "Vendedores": vends_str})
+                
+                df_city_plot = pd.DataFrame(df_city_vends)
+                
+                fig_city = go.Figure(go.Bar(
+                    x=df_city_plot['Cidade'], 
+                    y=df_city_plot['Qtd'], 
+                    text=df_city_plot.apply(lambda r: f"{r['Qtd']}<br><span style='font-size:10px'>{r['Vendedores']}</span>", axis=1),
+                    textposition='outside', 
+                    marker=dict(color=df_city_plot['Qtd'], colorscale=[[0, '#1f295a'], [1, '#00f2ff']], line=dict(width=0))
+                ))
                 fig_city.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=400, margin=dict(t=50), xaxis=dict(showgrid=False), yaxis=dict(showgrid=False, showticklabels=False))
                 st.plotly_chart(fig_city, use_container_width=True, config={'displayModeBar': False})
 
