@@ -295,7 +295,7 @@ with tab_rel:
         if len(iv) == 2:
             df_f = df_r.loc[(df_r[dt_col].dt.date >= iv[0]) & (df_r[dt_col].dt.date <= iv[1])].copy()
             
-            # --- INÍCIO DA NOVA LÓGICA DE PROCESSAMENTO ---
+            # --- LÓGICA DE PROCESSAMENTO (CORRIGIDA) ---
             v_taxa = 0.0
             v_cartao = 0.0
             v_entrada = 0.0
@@ -305,56 +305,52 @@ with tab_rel:
                 if not linha or str(linha).strip() == "": continue
                 linha_upper = str(linha).upper()
                 
-                # 1. TRATAMENTO DE ALTERAÇÕES (Prioridade Máxima)
                 if "ALTERAÇÃO" in linha_upper or "ALTEROU PARA" in linha_upper:
                     match_alt = re.search(r'\((?:.*?PARA\s+)?(.*?)\)', linha_upper)
                     if match_alt:
                         linha_upper = match_alt.group(1)
 
-                # 2. CAPTURA DE TAXAS (Independente do valor principal)
                 taxas_na_linha = re.findall(r'TAXA.*?(\d+)', linha_upper)
                 for t in taxas_na_linha:
                     v_taxa += float(t)
                 if "TAXA" in linha_upper and "PAGA" in linha_upper and not taxas_na_linha:
                     v_taxa += 50.0
 
-                # 3. REGRA DO CARTÃO (Multiplicação e Valor Integral)
                 match_mult = re.findall(r'(\d+)\s*[X]\s*(?:R\$)?\s*([\d\.,]+)', linha_upper)
                 if match_mult and ("CARTÃO" in linha_upper or "LINK" in linha_upper):
                     for qtd, val in match_mult:
-                        valor_unitario = float(val.replace('.', '').replace(',', '.'))
-                        v_cartao += int(qtd) * valor_unitario
+                        v_u = val.replace('.', '').replace(',', '.')
+                        if v_u: v_cartao += int(qtd) * float(v_u)
                 else:
                     match_fixo = re.findall(r'(?:PAGO|R\$)\s*([\d\.]+,\d{2}|[\d\.]+)', linha_upper)
                     for val in match_fixo:
-                        valor_limpo = float(val.replace('.', '').replace(',', '.'))
-                        if valor_limpo != 50.0:
-                            if "CARTÃO" in linha_upper or "LINK" in linha_upper:
-                                v_cartao += valor_limpo
-                            else:
-                                v_entrada += valor_limpo
+                        v_l = val.replace('.', '').replace(',', '.')
+                        if v_l:
+                            valor_limpo = float(v_l)
+                            if valor_limpo != 50.0:
+                                if "CARTÃO" in linha_upper or "LINK" in linha_upper:
+                                    v_cartao += valor_limpo
+                                else:
+                                    v_entrada += valor_limpo
 
-                # 4. ENTRADAS DE BOLETO, PIX E DINHEIRO (Sem multiplicação)
                 if any(x in linha_upper for x in ["BOLETO", "PIX", "DINHEIRO", "DÉBITO"]):
                     match_ent = re.findall(r'(?:PARCELA|ENTRADA|PIX|DINHEIRO|DÉBITO).*?(?:R\$)?\s*([\d\.,]+)', linha_upper)
                     for val in match_ent:
-                        valor_ent = float(val.replace('.', '').replace(',', '.'))
-                        if valor_ent not in [float(v.replace('.', '').replace(',', '.')) for v in re.findall(r'(?:PAGO|R\$)\s*([\d\.]+,\d{2}|[\d\.]+)', linha_upper)]:
-                            v_entrada += valor_ent
+                        v_e = val.replace('.', '').replace(',', '.')
+                        if v_e:
+                            valor_ent = float(v_e)
+                            if valor_ent not in [float(v.replace('.', '').replace(',', '.')) for v in re.findall(r'(?:PAGO|R\$)\s*([\d\.]+,\d{2}|[\d\.]+)', linha_upper) if v.replace('.', '').replace(',', '.')]:
+                                v_entrada += valor_ent
             
             total_final = v_taxa + v_cartao + v_entrada
-            # --- FIM DA NOVA LÓGICA ---
 
             c1, c2, c3, c4, c5, c6 = st.columns(6)
             with c1: st.markdown(f'<div class="card-hud neon-pink"><span class="stat-label">MATRÍCULAS</span><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
             with c2: st.markdown(f'<div class="card-hud neon-green"><span class="stat-label">ATIVOS</span><h2>{len(df_f[df_f["STATUS"].str.upper()=="ATIVO"])}</h2></div>', unsafe_allow_html=True)
             with c3: st.markdown(f'<div class="card-hud neon-red"><span class="stat-label">CANCELADOS</span><h2>{len(df_f[df_f["STATUS"].str.upper()=="CANCELADO"])}</h2></div>', unsafe_allow_html=True)
-            
-            # Card do Total Recebido usando a nova variável total_final
             with c4: st.markdown(f'<div class="card-hud neon-blue"><span class="stat-label">TOTAL RECEBIDO</span><h2 style="font-size:22px">R${total_final:,.2f}</h2></div>', unsafe_allow_html=True)
             
             with c5:
-                # v_tic ainda usa a função extrair_valor_geral para manter o cálculo do ticket médio como no original
                 df_f['v_tic'] = df_f['Pagamento'].apply(extrair_valor_geral)
                 tm_b = df_f[df_f['Pagamento'].str.contains('BOLETO', na=False, case=False)]['v_tic'].mean() or 0.0
                 tm_c = df_f[df_f['Pagamento'].str.contains('CARTÃO|LINK', na=False, case=False)]['v_tic'].mean() or 0.0
