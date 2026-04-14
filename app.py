@@ -138,54 +138,53 @@ def reset_campos_subir():
 
 def extrair_valor_recebido(texto):
     """
-    Função aprimorada para processar regras de pagamento:
-    1. Cartão: Multiplicação de parcelas (ex: 12X 100).
-    2. Entradas: Captura apenas o que foi pago no ato.
-    3. Taxas: Soma taxas de 50 pagas separadamente.
-    4. Alterações: Prioriza o valor final da alteração.
+    Função com lógica rigorosa de 'Dindin no Caixa':
+    - Procura valores imediatamente ligados a PAGO, PAGOU ou PAGA.
+    - Calcula multiplicação de parcelas se o cartão estiver PAGO.
+    - Identifica taxas pagas.
     """
-    if not texto: return 0.0, 0.0, 0.0 # (Total, Cartão, Boleto/Entrada, Taxas)
+    if not texto: return 0.0, 0.0, 0.0, 0.0
     
-    texto = str(texto).upper()
+    t = str(texto).upper()
     val_cartao = 0.0
     val_entrada = 0.0
     val_taxa = 0.0
 
-    # REGRA: TAXAS DE R$ 50 (Soma se houver 'TAXA' e '50' e 'PAGO')
-    if "TAXA" in texto and "50" in texto and ("PAGO" in texto or "OK" in texto):
-        val_taxa = 50.0
+    # 1. IDENTIFICAÇÃO DE TAXA PAGA
+    if "TAXA" in t and ("PAGA" in t or "PAGO" in t or "OK" in t):
+        match_taxa = re.search(r'TAXA\s*(?:R\$)?\s*(\d+)', t)
+        if match_taxa:
+            val_taxa = float(match_taxa.group(1))
+        elif "50" in t:
+            val_taxa = 50.0
 
-    # REGRA: ALTERAÇÕES (Prioridade ao valor final após 'ALTEROU PARA')
-    if "ALTEROU PARA" in texto:
-        parte_final = texto.split("ALTEROU PARA")[-1]
-        v = re.findall(r'R\$\s*([\d\.,]+)|(?:\s|^)([\d\.,]+)', parte_final)
-        if v:
-            # Pega o primeiro valor após a alteração
-            num_str = v[0][0] if v[0][0] else v[0][1]
-            val_final = float(num_str.replace('.', '').replace(',', '.'))
-            if "PIX" in parte_final or "DINHEIRO" in parte_final or "BOLETO" in parte_final:
-                return val_final + val_taxa, 0.0, val_final, val_taxa
-            else:
-                return val_final + val_taxa, val_final, 0.0, val_taxa
+    # 2. IDENTIFICAÇÃO DE CARTÃO PAGO (COM MULTIPLICAÇÃO)
+    # Busca 'PAGO' e olha se tem algo tipo 12X80 por perto
+    if "CARTÃO" in t and ("PAGO" in t or "PAGA" in t):
+        # Tenta padrão 12X80 ou 12X 80
+        match_mult = re.search(r'(\d+)\s*X\s*(?:R\$)?\s*([\d\.,]+)', t)
+        if match_mult:
+            qtd = int(match_mult.group(1))
+            v_un = float(match_mult.group(2).replace('.', '').replace(',', '.'))
+            val_cartao = qtd * v_un
+        else:
+            # Tenta valor fixo após o PAGO
+            match_fixo = re.search(r'PAGO\s*(?:R\$)?\s*([\d\.,]+)', t)
+            if match_fixo:
+                val_cartao = float(match_fixo.group(1).replace('.', '').replace(',', '.'))
 
-    # REGRA: CARTÃO (Multiplicação 12X [valor])
-    match_parcela = re.search(r'(\d+)\s*X\s*(?:R\$)?\s*([\d\.,]+)', texto)
-    if match_parcela:
-        qtd = int(match_parcela.group(1))
-        valor_un = float(match_parcela.group(2).replace('.', '').replace(',', '.'))
-        val_cartao = qtd * valor_un
-    else:
-        # Cartão Pago valor fixo
-        match_cartao_pago = re.search(r'CARTÃO\s*(?:PAGO)?\s*(?:R\$)?\s*([\d\.,]+)', texto)
-        if match_cartao_pago:
-            val_cartao = float(match_cartao_pago.group(1).replace('.', '').replace(',', '.'))
-
-    # REGRA: ENTRADA/BOLETOS (Pega apenas 'PAGO [valor]' ou 'ENTRADA [valor]')
-    # Ignora o que vem depois de 'RESTANTE' ou 'PAGAR'
-    texto_limpo = texto.split("RESTANTE")[0].split("A PAGAR")[0]
-    match_entrada = re.search(r'(?:PAGO|PAGOU|ENTRADA)\s*(?:PRIMEIRA|1ª)?\s*(?:PARCELA)?\s*(?:R\$)?\s*([\d\.,]+)', texto_limpo)
-    if match_entrada:
-        val_entrada = float(match_entrada.group(1).replace('.', '').replace(',', '.'))
+    # 3. IDENTIFICAÇÃO DE ENTRADA / PIX / DINHEIRO (PAGO)
+    # Se não foi cartao ou se tem PAGO isolado para entrada
+    # Usamos uma regex que busca o valor após a palavra PAGO que não seja o que já pegamos no cartão
+    passagens_pago = re.finditer(r'(?:PAGO|PAGOU|ENTRADA)\s*(?:PRIMEIRA|1ª)?\s*(?:PARCELA)?\s*(?:R\$)?\s*([\d\.,]+)', t)
+    for m in passagens_pago:
+        val_encontrado = float(m.group(1).replace('.', '').replace(',', '.'))
+        # Se esse valor não for o total do cartão (para evitar duplicidade em frases complexas)
+        if val_encontrado != val_cartao and val_encontrado != val_taxa:
+            # Se for boleto ou entrada, somamos aqui
+            if "BOLETO" in t or "PIX" in t or "DINHEIRO" in t or "ENTRADA" in t:
+                val_entrada = val_encontrado
+                break 
 
     total = val_cartao + val_entrada + val_taxa
     return total, val_cartao, val_entrada, val_taxa
