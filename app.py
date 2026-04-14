@@ -295,7 +295,7 @@ with tab_rel:
         if len(iv) == 2:
             df_f = df_r.loc[(df_r[dt_col].dt.date >= iv[0]) & (df_r[dt_col].dt.date <= iv[1])].copy()
             
-            # --- LÓGICA DE PROCESSAMENTO (CORRIGIDA) ---
+            # --- LÓGICA DE PROCESSAMENTO (RESILIENTE) ---
             v_taxa = 0.0
             v_cartao = 0.0
             v_entrada = 0.0
@@ -305,42 +305,52 @@ with tab_rel:
                 if not linha or str(linha).strip() == "": continue
                 linha_upper = str(linha).upper()
                 
+                # 1. TRATAMENTO DE ALTERAÇÕES
                 if "ALTERAÇÃO" in linha_upper or "ALTEROU PARA" in linha_upper:
                     match_alt = re.search(r'\((?:.*?PARA\s+)?(.*?)\)', linha_upper)
                     if match_alt:
                         linha_upper = match_alt.group(1)
 
+                # 2. CAPTURA DE TAXAS
                 taxas_na_linha = re.findall(r'TAXA.*?(\d+)', linha_upper)
                 for t in taxas_na_linha:
-                    v_taxa += float(t)
+                    try: v_taxa += float(t)
+                    except: pass
                 if "TAXA" in linha_upper and "PAGA" in linha_upper and not taxas_na_linha:
                     v_taxa += 50.0
 
+                # 3. REGRA DO CARTÃO (Multiplicação e Valor Integral)
                 match_mult = re.findall(r'(\d+)\s*[X]\s*(?:R\$)?\s*([\d\.,]+)', linha_upper)
                 if match_mult and ("CARTÃO" in linha_upper or "LINK" in linha_upper):
                     for qtd, val in match_mult:
-                        v_u = val.replace('.', '').replace(',', '.')
-                        if v_u: v_cartao += int(qtd) * float(v_u)
+                        try:
+                            v_u = val.replace('.', '').replace(',', '.')
+                            v_cartao += int(qtd) * float(v_u)
+                        except: pass
                 else:
                     match_fixo = re.findall(r'(?:PAGO|R\$)\s*([\d\.]+,\d{2}|[\d\.]+)', linha_upper)
                     for val in match_fixo:
-                        v_l = val.replace('.', '').replace(',', '.')
-                        if v_l:
+                        try:
+                            v_l = val.replace('.', '').replace(',', '.')
                             valor_limpo = float(v_l)
                             if valor_limpo != 50.0:
                                 if "CARTÃO" in linha_upper or "LINK" in linha_upper:
                                     v_cartao += valor_limpo
                                 else:
                                     v_entrada += valor_limpo
+                        except: pass
 
+                # 4. ENTRADAS DE BOLETO, PIX E DINHEIRO
                 if any(x in linha_upper for x in ["BOLETO", "PIX", "DINHEIRO", "DÉBITO"]):
                     match_ent = re.findall(r'(?:PARCELA|ENTRADA|PIX|DINHEIRO|DÉBITO).*?(?:R\$)?\s*([\d\.,]+)', linha_upper)
                     for val in match_ent:
-                        v_e = val.replace('.', '').replace(',', '.')
-                        if v_e:
+                        try:
+                            v_e = val.replace('.', '').replace(',', '.')
                             valor_ent = float(v_e)
-                            if valor_ent not in [float(v.replace('.', '').replace(',', '.')) for v in re.findall(r'(?:PAGO|R\$)\s*([\d\.]+,\d{2}|[\d\.]+)', linha_upper) if v.replace('.', '').replace(',', '.')]:
+                            # Verifica se o valor já foi capturado para não duplicar
+                            if valor_ent not in [float(v.replace('.', '').replace(',', '.')) for v in re.findall(r'(?:PAGO|R\$)\s*([\d\.]+,\d{2}|[\d\.]+)', linha_upper) if v]:
                                 v_entrada += valor_ent
+                        except: pass
             
             total_final = v_taxa + v_cartao + v_entrada
 
