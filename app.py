@@ -137,14 +137,58 @@ def reset_campos_subir():
     st.session_state.df_auto_ready = None
 
 def extrair_valor_recebido(texto):
-    if not texto: return 0.0
-    match = re.search(r'PAG[OA]S?\s*(?:R\$)?\s*([\d\.,]+)', str(texto).upper())
-    if match:
-        try:
-            return float(match.group(1).replace('.', '').replace(',', '.'))
-        except:
-            return 0.0
-    return 0.0
+    """
+    Função aprimorada para processar regras de pagamento:
+    1. Cartão: Multiplicação de parcelas (ex: 12X 100).
+    2. Entradas: Captura apenas o que foi pago no ato.
+    3. Taxas: Soma taxas de 50 pagas separadamente.
+    4. Alterações: Prioriza o valor final da alteração.
+    """
+    if not texto: return 0.0, 0.0, 0.0 # (Total, Cartão, Boleto/Entrada, Taxas)
+    
+    texto = str(texto).upper()
+    val_cartao = 0.0
+    val_entrada = 0.0
+    val_taxa = 0.0
+
+    # REGRA: TAXAS DE R$ 50 (Soma se houver 'TAXA' e '50' e 'PAGO')
+    if "TAXA" in texto and "50" in texto and ("PAGO" in texto or "OK" in texto):
+        val_taxa = 50.0
+
+    # REGRA: ALTERAÇÕES (Prioridade ao valor final após 'ALTEROU PARA')
+    if "ALTEROU PARA" in texto:
+        parte_final = texto.split("ALTEROU PARA")[-1]
+        v = re.findall(r'R\$\s*([\d\.,]+)|(?:\s|^)([\d\.,]+)', parte_final)
+        if v:
+            # Pega o primeiro valor após a alteração
+            num_str = v[0][0] if v[0][0] else v[0][1]
+            val_final = float(num_str.replace('.', '').replace(',', '.'))
+            if "PIX" in parte_final or "DINHEIRO" in parte_final or "BOLETO" in parte_final:
+                return val_final + val_taxa, 0.0, val_final, val_taxa
+            else:
+                return val_final + val_taxa, val_final, 0.0, val_taxa
+
+    # REGRA: CARTÃO (Multiplicação 12X [valor])
+    match_parcela = re.search(r'(\d+)\s*X\s*(?:R\$)?\s*([\d\.,]+)', texto)
+    if match_parcela:
+        qtd = int(match_parcela.group(1))
+        valor_un = float(match_parcela.group(2).replace('.', '').replace(',', '.'))
+        val_cartao = qtd * valor_un
+    else:
+        # Cartão Pago valor fixo
+        match_cartao_pago = re.search(r'CARTÃO\s*(?:PAGO)?\s*(?:R\$)?\s*([\d\.,]+)', texto)
+        if match_cartao_pago:
+            val_cartao = float(match_cartao_pago.group(1).replace('.', '').replace(',', '.'))
+
+    # REGRA: ENTRADA/BOLETOS (Pega apenas 'PAGO [valor]' ou 'ENTRADA [valor]')
+    # Ignora o que vem depois de 'RESTANTE' ou 'PAGAR'
+    texto_limpo = texto.split("RESTANTE")[0].split("A PAGAR")[0]
+    match_entrada = re.search(r'(?:PAGO|PAGOU|ENTRADA)\s*(?:PRIMEIRA|1ª)?\s*(?:PARCELA)?\s*(?:R\$)?\s*([\d\.,]+)', texto_limpo)
+    if match_entrada:
+        val_entrada = float(match_entrada.group(1).replace('.', '').replace(',', '.'))
+
+    total = val_cartao + val_entrada + val_taxa
+    return total, val_cartao, val_entrada, val_taxa
 
 def extrair_valor_geral(texto):
     if not texto: return 0.0
@@ -286,29 +330,49 @@ with tab_rel:
     df_r = safe_read()
     if not df_r.empty:
         df_r.columns = [c.strip() for c in df_r.columns]
-        
-        # Filtro baseado em Data de Matrícula conforme solicitado
         dt_col = "Data Matrícula"
         df_r[dt_col] = pd.to_datetime(df_r[dt_col], dayfirst=True, errors='coerce')
-        
         iv = st.date_input("Filtrar Período (Data de Matrícula)", value=(date.today()-timedelta(days=7), date.today()), format="DD/MM/YYYY")
         
         if len(iv) == 2:
             df_f = df_r.loc[(df_r[dt_col].dt.date >= iv[0]) & (df_r[dt_col].dt.date <= iv[1])].copy()
-            df_f['v_rec'] = df_f['Pagamento'].apply(extrair_valor_recebido)
+            
+            # --- CÁLCULOS RIGOROSOS DE PAGAMENTO ---
+            resultados_pagto = df_f['Pagamento'].apply(extrair_valor_recebido)
+            df_f['v_rec'] = resultados_pagto.apply(lambda x: x[0])
+            df_f['v_cartao'] = resultados_pagto.apply(lambda x: x[1])
+            df_f['v_entrada'] = resultados_pagto.apply(lambda x: x[2])
+            df_f['v_taxa'] = resultados_pagto.apply(lambda x: x[3])
             df_f['v_tic'] = df_f['Pagamento'].apply(extrair_valor_geral)
+            
+            total_geral = df_f["v_rec"].sum()
+            total_c = df_f["v_cartao"].sum()
+            total_e = df_f["v_entrada"].sum()
+            total_t = df_f["v_taxa"].sum()
             
             c1, c2, c3, c4, c5, c6 = st.columns(6)
             with c1: st.markdown(f'<div class="card-hud neon-pink"><span class="stat-label">MATRÍCULAS</span><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
             with c2: st.markdown(f'<div class="card-hud neon-green"><span class="stat-label">ATIVOS</span><h2>{len(df_f[df_f["STATUS"].str.upper()=="ATIVO"])}</h2></div>', unsafe_allow_html=True)
             with c3: st.markdown(f'<div class="card-hud neon-red"><span class="stat-label">CANCELADOS</span><h2>{len(df_f[df_f["STATUS"].str.upper()=="CANCELADO"])}</h2></div>', unsafe_allow_html=True)
-            with c4: st.markdown(f'<div class="card-hud neon-blue"><span class="stat-label">TOTAL RECEBIDO</span><h2 style="font-size:22px">R${df_f["v_rec"].sum():,.2f}</h2></div>', unsafe_allow_html=True)
+            
+            with c4: 
+                # CARD TOTAL RECEBIDO COM DETALHAMENTO RIGOROSO
+                st.markdown(f'''
+                    <div class="card-hud neon-blue">
+                        <span class="stat-label">TOTAL RECEBIDO</span>
+                        <h2 style="font-size:22px; margin-bottom:2px;">R${total_geral:,.2f}</h2>
+                        <div style="font-size:9px; color:#64748b; line-height:1.2;">
+                            CARTÃO: R${total_c:,.0f} | ENTR: R${total_e:,.0f}<br>
+                            TAXAS: R${total_t:,.0f}
+                        </div>
+                    </div>''', unsafe_allow_html=True)
+            
             with c5:
                 tm_b = df_f[df_f['Pagamento'].str.contains('BOLETO', na=False, case=False)]['v_tic'].mean() or 0.0
                 tm_c = df_f[df_f['Pagamento'].str.contains('CARTÃO|LINK', na=False, case=False)]['v_tic'].mean() or 0.0
                 st.markdown(f'<div class="card-hud neon-purple"><span class="stat-label">TICKET MÉDIO</span><div style="font-size:18px; font-weight:bold; color:#e0e0e0;">BOL: R${tm_b:.0f}<br>CAR: R${tm_c:.0f}</div></div>', unsafe_allow_html=True)
+            
             with c6:
-                # UNIFICAÇÃO E AUMENTO DE FONTE: Card de Matrículas por Curso
                 c_banc = len(df_f[df_f["Curso"].str.contains("BANCÁRIO", case=False, na=False)])
                 c_agro = len(df_f[df_f["Curso"].str.contains("AGRO", case=False, na=False)])
                 c_ing = len(df_f[df_f["Curso"].str.contains("INGLÊS", case=False, na=False)])
