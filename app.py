@@ -256,16 +256,16 @@ with tab_ger:
     st.markdown("""
     <style>
     /* Compactação máxima para colar a tabela nos filtros */
-    [data-testid="stAppViewBlockContainer"] { padding-top: 10px !important; }
+    [data-testid="stAppViewBlockContainer"] { padding-top: 5px !important; }
     
     .ger-container { 
         width: 100vw; 
         margin-left: -40px; 
         padding-right: 20px; 
-        margin-top: -35px !important; /* Puxa o frame para cima dos filtros */
+        margin-top: -55px !important; /* Puxa o conteúdo agressivamente para cima */
     }
     .ger-table { width: 100%; border-collapse: separate; border-spacing: 0 4px; margin-top: 0px; }
-    .ger-table thead th { text-align: left; font-size: 11px; color: #00f2ff; padding: 2px 10px; text-transform: uppercase; }
+    .ger-table thead th { text-align: left; font-size: 11px; color: #00f2ff; padding: 1px 10px; text-transform: uppercase; }
     .ger-row { background: rgba(18, 22, 41, 0.7); transition: all 0.2s ease; border-radius: 6px; }
     .ger-row:hover { background: rgba(0, 242, 255, 0.08); transform: scale(1.001); }
     .ger-table td { padding: 8px 12px; font-size: 11px; color: #e0e0e0; border-top: 1px solid #1f295a; border-bottom: 1px solid #1f295a; }
@@ -322,7 +322,7 @@ with tab_ger:
         body {{ background-color: #0b0e1e; color: #e0e0e0; font-family: Arial, sans-serif; margin: 0; padding: 0; overflow-x: hidden; }}
         .ger-container {{ width: 100%; margin-top: 0; }}
         .ger-table {{ width: 100%; border-collapse: separate; border-spacing: 0 4px; min-width: 2200px; margin-top: 0; }}
-        .ger-table thead th {{ text-align: left; font-size: 11px; color: #00f2ff; padding: 2px 10px; text-transform: uppercase; }}
+        .ger-table thead th {{ text-align: left; font-size: 11px; color: #00f2ff; padding: 1px 10px; text-transform: uppercase; }}
         .ger-row {{ background: rgba(18, 22, 41, 0.7); transition: all 0.2s ease; }}
         .ger-row:hover {{ background: rgba(0, 242, 255, 0.08); }}
         .ger-table td {{ padding: 8px 12px; font-size: 11px; color: #e0e0e0; border-top: 1px solid #1f295a; border-bottom: 1px solid #1f295a; }}
@@ -331,7 +331,7 @@ with tab_ger:
         .ger-wrap {{ max-width: 220px; word-wrap: break-word; white-space: normal; }}
         .status-badge {{ padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: bold; }}
         .status-ativo {{ background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }}
-        .status-cancelado {{ background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #2ecc71; border-color: #e74c3c; }}
+        .status-cancelado {{ background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }}
         </style>
         <div class="ger-container">
             <table class="ger-table">
