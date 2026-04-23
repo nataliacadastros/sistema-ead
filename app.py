@@ -253,7 +253,7 @@ with tab_cad:
             st.markdown(f"### 📋 PRÉ-VISUALIZAÇÃO ({len(st.session_state.lista_previa)} ALUNOS)")
             st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
-# --- ABA 2: GERENCIAMENTO (COM SUA ATUALIZAÇÃO HTML) ---
+# --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
     st.markdown("""
     <style>
@@ -472,6 +472,68 @@ with tab_subir:
                 idx_default = (tags_lista.index(last_sel) + 1) if last_sel in tags_lista else 0
                 c_sel, c_del = st.columns([0.4, 0.6])
                 cur_tag = c_sel.selectbox("", [""] + tags_lista, index=idx_default, key=f"sel_{curso}", label_visibility="collapsed")
+                
                 if cur_tag != last_sel:
-                    st.session_state.dados_tags["last_selection"][curso] = cur_tag; salvar_tags(st.session_state.dados_tags)
+                    st.session_state.dados_tags["last_selection"][curso] = cur_tag
+                    salvar_tags(st.session_state.dados_tags)
+                
                 if c_del.button("🗑️", key=f"del_{curso}"):
+                    if cur_tag and cur_tag in st.session_state.dados_tags["tags"][curso]:
+                        st.session_state.dados_tags["tags"][curso].remove(cur_tag)
+                        st.session_state.dados_tags["last_selection"][curso] = ""
+                        salvar_tags(st.session_state.dados_tags)
+                        st.rerun()
+                
+                c_new, _ = st.columns([0.4, 0.6])
+                new_tag = c_new.text_input("", placeholder="Nova...", key=f"new_{i}", label_visibility="collapsed").upper()
+                if new_tag and new_tag not in tags_lista:
+                    if "tags" not in st.session_state.dados_tags: st.session_state.dados_tags["tags"] = {}
+                    if curso not in st.session_state.dados_tags["tags"]: st.session_state.dados_tags["tags"][curso] = []
+                    st.session_state.dados_tags["tags"][curso].append(new_tag)
+                    st.session_state.dados_tags["last_selection"][curso] = new_tag
+                    salvar_tags(st.session_state.dados_tags)
+                    st.rerun()
+                selected_tags[curso] = (new_tag if new_tag else cur_tag).upper()
+
+    if st.button("🚀 PROCESSAR DADOS", use_container_width=True):
+        raw_list = []
+        if modo == "MANUAL":
+            l_ids = u_user.strip().split('\n'); l_nomes = u_nome.strip().split('\n'); l_pays = u_pay.strip().split('\n')
+            l_cours = u_cour.strip().split('\n'); l_cells = u_cell.strip().split('\n'); l_docs = u_doc.strip().split('\n')
+            l_citys = u_city.strip().split('\n'); l_sells = u_sell.strip().split('\n'); l_dates = u_date.strip().split('\n')
+            if len(l_ids) > 0:
+                for i in range(len(l_ids)):
+                    try: raw_list.append({"User": l_ids[i], "Nome": l_nomes[i] if i < len(l_nomes) else "", "Pay": l_pays[i] if i < len(l_pays) else "", "Cour": l_cours[i] if i < len(l_cours) else "", "Cell": l_cells[i] if i < len(l_cells) else "", "Doc": l_docs[i] if i < len(l_docs) else "", "City": l_citys[i] if i < len(l_citys) else "", "Sell": l_sells[i] if i < len(l_sells) else "", "Date": l_dates[i] if i < len(l_dates) else ""})
+                    except: continue
+        elif "df_auto_ready" in st.session_state and st.session_state.df_auto_ready is not None:
+            for _, r in st.session_state.df_auto_ready.iterrows(): raw_list.append({"User": r.iloc[6], "Nome": r.iloc[7], "Cell": r.iloc[9], "Doc": r.iloc[10], "City": r.iloc[11], "Cour": r.iloc[12], "Pay": r.iloc[13], "Sell": r.iloc[14], "Date": r.iloc[15]})
+        if raw_list:
+            try:
+                wb_c = load_workbook(ARQUIVO_CIDADES); ws_c = wb_c.active
+                c_map = {str(r[1]).strip().upper(): str(r[2]) for r in ws_c.iter_rows(min_row=2, values_only=True) if r[1]}
+            except: c_map = {}
+            processed = []
+            for item in raw_list:
+                c_orig = str(item['Cour']).upper(); p_orig = str(item['Pay']).upper()
+                tags_f = [selected_tags[k] for k in cursos_tags if k in c_orig and selected_tags.get(k)]
+                c_final = ",".join(tags_f).upper() if tags_f else c_orig
+                p_final = "PENDENTE"; has_bol = "BOLETO" in p_orig; has_car = "CARTÃO" in p_orig or "LINK" in p_orig
+                if (has_bol and not has_car): p_final = "BOLETO"
+                elif (has_car and not has_bol): p_final = "CARTÃO"
+                obs_final = f"{c_final} | {c_orig} | {p_orig}".upper(); ouro_val = "1" if "10 CURSOS PROFISSIONALIZANTES" in obs_final else "0"
+                processed.append({"username": item['User'], "email2": f"{item['User']}@profissionalizaead.com.br", "name": str(item['Nome']).split(" ")[0].upper(), "lastname": " ".join(str(item['Nome']).split(" ")[1:]).upper(), "cellphone2": str(item['Cell']), "document": item['Doc'], "city2": c_map.get(str(item['City']).upper(), item['City']), "courses": c_final, "payment": p_final, "observation": obs_final, "ouro": ouro_val, "password": "futuro", "role": "1", "secretary": "MGA", "seller": item['Sell'], "contract_date": item['Date'], "active": "1"})
+            st.session_state.df_final_processado = pd.DataFrame(processed)
+
+    if st.session_state.df_final_processado is not None:
+        df = st.session_state.df_final_processado; mask = df['payment'] == "PENDENTE"
+        if mask.any():
+            st.warning("⚠️ Confirmação necessária:")
+            df_conf = df.loc[mask, ["username", "name", "observation"]].copy(); df_conf.columns = ["ID", "Nome", "Texto Original (Pagamento)"]; df_conf["Forma Final"] = "BOLETO"
+            edited = st.data_editor(df_conf, column_config={"Forma Final": st.column_config.SelectboxColumn("Forma", options=["BOLETO", "CARTÃO"], required=True)}, disabled=["ID", "Nome", "Texto Original (Pagamento)"], hide_index=True, use_container_width=True, key="pag_editor")
+            if st.button("✅ CONFIRMAR E GERAR EXCEL"):
+                for _, row in edited.iterrows(): df.loc[df['username'] == row["ID"], "payment"] = row["Forma Final"]
+                st.session_state.df_final_processado = df; st.rerun()
+        if not (st.session_state.df_final_processado['payment'] == "PENDENTE").any():
+            output = BytesIO(); wb = Workbook(); ws = wb.active; ws.append(list(st.session_state.df_final_processado.columns))
+            for r in st.session_state.df_final_processado.values.tolist(): ws.append([str(val) for val in r])
+            wb.save(output); st.download_button("📥 BAIXAR EXCEL FINAL", output.getvalue(), f"ead_{date.today()}.xlsx", on_click=reset_campos_subir, use_container_width=True)
