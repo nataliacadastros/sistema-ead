@@ -68,7 +68,11 @@ st.markdown("""
     .stTabs [data-baseweb="tab"] { color: #64748b !important; font-size: 11px !important; padding: 0 30px !important; }
     .stTabs [aria-selected="true"] { color: #00f2ff !important; border-bottom: 2px solid #00f2ff !important; background-color: rgba(0, 242, 255, 0.05) !important; }
     
-    .main .block-container { padding-top: 35px !important; max-width: 100% !important; margin: 0 auto !important; }
+    .main .block-container { 
+        padding-top: 5px !important; 
+        max-width: 100% !important; 
+        margin: 0 auto !important; 
+    }
     
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; display: flex; align-items: center; justify-content: flex-end; }
     div[data-testid="stTextInput"] { width: 100% !important; }
@@ -97,250 +101,15 @@ st.markdown("""
     header {visibility: hidden;} footer {visibility: hidden;}
     
     .logo-container {
-    position: fixed;
-    top: 45px;   /* ajusta conforme seu menu */
-    left: 10px;
-    z-index: 1000;
-}
+        position: fixed;
+        top: 45px;
+        left: 10px;
+        z-index: 1000;
+    }
 
     .stat-label { font-size: 12px; font-weight: bold; margin-bottom: 4px; display: block; }
     </style>
-    """, unsafe_allow_html=True)
-
-# --- LOGO NO CANTO ESQUERDO ---
-if os.path.exists(caminho_logo):
-    st.markdown('<div class="logo-container">', unsafe_allow_html=True)
-    st.image(caminho_logo, width=90)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# --- CONEXÃO REFORÇADA ---
-conn = st.connection("gsheets", type=GSheetsConnection)
-
-def safe_read():
-    try:
-        return conn.read(ttl="10s").dropna(how='all')
-    except Exception as e:
-        st.error(f"Erro de conexão: {e}")
-        return pd.DataFrame()
-
-# --- ESTADOS DE SESSÃO ---
-if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
-if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
-if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
-if "df_final_processado" not in st.session_state: st.session_state.df_final_processado = None
-if "df_auto_ready" not in st.session_state: st.session_state.df_auto_ready = None
-
-# --- FUNÇÕES AUXILIARES ---
-def reset_campos_subir():
-    for c in ["in_user", "in_nome", "in_cell", "in_doc", "in_city", "in_cour", "in_pay", "in_sell", "in_date"]:
-        if c in st.session_state: st.session_state[c] = ""
-    st.session_state.df_final_processado = None
-    st.session_state.df_auto_ready = None
-
-def extrair_valor_recebido(texto):
-    if not texto: return 0.0
-    match = re.search(r'PAG[OA]S?\s*(?:R\$)?\s*([\d\.,]+)', str(texto).upper())
-    if match:
-        try:
-            return float(match.group(1).replace('.', '').replace(',', '.'))
-        except:
-            return 0.0
-    return 0.0
-
-def extrair_valor_geral(texto):
-    if not texto: return 0.0
-    try:
-        v = re.findall(r'\d+(?:\.\d+)?(?:,\d+)?', str(texto).replace('.', '').replace(',', '.'))
-        return float(v[0]) if v else 0.0
-    except: return 0.0
-
-def transformar_curso(chave):
-    entrada = st.session_state[chave].strip()
-    if not entrada: return
-    match = re.search(r'(\d+)$', entrada)
-    if match:
-        codigo = match.group(1); nome = DIC_CURSOS.get(codigo)
-        if nome:
-            base = entrada[:match.start()].strip().rstrip('+').strip()
-            st.session_state[chave] = (f"{base} + {nome}" if base and nome.upper() not in base.upper() else (base if base else nome)).upper()
-    else: st.session_state[chave] = entrada.upper()
-
-def formatar_cpf(chave):
-    valor = re.sub(r'\D', '', st.session_state[chave])
-    if len(valor) == 11:
-        st.session_state[chave] = f"{valor[:3]}.{valor[3:6]}.{valor[6:9]}-{valor[9:]}"
-
-def atualizar_pagamento():
-    suffix = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"
-    base = st.session_state.get(f"f_pagto_{suffix}", "").split('|')[0].strip()
-    novo = base
-    if st.session_state.get(f"chk_1_{suffix}"): novo += " | Após pagamento link cartão, avisar Natália para liberação In-glês"
-    if st.session_state.get(f"chk_2_{suffix}"): novo += " | Caso pague via link cartão, avisar Natália para liberação curso bônus a escolha"
-    if st.session_state.get(f"chk_3_{suffix}"): novo += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
-    st.session_state[f"f_pagto_{suffix}"] = novo.upper()
-
-# --- NAVEGAÇÃO ---
-tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
-
-# --- ABA 1: CADASTRO ---
-with tab_cad:
-    _, centro, _ = st.columns([0.2, 5.6, 0.2])
-    with centro:
-        s_al = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"; s_ge = f"g_{st.session_state.reset_geral}"
-        fields = [("ID:", f"f_id_{s_al}"), ("ALUNO:", f"f_nome_{s_al}"), ("TEL. RESPONSÁVEL:", f"f_tel_resp_{s_al}"),
-                  ("TEL. ALUNO:", f"f_tel_aluno_{s_al}"), ("CPF RESPONSÁVEL:", f"f_cpf_{s_al}"), ("CIDADE:", f"f_cid_{s_ge}"),
-                  ("CURSO CONTRATADO:", f"input_curso_key_{s_al}"), ("FORMA DE PAGAMENTO:", f"f_pagto_{s_al}"),
-                  ("VENDEDOR:", f"f_vend_{s_ge}"), ("DATA DA MATRÍCULA:", f"f_data_{s_ge}")]
-        
-        for l, k in fields:
-            cl, ci = st.columns([1.2, 3.8])
-            cl.markdown(f"<label>{l}</label>", unsafe_allow_html=True)
-            if "curso" in k: ci.text_input(l, key=k, on_change=transformar_curso, args=(k,), label_visibility="collapsed")
-            elif "f_cpf" in k: ci.text_input(l, key=k, on_change=formatar_cpf, args=(k,), label_visibility="collapsed")
-            else: ci.text_input(l, key=k, label_visibility="collapsed")
-        
-        st.write("")
-        _, c1, c2, c3, _ = st.columns([1.2, 1.2, 1.2, 1.2, 0.2])
-        c1.checkbox("LIB. IN-GLÊS", key=f"chk_1_{s_al}", on_change=atualizar_pagamento)
-        c2.checkbox("CURSO BÔNUS", key=f"chk_2_{s_al}", on_change=atualizar_pagamento)
-        c3.checkbox("CONFIRMAÇÃO", key=f"chk_3_{s_al}", on_change=atualizar_pagamento)
-        st.write("")
-        _, b1, b2, _ = st.columns([1.2, 1.9, 1.9, 0.2])
-        
-        with b1:
-            if st.button("💾 SALVAR ALUNO"):
-                if st.session_state[f"f_nome_{s_al}"]:
-                    st.session_state.lista_previa.append({
-                        "ID": st.session_state[f"f_id_{s_al}"].upper(),
-                        "Aluno": st.session_state[f"f_nome_{s_al}"].upper(),
-                        "Tel_Resp": str(st.session_state[f"f_tel_resp_{s_al}"]), 
-                        "Tel_Aluno": str(st.session_state[f"f_tel_aluno_{s_al}"]),
-                        "CPF": st.session_state[f"f_cpf_{s_al}"],
-                        "Cidade": st.session_state[f"f_cid_{s_ge}"].upper(), 
-                        "Course": st.session_state[f"input_curso_key_{s_al}"].upper(),
-                        "Pagto": st.session_state[f"f_pagto_{s_al}"].upper(),
-                        "Vendedor": st.session_state[f"f_vend_{s_ge}"].upper(),
-                        "Data_Mat": st.session_state[f"f_data_{s_ge}"]
-                    })
-                    st.session_state.reset_aluno += 1
-                    st.rerun()
-                else:
-                    st.warning("Preencha pelo menos o nome do aluno.")
-                    
-        with b2:
-            if st.button("📤 ENVIAR PLANILHA"):
-                if st.session_state.lista_previa:
-                    try:
-                        creds_info = st.secrets["connections"]["gsheets"]
-                        client = gspread.authorize(Credentials.from_service_account_info(creds_info, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
-                        ws = client.open_by_url(creds_info["spreadsheet"]).get_worksheet(0)
-                        
-                        d_f = []
-                        for a in st.session_state.lista_previa:
-                            d_f.append([
-                                "ATIVO", "MGA", "A DEFINIR", 
-                                "SIM" if "10 CURSOS" in a["Course"] else "NÃO", 
-                                "A DEFINIR" if "INGLÊS" in a["Course"] else "NÃO", 
-                                date.today().strftime("%d/%m/%Y"), 
-                                a["ID"], a["Aluno"], a["Tel_Resp"], a["Tel_Aluno"], 
-                                a["CPF"], a["Cidade"], a["Course"], a["Pagto"], 
-                                a["Vendedor"], a["Data_Mat"]
-                            ])
-                        
-                        ws.append_rows(d_f, value_input_option='RAW')
-                        st.session_state.lista_previa = []
-                        st.session_state.reset_geral += 1
-                        st.success("Enviado com sucesso!")
-                        st.cache_data.clear()
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Erro ao enviar: {e}")
-                else:
-                    st.info("Nenhum aluno na lista de pré-visualização.")
-        
-        if st.session_state.lista_previa: 
-            st.markdown(f"### 📋 PRÉ-VISUALIZAÇÃO ({len(st.session_state.lista_previa)} ALUNOS)")
-            st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
-
-# --- ABA 2: GERENCIAMENTO ---
-with tab_ger:
-    st.markdown("""
-    <style>
-    .ger-container {
-        width: 100vw;
-        margin-left: -40px;
-        padding-right: 20px;
-    }
-
-    .ger-table {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0 8px;
-    }
-
-    .ger-table thead th {
-        text-align: left;
-        font-size: 11px;
-        color: #00f2ff;
-        padding: 10px;
-    }
-
-    .ger-row {
-        background: rgba(18, 22, 41, 0.7);
-        transition: all 0.2s ease;
-        border-radius: 8px;
-    }
-
-    .ger-row:hover {
-        background: rgba(0, 242, 255, 0.08);
-        transform: scale(1.002);
-    }
-
-    .ger-table td {
-        padding: 12px;
-        font-size: 11px;
-        color: #e0e0e0;
-        border-top: 1px solid #1f295a;
-        border-bottom: 1px solid #1f295a;
-    }
-
-    .ger-id {
-        color: #00f2ff;
-        font-weight: bold;
-    }
-
-    .ger-nome {
-        color: #00f2ff;
-        font-weight: bold;
-        font-size: 12px;
-    }
-
-    .ger-wrap {
-        max-width: 220px;
-        white-space: normal;
-        word-wrap: break-word;
-    }
-
-    .status-badge {
-        padding: 4px 10px;
-        border-radius: 12px;
-        font-size: 10px;
-        font-weight: bold;
-    }
-
-    .status-ativo {
-        background-color: rgba(46, 204, 113, 0.2);
-        color: #2ecc71;
-        border: 1px solid #2ecc71;
-    }
-
-    .status-cancelado {
-        background-color: rgba(231, 76, 60, 0.2);
-        color: #e74c3c;
-        border: 1px solid #e74c3c;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
     cf1, cf2, cf3, cf4 = st.columns([2.5, 1.5, 1.5, 0.5])
     with cf1:
