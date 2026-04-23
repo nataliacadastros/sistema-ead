@@ -255,24 +255,49 @@ with tab_cad:
 with tab_ger:
     st.markdown("""
     <style>
-    /* Compactação máxima para colar a tabela nos filtros */
+    /* Ajuste de largura total e colagem no menu */
     [data-testid="stAppViewBlockContainer"] { padding-top: 5px !important; }
     
     .ger-container { 
-        width: 100vw; 
-        margin-left: -40px; 
-        padding-right: 20px; 
-        margin-top: -55px !important; /* Puxa o conteúdo agressivamente para cima */
+        width: 100%; 
+        margin-top: -55px !important; 
     }
-    .ger-table { width: 100%; border-collapse: separate; border-spacing: 0 4px; margin-top: 0px; }
-    .ger-table thead th { text-align: left; font-size: 11px; color: #00f2ff; padding: 1px 10px; text-transform: uppercase; }
+    .ger-table { 
+        width: 100%; 
+        border-collapse: separate; 
+        border-spacing: 0 4px; 
+        margin-top: 0px;
+        table-layout: auto; /* Permite que o navegador ajuste as larguras */
+    }
+    .ger-table thead th { 
+        text-align: left; 
+        font-size: 9px; /* Fonte levemente menor para caber tudo */
+        color: #00f2ff; 
+        padding: 2px 5px; 
+        text-transform: uppercase; 
+    }
     .ger-row { background: rgba(18, 22, 41, 0.7); transition: all 0.2s ease; border-radius: 6px; }
     .ger-row:hover { background: rgba(0, 242, 255, 0.08); transform: scale(1.001); }
-    .ger-table td { padding: 8px 12px; font-size: 11px; color: #e0e0e0; border-top: 1px solid #1f295a; border-bottom: 1px solid #1f295a; }
+    .ger-table td { 
+        padding: 6px 8px; 
+        font-size: 10px; /* Fonte menor para evitar scroll */
+        color: #e0e0e0; 
+        border-top: 1px solid #1f295a; 
+        border-bottom: 1px solid #1f295a; 
+        white-space: nowrap; /* Tenta manter em uma linha */
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
     .ger-id { color: #00f2ff; font-weight: bold; }
-    .ger-nome { color: #00f2ff; font-weight: bold; font-size: 12px; }
-    .ger-wrap { max-width: 220px; white-space: normal; word-wrap: break-word; }
-    .status-badge { padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: bold; }
+    .ger-nome { color: #00f2ff; font-weight: bold; font-size: 11px; }
+    
+    /* Largura controlada para as colunas de texto longo */
+    .ger-wrap { 
+        max-width: 150px; 
+        white-space: normal !important; 
+        word-wrap: break-word; 
+    }
+    .status-badge { padding: 2px 6px; border-radius: 10px; font-size: 8px; font-weight: bold; }
     .status-ativo { background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
     .status-cancelado { background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
     </style>
@@ -319,23 +344,50 @@ with tab_ger:
 
         html_code = f"""
         <style>
-        body {{ background-color: #0b0e1e; color: #e0e0e0; font-family: Arial, sans-serif; margin: 0; padding: 0; overflow-x: hidden; }}
-        .ger-container {{ width: 100%; margin-top: 0; }}
-        .ger-table {{ width: 100%; border-collapse: separate; border-spacing: 0 4px; min-width: 2200px; margin-top: 0; }}
-        .ger-table thead th {{ text-align: left; font-size: 11px; color: #00f2ff; padding: 1px 10px; text-transform: uppercase; }}
-        .ger-row {{ background: rgba(18, 22, 41, 0.7); transition: all 0.2s ease; }}
-        .ger-row:hover {{ background: rgba(0, 242, 255, 0.08); }}
-        .ger-table td {{ padding: 8px 12px; font-size: 11px; color: #e0e0e0; border-top: 1px solid #1f295a; border-bottom: 1px solid #1f295a; }}
+        body {{ background-color: #0b0e1e; color: #e0e0e0; font-family: Arial, sans-serif; margin: 0; padding: 0; overflow: hidden; }}
+        .ger-container {{ width: 100%; }}
+        .ger-table {{ width: 100%; border-collapse: separate; border-spacing: 0 4px; table-layout: fixed; }}
+        .ger-table thead th {{ text-align: left; font-size: 9px; color: #00f2ff; padding: 2px 5px; text-transform: uppercase; border-bottom: 1px solid #1f295a; }}
+        .ger-row {{ background: rgba(18, 22, 41, 0.7); }}
+        .ger-table td {{ 
+            padding: 5px 8px; 
+            font-size: 10px; 
+            color: #e0e0e0; 
+            border-top: 1px solid #1f295a; 
+            border-bottom: 1px solid #1f295a; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            white-space: nowrap; 
+        }}
         .ger-id {{ color: #00f2ff; font-weight: bold; }}
-        .ger-nome {{ color: #00f2ff; font-weight: bold; font-size: 12px; }}
-        .ger-wrap {{ max-width: 220px; word-wrap: break-word; white-space: normal; }}
-        .status-badge {{ padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: bold; }}
-        .status-ativo {{ background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }}
-        .status-cancelado {{ background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }}
+        .ger-nome {{ color: #00f2ff; font-weight: bold; font-size: 10px; }}
+        .ger-wrap {{ white-space: normal !important; }}
+        .status-badge {{ padding: 2px 5px; border-radius: 8px; font-size: 8px; }}
+        .status-ativo {{ color: #2ecc71; border: 1px solid #2ecc71; }}
+        .status-cancelado {{ color: #e74c3c; border: 1px solid #e74c3c; }}
         </style>
         <div class="ger-container">
             <table class="ger-table">
-                <thead><tr>{''.join([f'<th>{h}</th>' for h in df_g.columns])}</tr></thead>
+                <thead>
+                    <tr>
+                        <th style="width: 70px;">STATUS</th>
+                        <th style="width: 45px;">UNID.</th>
+                        <th style="width: 65px;">TURMA</th>
+                        <th style="width: 35px;">10C</th>
+                        <th style="width: 35px;">ING</th>
+                        <th style="width: 80px;">DT_CAD</th>
+                        <th style="width: 80px;">ID</th>
+                        <th style="width: 150px;">ALUNO</th>
+                        <th style="width: 100px;">TEL_RESP</th>
+                        <th style="width: 100px;">TEL_ALU</th>
+                        <th style="width: 110px;">CPF</th>
+                        <th style="width: 90px;">CIDADE</th>
+                        <th style="width: 160px;">CURSO</th>
+                        <th style="width: 160px;">PAGTO</th>
+                        <th style="width: 90px;">VEND.</th>
+                        <th style="width: 80px;">DT_MAT</th>
+                    </tr>
+                </thead>
                 <tbody>{rows}</tbody>
             </table>
         </div>
