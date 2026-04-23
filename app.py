@@ -393,15 +393,31 @@ with tab_ger:
 
 html_code = f"""
 <style>
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+.ger-container {
+    width: 100vw;
+    min-height: 100vh;
+}
 body {{
     background-color: #0b0e1e;
     color: #e0e0e0;
     font-family: Arial, sans-serif;
 }}
 
-.ger-container {{
-    width: 100%;
-}}
+.ger-container {
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+    width: 100vw;
+    min-height: 100vh;
+}
 
 .ger-table {{
     width: 100%;
@@ -482,7 +498,7 @@ body {{
 </div>
 """
 
-components.html(html_code, height=600, scrolling=True)
+components.html(html_code, height=9999, scrolling=True)
 
 # --- ABA 3: RELATÓRIOS ---
 with tab_rel:
