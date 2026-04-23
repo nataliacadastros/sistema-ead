@@ -255,8 +255,23 @@ with tab_cad:
 with tab_ger:
     st.markdown("""
     <style>
-    [data-testid="stAppViewBlockContainer"] { padding-top: 5px !important; }
-    .ger-container-st { margin-top: -30px; }
+    /* Expande a área de conteúdo do Streamlit para as bordas */
+    [data-testid="stAppViewBlockContainer"] { 
+        padding-top: 5px !important; 
+        padding-left: 10px !important; 
+        padding-right: 10px !important; 
+        max-width: 98% !important; 
+    }
+    
+    .ger-container-st { 
+        margin-top: -30px; 
+    }
+
+    /* Força o frame HTML a ocupar todo o espaço lateral sobrando */
+    .ger-frame-wrapper {
+        margin-left: -2% !important;
+        width: 104% !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -307,21 +322,21 @@ with tab_ger:
             font-family: Arial, sans-serif; 
             margin: 0; 
             padding: 0; 
-            overflow: auto; 
+            overflow-x: auto; 
+            overflow-y: auto;
         }}
         .ger-container {{ width: 100%; }}
         .ger-table {{ 
             width: 100%; 
             border-collapse: separate; 
             border-spacing: 0 5px; 
-            min-width: 1900px; 
-            table-layout: fixed;
+            min-width: 100%; /* Muda de pixels para porcentagem para esticar */
         }}
         .ger-table thead th {{ 
             text-align: left; 
             font-size: 11px; 
             color: #00f2ff; 
-            padding: 5px 6px; 
+            padding: 8px 10px; 
             text-transform: uppercase; 
             position: sticky; 
             top: 0; 
@@ -331,24 +346,20 @@ with tab_ger:
         .ger-row {{ background: rgba(18, 22, 41, 0.7); transition: all 0.2s ease; }}
         .ger-row:hover {{ background: rgba(0, 242, 255, 0.1); }}
         .ger-table td {{ 
-            padding: 10px 6px; 
+            padding: 10px 10px; 
             font-size: 12px; 
             color: #e0e0e0; 
             border-top: 1px solid #1f295a; 
             border-bottom: 1px solid #1f295a; 
-            overflow: hidden;
-            text-overflow: ellipsis;
             white-space: nowrap;
         }}
         .ger-id {{ color: #00f2ff; font-weight: bold; }}
         .ger-nome {{ color: #00f2ff; font-weight: bold; font-size: 13px; }}
         .ger-wrap {{ white-space: normal !important; word-wrap: break-word; }}
         
-        /* Classe para ajuste automático da coluna Turma */
         .ger-auto {{ 
             width: auto !important; 
             white-space: nowrap !important; 
-            overflow: visible !important;
         }}
 
         .status-badge {{ padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }}
@@ -361,17 +372,18 @@ with tab_ger:
                     <tr>
                         <th style="width: 80px;">STATUS</th>
                         <th style="width: 50px;">UNID.</th>
-                        <th style="width: auto;">TURMA</th> <th style="width: 40px;">10C</th>
+                        <th>TURMA</th>
+                        <th style="width: 40px;">10C</th>
                         <th style="width: 40px;">ING</th>
-                        <th style="width: 90px;">DT_CAD</th>
+                        <th style="width: 95px;">DT_CAD</th>
                         <th style="width: 100px;">ID</th>
                         <th style="width: 180px;">ALUNO</th>
-                        <th style="width: 110px;">TEL_RESP</th>
-                        <th style="width: 110px;">TEL_ALU</th>
+                        <th style="width: 115px;">TEL_RESP</th>
+                        <th style="width: 115px;">TEL_ALU</th>
                         <th style="width: 120px;">CPF</th>
-                        <th style="width: 100px;">CIDADE</th>
-                        <th style="width: 220px;">CURSO</th>
-                        <th style="width: 220px;">PAGTO</th>
+                        <th style="width: 110px;">CIDADE</th>
+                        <th style="width: 250px;">CURSO</th>
+                        <th style="width: 250px;">PAGTO</th>
                         <th style="width: 100px;">VEND.</th>
                         <th style="width: 90px;">DT_MAT</th>
                     </tr>
@@ -382,7 +394,9 @@ with tab_ger:
             </table>
         </div>
         """
+        st.markdown('<div class="ger-frame-wrapper">', unsafe_allow_html=True)
         components.html(html_code, height=1000, scrolling=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # --- ABA 3: RELATÓRIOS ---
 with tab_rel:
