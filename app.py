@@ -77,7 +77,7 @@ st.markdown("""
 
     .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 110px; display: flex; flex-direction: column; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
     .neon-pink { color: #ff007a; border-top: 2px solid #ff007a; }
-    .neon-green { color: #2ecc71; border-top: 2ecc71; }
+    .neon-green { color: #2ecc71; border-top: 2px solid #2ecc71; }
     .neon-blue { color: #00f2ff; border-top: 2px solid #00f2ff; }
     .neon-purple { color: #bc13fe; border-top: 2px solid #bc13fe; }
     .neon-red { color: #ff4b4b; border-top: 2px solid #ff4b4b; }
@@ -282,7 +282,7 @@ with tab_ger:
             <tr class="ger-row">
                 <td><span class='{sc}'>{r['STATUS']}</span></td>
                 <td>{r['UNID.']}</td>
-                <td>{r['TURMA']}</td>
+                <td class="ger-auto">{r['TURMA']}</td>
                 <td>{r['10C']}</td>
                 <td>{r['ING']}</td>
                 <td>{r['DT_CAD']}</td>
@@ -343,6 +343,14 @@ with tab_ger:
         .ger-id {{ color: #00f2ff; font-weight: bold; }}
         .ger-nome {{ color: #00f2ff; font-weight: bold; font-size: 13px; }}
         .ger-wrap {{ white-space: normal !important; word-wrap: break-word; }}
+        
+        /* Classe para ajuste automático da coluna Turma */
+        .ger-auto {{ 
+            width: auto !important; 
+            white-space: nowrap !important; 
+            overflow: visible !important;
+        }}
+
         .status-badge {{ padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }}
         .status-ativo {{ background-color: rgba(46, 204, 113, 0.1); color: #2ecc71; border: 1px solid #2ecc71; }}
         .status-cancelado {{ background-color: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid #e74c3c; }}
@@ -353,7 +361,7 @@ with tab_ger:
                     <tr>
                         <th style="width: 80px;">STATUS</th>
                         <th style="width: 50px;">UNID.</th>
-                        <th style="width: 38px;">TURMA</th> <th style="width: 40px;">10C</th>
+                        <th style="width: auto;">TURMA</th> <th style="width: 40px;">10C</th>
                         <th style="width: 40px;">ING</th>
                         <th style="width: 90px;">DT_CAD</th>
                         <th style="width: 100px;">ID</th>
