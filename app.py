@@ -182,7 +182,6 @@ tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENC
 
 # --- ABA 1: CADASTRO ---
 with tab_cad:
-    # Padding lateral apenas para o cadastro não ficar "colado" demais
     st.markdown('<div style="padding: 0 50px;">', unsafe_allow_html=True)
     if os.path.exists(caminho_logo):
         st.markdown('<div class="logo-container">', unsafe_allow_html=True)
@@ -265,14 +264,14 @@ with tab_cad:
 
 # --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
+    # Ajustes finais para a largura de 115% conforme validado
     st.markdown("""
     <style>
-    /* Ajustes específicos para a Aba de Gerenciamento */
     .ger-header-row { padding: 0 10px; margin-top: -10px; }
-    
-    .ger-container { 
-        width: 100vw !important; 
-        margin-top: -15px !important; 
+    .ger-container-custom { 
+        width: 115vw !important; 
+        margin-left: -7.5% !important;
+        margin-top: -40px !important;
     }
     .ger-table { 
         width: 100% !important; 
@@ -282,39 +281,25 @@ with tab_ger:
         table-layout: fixed;
     }
     .ger-table thead th { 
-        text-align: left; 
-        font-size: 11px; 
-        color: #00f2ff; 
-        padding: 5px 6px; 
-        text-transform: uppercase; 
-        position: sticky; 
-        top: 0; 
-        background: #0b0e1e; 
-        z-index: 10;
+        text-align: left; font-size: 11px; color: #00f2ff; padding: 5px 6px; 
+        text-transform: uppercase; position: sticky; top: 0; background: #0b0e1e; z-index: 10;
     }
     .ger-row { background: rgba(18, 22, 41, 0.7); transition: all 0.2s ease; }
     .ger-row:hover { background: rgba(0, 242, 255, 0.1); }
     .ger-table td { 
-        padding: 10px 6px; 
-        font-size: 12px; 
-        color: #e0e0e0; 
-        border-top: 1px solid #1f295a; 
-        border-bottom: 1px solid #1f295a; 
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        padding: 10px 6px; font-size: 12px; color: #e0e0e0; 
+        border-top: 1px solid #1f295a; border-bottom: 1px solid #1f295a; 
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .ger-id { color: #00f2ff; font-weight: bold; }
     .ger-nome { color: #00f2ff; font-weight: bold; font-size: 13px; }
     .ger-wrap { white-space: normal !important; word-wrap: break-word; }
-    
     .status-badge { padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }
     .status-ativo { background-color: rgba(46, 204, 113, 0.1); color: #2ecc71; border: 1px solid #2ecc71; }
     .status-cancelado { background-color: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid #e74c3c; }
     </style>
     """, unsafe_allow_html=True)
 
-    # Filtros levemente recuados para não encostar na borda absoluta
     st.markdown('<div class="ger-header-row">', unsafe_allow_html=True)
     cf1, cf2, cf3, cf4 = st.columns([2.5, 1.5, 1.5, 0.5])
     with cf1: bu = st.text_input("🔍 Buscar...", key="busca_ger", placeholder="Nome ou ID", label_visibility="collapsed")
@@ -358,45 +343,13 @@ with tab_ger:
 
         html_code = f"""
         <style>
-        body {{ 
-            background-color: #0b0e1e; 
-            color: #e0e0e0; 
-            font-family: Arial, sans-serif; 
-            margin: 0; 
-            padding: 0; 
-            overflow: auto; 
-        }}
+        body {{ background-color: #0b0e1e; color: #e0e0e0; font-family: Arial, sans-serif; margin: 0; padding: 0; overflow: auto; }}
         .ger-container {{ width: 100%; }}
-        .ger-table {{ 
-            width: 100%; 
-            border-collapse: separate; 
-            border-spacing: 0 5px; 
-            min-width: 1900px; 
-            table-layout: fixed;
-        }}
-        .ger-table thead th {{ 
-            text-align: left; 
-            font-size: 11px; 
-            color: #00f2ff; 
-            padding: 5px 6px; 
-            text-transform: uppercase; 
-            position: sticky; 
-            top: 0; 
-            background: #0b0e1e; 
-            z-index: 10;
-        }}
+        .ger-table {{ width: 100%; border-collapse: separate; border-spacing: 0 5px; min-width: 1900px; table-layout: fixed; }}
+        .ger-table thead th {{ text-align: left; font-size: 11px; color: #00f2ff; padding: 5px 6px; text-transform: uppercase; position: sticky; top: 0; background: #0b0e1e; z-index: 10; }}
         .ger-row {{ background: rgba(18, 22, 41, 0.7); transition: all 0.2s ease; }}
         .ger-row:hover {{ background: rgba(0, 242, 255, 0.1); }}
-        .ger-table td {{ 
-            padding: 10px 6px; 
-            font-size: 12px; 
-            color: #e0e0e0; 
-            border-top: 1px solid #1f295a; 
-            border-bottom: 1px solid #1f295a; 
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }}
+        .ger-table td {{ padding: 10px 6px; font-size: 12px; color: #e0e0e0; border-top: 1px solid #1f295a; border-bottom: 1px solid #1f295a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
         .ger-id {{ color: #00f2ff; font-weight: bold; }}
         .ger-nome {{ color: #00f2ff; font-weight: bold; font-size: 13px; }}
         .ger-wrap {{ white-space: normal !important; word-wrap: break-word; }}
@@ -426,13 +379,13 @@ with tab_ger:
                         <th style="width: 90px;">DT_MAT</th>
                     </tr>
                 </thead>
-                <tbody>
-                    {rows}
-                </tbody>
+                <tbody>{rows}</tbody>
             </table>
         </div>
         """
+        st.markdown('<div class="ger-container-custom">', unsafe_allow_html=True)
         components.html(html_code, height=1000, scrolling=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # --- ABA 3: RELATÓRIOS ---
 with tab_rel:
