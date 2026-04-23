@@ -97,11 +97,11 @@ st.markdown("""
     header {visibility: hidden;} footer {visibility: hidden;}
     
     .logo-container {
-        position: relative;
-        top: -10px;
-        left: 0px;
-        margin-bottom: 10px;
-    }
+    position: fixed;
+    top: 45px;   /* ajusta conforme seu menu */
+    left: 10px;
+    z-index: 1000;
+}
 
     .stat-label { font-size: 12px; font-weight: bold; margin-bottom: 4px; display: block; }
     </style>
