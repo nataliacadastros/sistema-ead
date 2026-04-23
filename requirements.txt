@@ -5,4 +5,4 @@ st-gsheets-connection
 gspread
 google-auth
 openpyxl
-pip install streamlit-aggrid
+streamlit-aggrid
