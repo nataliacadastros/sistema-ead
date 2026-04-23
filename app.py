@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import re
 import json
@@ -390,20 +391,22 @@ with tab_ger:
             </tr>
             """
 
-        st.markdown(f"""
-        <div class="ger-container">
-            <table class="ger-table">
-                <thead>
-                    <tr>
-                        {''.join([f'<th>{h}</th>' for h in df_g.columns])}
-                    </tr>
-                </thead>
-                <tbody>
-                    {rows}
-                </tbody>
-            </table>
-        </div>
-        """, unsafe_allow_html=True)
+html_code = f"""
+<div class="ger-container">
+    <table class="ger-table">
+        <thead>
+            <tr>
+                {''.join([f'<th>{h}</th>' for h in df_g.columns])}
+            </tr>
+        </thead>
+        <tbody>
+            {rows}
+        </tbody>
+    </table>
+</div>
+"""
+
+components.html(html_code, height=600, scrolling=True)
 
 # --- ABA 3: RELATÓRIOS ---
 with tab_rel:
