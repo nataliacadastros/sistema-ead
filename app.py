@@ -481,17 +481,6 @@ body {{
     </table>
 </div>
 """
-        <thead>
-            <tr>
-                {''.join([f'<th>{h}</th>' for h in df_g.columns])}
-            </tr>
-        </thead>
-        <tbody>
-            {rows}
-        </tbody>
-    </table>
-</div>
-"""
 
 components.html(html_code, height=600, scrolling=True)
 
