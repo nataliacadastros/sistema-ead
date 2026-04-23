@@ -392,8 +392,95 @@ with tab_ger:
             """
 
 html_code = f"""
+<style>
+body {{
+    background-color: #0b0e1e;
+    color: #e0e0e0;
+    font-family: Arial, sans-serif;
+}}
+
+.ger-container {{
+    width: 100%;
+}}
+
+.ger-table {{
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 8px;
+}}
+
+.ger-table thead th {{
+    text-align: left;
+    font-size: 11px;
+    color: #00f2ff;
+    padding: 10px;
+}}
+
+.ger-row {{
+    background: rgba(18, 22, 41, 0.7);
+    transition: all 0.2s ease;
+}}
+
+.ger-row:hover {{
+    background: rgba(0, 242, 255, 0.08);
+}}
+
+.ger-table td {{
+    padding: 12px;
+    font-size: 11px;
+    color: #e0e0e0;
+    border-top: 1px solid #1f295a;
+    border-bottom: 1px solid #1f295a;
+}}
+
+.ger-id {{
+    color: #00f2ff;
+    font-weight: bold;
+}}
+
+.ger-nome {{
+    color: #00f2ff;
+    font-weight: bold;
+}}
+
+.ger-wrap {{
+    max-width: 220px;
+    word-wrap: break-word;
+}}
+
+.status-badge {{
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: bold;
+}}
+
+.status-ativo {{
+    background-color: rgba(46, 204, 113, 0.2);
+    color: #2ecc71;
+    border: 1px solid #2ecc71;
+}}
+
+.status-cancelado {{
+    background-color: rgba(231, 76, 60, 0.2);
+    color: #e74c3c;
+    border: 1px solid #e74c3c;
+}}
+</style>
+
 <div class="ger-container">
     <table class="ger-table">
+        <thead>
+            <tr>
+                {''.join([f'<th>{h}</th>' for h in df_g.columns])}
+            </tr>
+        </thead>
+        <tbody>
+            {rows}
+        </tbody>
+    </table>
+</div>
+"""
         <thead>
             <tr>
                 {''.join([f'<th>{h}</th>' for h in df_g.columns])}
