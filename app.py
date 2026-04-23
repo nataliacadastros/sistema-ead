@@ -257,9 +257,17 @@ with tab_cad:
 with tab_ger:
     st.markdown("""
     <style>
-    .ger-container { width: 100vw; margin-left: -40px; padding-right: 20px; }
-    .ger-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
-    .ger-table thead th { text-align: left; font-size: 11px; color: #00f2ff; padding: 10px; }
+    /* Remove o espaço superior extra da área de conteúdo nesta aba */
+    .main .block-container { padding-top: 35px !important; }
+    
+    .ger-container { 
+        width: 100vw; 
+        margin-left: -40px; 
+        padding-right: 20px; 
+        margin-top: -20px; /* Puxa o conteúdo para cima */
+    }
+    .ger-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; margin-top: 0px; }
+    .ger-table thead th { text-align: left; font-size: 11px; color: #00f2ff; padding: 5px 10px; text-transform: uppercase; }
     .ger-row { background: rgba(18, 22, 41, 0.7); transition: all 0.2s ease; border-radius: 8px; }
     .ger-row:hover { background: rgba(0, 242, 255, 0.08); transform: scale(1.002); }
     .ger-table td { padding: 12px; font-size: 11px; color: #e0e0e0; border-top: 1px solid #1f295a; border-bottom: 1px solid #1f295a; }
@@ -313,10 +321,10 @@ with tab_ger:
 
         html_code = f"""
         <style>
-        body {{ background-color: #0b0e1e; color: #e0e0e0; font-family: Arial, sans-serif; margin: 0; }}
-        .ger-container {{ width: 100%; }}
-        .ger-table {{ width: 100%; border-collapse: separate; border-spacing: 0 8px; min-width: 2200px; }}
-        .ger-table thead th {{ text-align: left; font-size: 11px; color: #00f2ff; padding: 10px; text-transform: uppercase; }}
+        body {{ background-color: #0b0e1e; color: #e0e0e0; font-family: Arial, sans-serif; margin: 0; padding: 0; }}
+        .ger-container {{ width: 100%; margin-top: 0; }}
+        .ger-table {{ width: 100%; border-collapse: separate; border-spacing: 0 8px; min-width: 2200px; margin-top: 0; }}
+        .ger-table thead th {{ text-align: left; font-size: 11px; color: #00f2ff; padding: 5px 10px; text-transform: uppercase; }}
         .ger-row {{ background: rgba(18, 22, 41, 0.7); transition: all 0.2s ease; }}
         .ger-row:hover {{ background: rgba(0, 242, 255, 0.08); }}
         .ger-table td {{ padding: 12px; font-size: 11px; color: #e0e0e0; border-top: 1px solid #1f295a; border-bottom: 1px solid #1f295a; }}
@@ -334,7 +342,7 @@ with tab_ger:
             </table>
         </div>
         """
-        components.html(html_code, height=600, scrolling=True)
+        components.html(html_code, height=800, scrolling=True)
 
 # --- ABA 3: RELATÓRIOS ---
 with tab_rel:
