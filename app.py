@@ -77,7 +77,7 @@ st.markdown("""
 
     .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 110px; display: flex; flex-direction: column; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
     .neon-pink { color: #ff007a; border-top: 2px solid #ff007a; }
-    .neon-green { color: #2ecc71; border-top: 2px solid #2ecc71; }
+    .neon-green { color: #2ecc71; border-top: 2ecc71; }
     .neon-blue { color: #00f2ff; border-top: 2px solid #00f2ff; }
     .neon-purple { color: #bc13fe; border-top: 2px solid #bc13fe; }
     .neon-red { color: #ff4b4b; border-top: 2px solid #ff4b4b; }
@@ -321,7 +321,7 @@ with tab_ger:
             text-align: left; 
             font-size: 11px; 
             color: #00f2ff; 
-            padding: 5px 8px; 
+            padding: 5px 6px; 
             text-transform: uppercase; 
             position: sticky; 
             top: 0; 
@@ -331,7 +331,7 @@ with tab_ger:
         .ger-row {{ background: rgba(18, 22, 41, 0.7); transition: all 0.2s ease; }}
         .ger-row:hover {{ background: rgba(0, 242, 255, 0.1); }}
         .ger-table td {{ 
-            padding: 10px 8px; 
+            padding: 10px 6px; 
             font-size: 12px; 
             color: #e0e0e0; 
             border-top: 1px solid #1f295a; 
@@ -353,7 +353,7 @@ with tab_ger:
                     <tr>
                         <th style="width: 80px;">STATUS</th>
                         <th style="width: 50px;">UNID.</th>
-                        <th style="width: 35px;">TURMA</th> <th style="width: 40px;">10C</th>
+                        <th style="width: 38px;">TURMA</th> <th style="width: 40px;">10C</th>
                         <th style="width: 40px;">ING</th>
                         <th style="width: 90px;">DT_CAD</th>
                         <th style="width: 100px;">ID</th>
