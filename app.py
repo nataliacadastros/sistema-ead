@@ -60,6 +60,21 @@ DIC_CURSOS = {
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e1e; color: #e0e0e0; }
+    
+    /* REMOVE BARREIRAS LATERAIS DO STREAMLIT */
+    [data-testid="stAppViewBlockContainer"] { 
+        padding-top: 40px !important; 
+        padding-left: 0px !important; 
+        padding-right: 0px !important; 
+        max-width: 100% !important; 
+    }
+    
+    /* GARANTE QUE O CONTEÚDO DAS ABAS TAMBÉM USEM TUDO */
+    [data-testid="stTab"] {
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+    }
+
     .stTabs [data-baseweb="tab-list"] { 
         background-color: #121629; border-bottom: 1px solid #1f295a;
         position: fixed; top: 0; left: 0 !important; width: 100vw !important;
@@ -67,8 +82,6 @@ st.markdown("""
     }
     .stTabs [data-baseweb="tab"] { color: #64748b !important; font-size: 11px !important; padding: 0 30px !important; }
     .stTabs [aria-selected="true"] { color: #00f2ff !important; border-bottom: 2px solid #00f2ff !important; background-color: rgba(0, 242, 255, 0.05) !important; }
-    
-    .main .block-container { padding-top: 40px !important; max-width: 100% !important; margin: 0 auto !important; }
     
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; display: flex; align-items: center; justify-content: flex-end; }
     div[data-testid="stTextInput"] { width: 100% !important; }
@@ -169,6 +182,8 @@ tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENC
 
 # --- ABA 1: CADASTRO ---
 with tab_cad:
+    # Padding lateral apenas para o cadastro não ficar "colado" demais
+    st.markdown('<div style="padding: 0 50px;">', unsafe_allow_html=True)
     if os.path.exists(caminho_logo):
         st.markdown('<div class="logo-container">', unsafe_allow_html=True)
         st.image(caminho_logo, width=90)
@@ -246,41 +261,68 @@ with tab_cad:
                         st.error(f"Erro ao enviar: {e}")
                 else:
                     st.info("Nenhum aluno na lista de pré-visualização.")
-        
-        if st.session_state.lista_previa: 
-            st.markdown(f"### 📋 PRÉ-VISUALIZAÇÃO ({len(st.session_state.lista_previa)} ALUNOS)")
-            st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
     st.markdown("""
     <style>
-    /* Expande a área de conteúdo do Streamlit para as bordas */
-    [data-testid="stAppViewBlockContainer"] { 
-        padding-top: 5px !important; 
-        padding-left: 10px !important; 
-        padding-right: 10px !important; 
-        max-width: 98% !important; 
-    }
+    /* Ajustes específicos para a Aba de Gerenciamento */
+    .ger-header-row { padding: 0 10px; margin-top: -10px; }
     
-    .ger-container-st { 
-        margin-top: -30px; 
+    .ger-container { 
+        width: 100vw !important; 
+        margin-top: -15px !important; 
     }
-
-    /* Força o frame HTML a ocupar todo o espaço lateral sobrando */
-    .ger-frame-wrapper {
-        margin-left: -2% !important;
-        width: 104% !important;
+    .ger-table { 
+        width: 100% !important; 
+        border-collapse: separate; 
+        border-spacing: 0 5px; 
+        min-width: 1900px; 
+        table-layout: fixed;
     }
+    .ger-table thead th { 
+        text-align: left; 
+        font-size: 11px; 
+        color: #00f2ff; 
+        padding: 5px 6px; 
+        text-transform: uppercase; 
+        position: sticky; 
+        top: 0; 
+        background: #0b0e1e; 
+        z-index: 10;
+    }
+    .ger-row { background: rgba(18, 22, 41, 0.7); transition: all 0.2s ease; }
+    .ger-row:hover { background: rgba(0, 242, 255, 0.1); }
+    .ger-table td { 
+        padding: 10px 6px; 
+        font-size: 12px; 
+        color: #e0e0e0; 
+        border-top: 1px solid #1f295a; 
+        border-bottom: 1px solid #1f295a; 
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .ger-id { color: #00f2ff; font-weight: bold; }
+    .ger-nome { color: #00f2ff; font-weight: bold; font-size: 13px; }
+    .ger-wrap { white-space: normal !important; word-wrap: break-word; }
+    
+    .status-badge { padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }
+    .status-ativo { background-color: rgba(46, 204, 113, 0.1); color: #2ecc71; border: 1px solid #2ecc71; }
+    .status-cancelado { background-color: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid #e74c3c; }
     </style>
     """, unsafe_allow_html=True)
 
+    # Filtros levemente recuados para não encostar na borda absoluta
+    st.markdown('<div class="ger-header-row">', unsafe_allow_html=True)
     cf1, cf2, cf3, cf4 = st.columns([2.5, 1.5, 1.5, 0.5])
     with cf1: bu = st.text_input("🔍 Buscar...", key="busca_ger", placeholder="Nome ou ID", label_visibility="collapsed")
     with cf2: fs = st.selectbox("Status", ["Todos", "ATIVO", "CANCELADO"], key="filtro_status", label_visibility="collapsed")
     with cf3: fu = st.selectbox("Unidade", ["Todos", "MGA"], key="filtro_unid", label_visibility="collapsed")
     with cf4:
         if st.button("🔄", key="btn_ref"): st.cache_data.clear(); st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
     df_g = safe_read()
 
@@ -297,7 +339,7 @@ with tab_ger:
             <tr class="ger-row">
                 <td><span class='{sc}'>{r['STATUS']}</span></td>
                 <td>{r['UNID.']}</td>
-                <td class="ger-auto">{r['TURMA']}</td>
+                <td style="width: auto; white-space: nowrap;">{r['TURMA']}</td>
                 <td>{r['10C']}</td>
                 <td>{r['ING']}</td>
                 <td>{r['DT_CAD']}</td>
@@ -322,21 +364,21 @@ with tab_ger:
             font-family: Arial, sans-serif; 
             margin: 0; 
             padding: 0; 
-            overflow-x: auto; 
-            overflow-y: auto;
+            overflow: auto; 
         }}
         .ger-container {{ width: 100%; }}
         .ger-table {{ 
             width: 100%; 
             border-collapse: separate; 
             border-spacing: 0 5px; 
-            min-width: 100%; /* Muda de pixels para porcentagem para esticar */
+            min-width: 1900px; 
+            table-layout: fixed;
         }}
         .ger-table thead th {{ 
             text-align: left; 
             font-size: 11px; 
             color: #00f2ff; 
-            padding: 8px 10px; 
+            padding: 5px 6px; 
             text-transform: uppercase; 
             position: sticky; 
             top: 0; 
@@ -346,22 +388,18 @@ with tab_ger:
         .ger-row {{ background: rgba(18, 22, 41, 0.7); transition: all 0.2s ease; }}
         .ger-row:hover {{ background: rgba(0, 242, 255, 0.1); }}
         .ger-table td {{ 
-            padding: 10px 10px; 
+            padding: 10px 6px; 
             font-size: 12px; 
             color: #e0e0e0; 
             border-top: 1px solid #1f295a; 
             border-bottom: 1px solid #1f295a; 
+            overflow: hidden;
+            text-overflow: ellipsis;
             white-space: nowrap;
         }}
         .ger-id {{ color: #00f2ff; font-weight: bold; }}
         .ger-nome {{ color: #00f2ff; font-weight: bold; font-size: 13px; }}
         .ger-wrap {{ white-space: normal !important; word-wrap: break-word; }}
-        
-        .ger-auto {{ 
-            width: auto !important; 
-            white-space: nowrap !important; 
-        }}
-
         .status-badge {{ padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }}
         .status-ativo {{ background-color: rgba(46, 204, 113, 0.1); color: #2ecc71; border: 1px solid #2ecc71; }}
         .status-cancelado {{ background-color: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid #e74c3c; }}
@@ -372,18 +410,18 @@ with tab_ger:
                     <tr>
                         <th style="width: 80px;">STATUS</th>
                         <th style="width: 50px;">UNID.</th>
-                        <th>TURMA</th>
+                        <th style="width: 38px;">TURMA</th>
                         <th style="width: 40px;">10C</th>
                         <th style="width: 40px;">ING</th>
-                        <th style="width: 95px;">DT_CAD</th>
+                        <th style="width: 90px;">DT_CAD</th>
                         <th style="width: 100px;">ID</th>
                         <th style="width: 180px;">ALUNO</th>
-                        <th style="width: 115px;">TEL_RESP</th>
-                        <th style="width: 115px;">TEL_ALU</th>
+                        <th style="width: 110px;">TEL_RESP</th>
+                        <th style="width: 110px;">TEL_ALU</th>
                         <th style="width: 120px;">CPF</th>
-                        <th style="width: 110px;">CIDADE</th>
-                        <th style="width: 250px;">CURSO</th>
-                        <th style="width: 250px;">PAGTO</th>
+                        <th style="width: 100px;">CIDADE</th>
+                        <th style="width: 220px;">CURSO</th>
+                        <th style="width: 220px;">PAGTO</th>
                         <th style="width: 100px;">VEND.</th>
                         <th style="width: 90px;">DT_MAT</th>
                     </tr>
@@ -394,12 +432,11 @@ with tab_ger:
             </table>
         </div>
         """
-        st.markdown('<div class="ger-frame-wrapper">', unsafe_allow_html=True)
         components.html(html_code, height=1000, scrolling=True)
-        st.markdown('</div>', unsafe_allow_html=True)
 
 # --- ABA 3: RELATÓRIOS ---
 with tab_rel:
+    st.markdown('<div style="padding: 0 20px;">', unsafe_allow_html=True)
     df_r = safe_read()
     if not df_r.empty:
         df_r.columns = [c.strip() for c in df_r.columns]
@@ -495,9 +532,11 @@ with tab_rel:
                 fig_vend = go.Figure(go.Scatter(x=df_stats['Vendedor'], y=df_stats['Total'], mode=scatter_mode, text=df_stats['Total'], textposition="top center", line=dict(color='#bc13fe', width=4, shape='spline'), marker=dict(size=12, color='#ffffff', line=dict(color='#bc13fe', width=3)), fill='tozeroy' if num_vendedores > 1 else None, fillcolor='rgba(188, 19, 254, 0.2)'))
                 fig_vend.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=400, margin=dict(t=50, l=60, r=60), xaxis=dict(showgrid=False), yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", showticklabels=False, range=[0, max_v * 1.35]))
                 st.plotly_chart(fig_vend, use_container_width=True, config={'displayModeBar': False})
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # --- ABA 4: SUBIR ALUNOS ---
 with tab_subir:
+    st.markdown('<div style="padding: 0 50px;">', unsafe_allow_html=True)
     st.markdown("### 📤 IMPORTAÇÃO EAD")
     modo = st.radio("Método:", ["MANUAL", "AUTOMÁTICO"], horizontal=True)
     st.write("---")
@@ -599,3 +638,4 @@ with tab_subir:
             output = BytesIO(); wb = Workbook(); ws = wb.active; ws.append(list(st.session_state.df_final_processado.columns))
             for r in st.session_state.df_final_processado.values.tolist(): ws.append([str(val) for val in r])
             wb.save(output); st.download_button("📥 BAIXAR EXCEL FINAL", output.getvalue(), f"ead_{date.today()}.xlsx", on_click=reset_campos_subir, use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
