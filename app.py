@@ -409,7 +409,7 @@ body {{
     font-family: Arial, sans-serif;
 }}
 
-.ger-container {
+.ger-container {{
     position: relative;
     left: 50%;
     right: 50%;
@@ -417,7 +417,7 @@ body {{
     margin-right: -50vw;
     width: 100vw;
     min-height: 100vh;
-}
+}}
 
 .ger-table {{
     width: 100%;
