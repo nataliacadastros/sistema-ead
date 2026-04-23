@@ -253,7 +253,6 @@ with tab_cad:
 
 # --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
-    # Estilo Streamlit para remover espaçamentos do topo
     st.markdown("""
     <style>
     [data-testid="stAppViewBlockContainer"] { padding-top: 5px !important; }
@@ -300,7 +299,6 @@ with tab_ger:
             </tr>
             """
 
-        # HTML e CSS do Componente de Tabela
         html_code = f"""
         <style>
         body {{ 
@@ -309,20 +307,21 @@ with tab_ger:
             font-family: Arial, sans-serif; 
             margin: 0; 
             padding: 0; 
-            overflow: auto; /* Permite ver todos os alunos com scroll */
+            overflow: auto; 
         }}
         .ger-container {{ width: 100%; }}
         .ger-table {{ 
             width: 100%; 
             border-collapse: separate; 
             border-spacing: 0 5px; 
-            min-width: 2000px; /* Garante que as colunas tenham espaço */
+            min-width: 1900px; 
+            table-layout: fixed;
         }}
         .ger-table thead th {{ 
             text-align: left; 
             font-size: 11px; 
             color: #00f2ff; 
-            padding: 5px 10px; 
+            padding: 5px 8px; 
             text-transform: uppercase; 
             position: sticky; 
             top: 0; 
@@ -332,15 +331,18 @@ with tab_ger:
         .ger-row {{ background: rgba(18, 22, 41, 0.7); transition: all 0.2s ease; }}
         .ger-row:hover {{ background: rgba(0, 242, 255, 0.1); }}
         .ger-table td {{ 
-            padding: 10px 12px; 
-            font-size: 12px; /* Fonte aumentada conforme solicitado */
+            padding: 10px 8px; 
+            font-size: 12px; 
             color: #e0e0e0; 
             border-top: 1px solid #1f295a; 
             border-bottom: 1px solid #1f295a; 
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }}
         .ger-id {{ color: #00f2ff; font-weight: bold; }}
         .ger-nome {{ color: #00f2ff; font-weight: bold; font-size: 13px; }}
-        .ger-wrap {{ max-width: 250px; word-wrap: break-word; white-space: normal; }}
+        .ger-wrap {{ white-space: normal !important; word-wrap: break-word; }}
         .status-badge {{ padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }}
         .status-ativo {{ background-color: rgba(46, 204, 113, 0.1); color: #2ecc71; border: 1px solid #2ecc71; }}
         .status-cancelado {{ background-color: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid #e74c3c; }}
@@ -349,7 +351,21 @@ with tab_ger:
             <table class="ger-table">
                 <thead>
                     <tr>
-                        {''.join([f'<th>{h}</th>' for h in df_g.columns])}
+                        <th style="width: 80px;">STATUS</th>
+                        <th style="width: 50px;">UNID.</th>
+                        <th style="width: 35px;">TURMA</th> <th style="width: 40px;">10C</th>
+                        <th style="width: 40px;">ING</th>
+                        <th style="width: 90px;">DT_CAD</th>
+                        <th style="width: 100px;">ID</th>
+                        <th style="width: 180px;">ALUNO</th>
+                        <th style="width: 110px;">TEL_RESP</th>
+                        <th style="width: 110px;">TEL_ALU</th>
+                        <th style="width: 120px;">CPF</th>
+                        <th style="width: 100px;">CIDADE</th>
+                        <th style="width: 220px;">CURSO</th>
+                        <th style="width: 220px;">PAGTO</th>
+                        <th style="width: 100px;">VEND.</th>
+                        <th style="width: 90px;">DT_MAT</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -358,7 +374,6 @@ with tab_ger:
             </table>
         </div>
         """
-        # Aumentamos o height para 1000 para garantir visibilidade da barra de rolagem
         components.html(html_code, height=1000, scrolling=True)
 
 # --- ABA 3: RELATÓRIOS ---
