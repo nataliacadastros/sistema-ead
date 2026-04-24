@@ -2,6 +2,10 @@ import streamlit as st
 import pandas as pd
 import re
 import json
+import streamlit as st
+import pandas as pd
+import re
+import json
 import os
 import plotly.express as px
 import plotly.graph_objects as go
@@ -18,6 +22,7 @@ diretorio_atual = os.path.dirname(os.path.abspath(__file__))
 caminho_logo = os.path.join(diretorio_atual, "logo.png")
 
 # --- CONFIGURAÇÕES DA PÁGINA ---
+# Este comando DEVE ser o primeiro 'st' do código
 st.set_page_config(
     page_title="SISTEMA ADM | PROFISSIONALIZA", 
     layout="wide", 
@@ -25,18 +30,148 @@ st.set_page_config(
     page_icon=caminho_logo if os.path.exists(caminho_logo) else None
 )
 
-# --- DICIONÁRIO DE CURSOS ---
+# --- FUNÇÕES DE SUPORTE E ESTADOS ---
+def detectar_edicao():
+    # Verifica se há um ID na URL
+    id_url = st.query_params.get("edit_id")
+    if id_url:
+        # Salva no estado da sessão
+        st.session_state.aluno_para_editar = id_url
+        # Limpa a URL para o link ficar "limpo"
+        st.query_params.clear()
+        # Não damos rerun aqui para permitir que o fluxo continue e abra o popup abaixo
+
+if "aluno_para_editar" not in st.session_state:
+    st.session_state.aluno_para_editar = None
+
+detectar_edicao()
+
+# --- ARQUIVOS E PERSISTÊNCIA ---
+ARQUIVO_TAGS = "tags_salvas.json"
+ARQUIVO_CIDADES = "cidades.xlsx"
+
+def carregar_tags():
+    padrao = {"tags": {}, "last_selection": {}}
+    if os.path.exists(ARQUIVO_TAGS):
+        try:
+            with open(ARQUIVO_TAGS, "r", encoding="utf-8") as f:
+                conteudo = json.load(f)
+                if isinstance(conteudo, dict) and "tags" in conteudo:
+                    return conteudo
+                elif isinstance(conteudo, dict):
+                    return {"tags": conteudo, "last_selection": {}}
+        except: 
+            return padrao
+    return padrao
+
+def salvar_tags(dados):
+    with open(ARQUIVO_TAGS, "w", encoding="utf-8") as f:
+        json.dump(dados, f, ensure_ascii=False, indent=2)
+
+if "dados_tags" not in st.session_state:
+    st.session_state.dados_tags = carregar_tags()
+
 DIC_CURSOS = {
     "00": "COLÉGIO COMBO", "1": "PREPARATÓRIO JOVEM BANCÁRIO", "2": "10 CURSOS PROFISSIONALIZANTES",
     "3": "PREPARATÓRIO AGRO", "4": "INGLÊS", "5": "JOVEM NO DIREITO", "6": "PRÉ MILITAR",
     "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
 }
 
-# --- FUNÇÕES DE SUPORTE (MOVECIDAS PARA O TOPO PARA EVITAR NAMEERROR) ---
-def formatar_cpf(chave):
-    valor = re.sub(r'\D', '', st.session_state[chave])
-    if len(valor) == 11:
-        st.session_state[chave] = f"{valor[:3]}.{valor[3:6]}.{valor[6:9]}-{valor[9:]}"
+# --- CSS HUD NEON COMPLETO ---
+st.markdown("""
+    <style>
+    .stApp { background-color: #0b0e1e; color: #e0e0e0; }
+    
+    /* REMOVE BARREIRAS LATERAIS DO STREAMLIT */
+    [data-testid="stAppViewBlockContainer"] { 
+        padding-top: 40px !important; 
+        padding-left: 0px !important; 
+        padding-right: 0px !important; 
+        max-width: 100% !important; 
+    }
+    
+    /* GARANTE QUE O CONTEÚDO DAS ABAS TAMBÉM USEM TUDO */
+    [data-testid="stTab"] {
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+    }
+
+    .stTabs [data-baseweb="tab-list"] { 
+        background-color: #121629; border-bottom: 1px solid #1f295a;
+        position: fixed; top: 0; left: 0 !important; width: 100vw !important;
+        z-index: 999; justify-content: center; height: 35px !important;
+    }
+    .stTabs [data-baseweb="tab"] { color: #64748b !important; font-size: 11px !important; padding: 0 30px !important; }
+    .stTabs [aria-selected="true"] { color: #00f2ff !important; border-bottom: 2px solid #00f2ff !important; background-color: rgba(0, 242, 255, 0.05) !important; }
+    
+    label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; display: flex; align-items: center; justify-content: flex-end; }
+    div[data-testid="stTextInput"] { width: 100% !important; }
+    .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 18px !important; border-radius: 5px !important; }
+    .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
+
+    .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 110px; display: flex; flex-direction: column; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+    .neon-pink { color: #ff007a; border-top: 2px solid #ff007a; }
+    .neon-green { color: #2ecc71; border-top: 2px solid #2ecc71; }
+    .neon-blue { color: #00f2ff; border-top: 2px solid #00f2ff; }
+    .neon-purple { color: #bc13fe; border-top: 2px solid #bc13fe; }
+    .neon-red { color: #ff4b4b; border-top: 2px solid #ff4b4b; }
+    
+    div.stButton > button { background-color: #00f2ff !important; color: #000000 !important; font-weight: bold !important; border: none !important; transition: all 0.3s ease !important; }
+    div.stButton > button:hover { background-color: #00d4df !important; box-shadow: 0 0 15px rgba(0, 242, 255, 0.6) !important; color: #000000 !important; }
+
+    header {visibility: hidden;} footer {visibility: hidden;}
+    
+    .logo-container {
+        position: relative;
+        top: -10px;
+        left: 0px;
+        margin-bottom: 10px;
+    }
+
+    .stat-label { font-size: 12px; font-weight: bold; margin-bottom: 4px; display: block; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- CONEXÃO REFORÇADA ---
+conn = st.connection("gsheets", type=GSheetsConnection)
+
+def safe_read():
+    try:
+        return conn.read(ttl="10s").dropna(how='all')
+    except Exception as e:
+        st.error(f"Erro de conexão: {e}")
+        return pd.DataFrame()
+
+# --- ESTADOS DE SESSÃO ---
+if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
+if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
+if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
+if "df_final_processado" not in st.session_state: st.session_state.df_final_processado = None
+if "df_auto_ready" not in st.session_state: st.session_state.df_auto_ready = None
+
+# --- FUNÇÕES AUXILIARES ---
+def reset_campos_subir():
+    for c in ["in_user", "in_nome", "in_cell", "in_doc", "in_city", "in_cour", "in_pay", "in_sell", "in_date"]:
+        if c in st.session_state: st.session_state[c] = ""
+    st.session_state.df_final_processado = None
+    st.session_state.df_auto_ready = None
+
+def extrair_valor_recebido(texto):
+    if not texto: return 0.0
+    match = re.search(r'PAG[OA]S?\s*(?:R\$)?\s*([\d\.,]+)', str(texto).upper())
+    if match:
+        try:
+            return float(match.group(1).replace('.', '').replace(',', '.'))
+        except:
+            return 0.0
+    return 0.0
+
+def extrair_valor_geral(texto):
+    if not texto: return 0.0
+    try:
+        v = re.findall(r'\d+(?:\.\d+)?(?:,\d+)?', str(texto).replace('.', '').replace(',', '.'))
+        return float(v[0]) if v else 0.0
+    except: return 0.0
 
 def transformar_curso(chave):
     entrada = st.session_state[chave].strip()
@@ -49,89 +184,26 @@ def transformar_curso(chave):
             st.session_state[chave] = (f"{base} + {nome}" if base and nome.upper() not in base.upper() else (base if base else nome)).upper()
     else: st.session_state[chave] = entrada.upper()
 
+def formatar_cpf(chave):
+    valor = re.sub(r'\D', '', st.session_state[chave])
+    if len(valor) == 11:
+        st.session_state[chave] = f"{valor[:3]}.{valor[3:6]}.{valor[6:9]}-{valor[9:]}"
+
 def atualizar_pagamento():
     suffix = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"
-    if f"f_pagto_{suffix}" in st.session_state:
-        base = st.session_state.get(f"f_pagto_{suffix}", "").split('|')[0].strip()
-        novo = base
-        if st.session_state.get(f"chk_1_{suffix}"): novo += " | Após pagamento link cartão, avisar Natália para liberação In-glês"
-        if st.session_state.get(f"chk_2_{suffix}"): novo += " | Caso pague via link cartão, avisar Natália para liberação curso bônus a escolha"
-        if st.session_state.get(f"chk_3_{suffix}"): novo += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
-        st.session_state[f"f_pagto_{suffix}"] = novo.upper()
+    base = st.session_state.get(f"f_pagto_{suffix}", "").split('|')[0].strip()
+    novo = base
+    if st.session_state.get(f"chk_1_{suffix}"): novo += " | Após pagamento link cartão, avisar Natália para liberação In-glês"
+    if st.session_state.get(f"chk_2_{suffix}"): novo += " | Caso pague via link cartão, avisar Natália para liberação curso bônus a escolha"
+    if st.session_state.get(f"chk_3_{suffix}"): novo += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
+    st.session_state[f"f_pagto_{suffix}"] = novo.upper()
 
-def reset_campos_subir():
-    for c in ["in_user", "in_nome", "in_cell", "in_doc", "in_city", "in_cour", "in_pay", "in_sell", "in_date"]:
-        if c in st.session_state: st.session_state[c] = ""
-    st.session_state.df_final_processado = None
-    st.session_state.df_auto_ready = None
-
-def extrair_valor_recebido(texto):
-    if not texto: return 0.0
-    match = re.search(r'PAG[OA]S?\s*(?:R\$)?\s*([\d\.,]+)', str(texto).upper())
-    return float(match.group(1).replace('.', '').replace(',', '.')) if match else 0.0
-
-def extrair_valor_geral(texto):
-    if not texto: return 0.0
-    try:
-        v = re.findall(r'\d+(?:\.\d+)?(?:,\d+)?', str(texto).replace('.', '').replace(',', '.'))
-        return float(v[0]) if v else 0.0
-    except: return 0.0
-
-# --- ESTADOS DE SESSÃO (BLINDADOS) ---
-if "aluno_para_editar" not in st.session_state: st.session_state.aluno_para_editar = None
-if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
-if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
-if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
-if "df_final_processado" not in st.session_state: st.session_state.df_final_processado = None
-if "df_auto_ready" not in st.session_state: st.session_state.df_auto_ready = None
-
-# Captura de ID da URL
-if st.query_params.get("edit_id"):
-    st.session_state.aluno_para_editar = st.query_params.get("edit_id")
-    st.query_params.clear()
-
-# --- CONEXÃO E TAGS ---
-conn = st.connection("gsheets", type=GSheetsConnection)
-def safe_read():
-    try: return conn.read(ttl="10s").dropna(how='all')
-    except: return pd.DataFrame()
-
-ARQUIVO_TAGS = "tags_salvas.json"; ARQUIVO_CIDADES = "cidades.xlsx"
-def carregar_tags():
-    if os.path.exists(ARQUIVO_TAGS):
-        try:
-            with open(ARQUIVO_TAGS, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except: pass
-    return {"tags": {}, "last_selection": {}}
-
-def salvar_tags(dados):
-    with open(ARQUIVO_TAGS, "w", encoding="utf-8") as f:
-        json.dump(dados, f, ensure_ascii=False, indent=2)
-
-if "dados_tags" not in st.session_state: st.session_state.dados_tags = carregar_tags()
-
-# --- CSS HUD NEON ---
-st.markdown("""
-    <style>
-    .stApp { background-color: #0b0e1e; color: #e0e0e0; }
-    [data-testid="stAppViewBlockContainer"] { padding-top: 40px !important; max-width: 100% !important; }
-    .stTabs [data-baseweb="tab-list"] { background-color: #121629; border-bottom: 1px solid #1f295a; position: fixed; top: 0; left: 0; width: 100vw; z-index: 999; justify-content: center; }
-    label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; }
-    .btn-edit { color: #00f2ff !important; text-decoration: none !important; font-size: 20px !important; cursor: pointer; }
-    .btn-edit:hover { color: #ff007a !important; }
-    .status-badge { padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }
-    .status-ativo { background-color: rgba(46, 204, 113, 0.1); color: #2ecc71; border: 1px solid #2ecc71; }
-    .status-cancelado { background-color: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid #e74c3c; }
-    header {visibility: hidden;} footer {visibility: hidden;}
-    </style>
-""", unsafe_allow_html=True)
-
-# --- POPUP DE EDIÇÃO ---
+# --- NOVO: FUNÇÃO DO POPUP DE EDIÇÃO ---
 @st.dialog("📝 Perfil do Aluno")
 def editar_aluno_popup(dados, df_completo):
     with st.form("form_popup_edicao"):
         st.markdown(f"### Editando: {dados['ALUNO']}")
+        
         c1, c2 = st.columns(2)
         with c1:
             novo_status = st.selectbox("STATUS", ["ATIVO", "CANCELADO"], index=0 if dados['STATUS'] == "ATIVO" else 1)
@@ -139,52 +211,71 @@ def editar_aluno_popup(dados, df_completo):
         with c2:
             novo_tel_r = st.text_input("TEL. RESPONSÁVEL", value=dados['TEL_RESP'])
             novo_tel_a = st.text_input("TEL. ALUNO", value=dados['TEL_ALU'])
-        
+            
         novo_curso = st.text_input("CURSO", value=dados['CURSO']).upper()
         novo_pagto = st.text_area("PAGAMENTO", value=dados['PAGTO']).upper()
         
         st.write("---")
-        b1, b2 = st.columns(2)
-        if b1.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
+        if st.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
             try:
                 creds_info = st.secrets["connections"]["gsheets"]
                 client = gspread.authorize(Credentials.from_service_account_info(creds_info, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
                 sheet = client.open_by_url(creds_info["spreadsheet"]).get_worksheet(0)
-                idx = df_completo[df_completo['ID'].astype(str) == str(dados['ID'])].index[0] + 2
-                updates = [
-                    {'range': f'A{idx}', 'values': [[novo_status]]},
-                    {'range': f'H{idx}', 'values': [[novo_nome]]},
-                    {'range': f'I{idx}', 'values': [[novo_tel_r]]},
-                    {'range': f'J{idx}', 'values': [[novo_tel_a]]},
-                    {'range': f'M{idx}', 'values': [[novo_curso]]},
-                    {'range': f'N{idx}', 'values': [[novo_pagto]]}
-                ]
-                for up in updates: sheet.update(range_name=up['range'], values=up['values'])
-                st.success("Salvo!")
-                st.session_state.aluno_para_editar = None
-                st.cache_data.clear(); st.rerun()
-            except Exception as e: st.error(f"Erro: {e}")
-        if b2.form_submit_button("❌ CANCELAR", use_container_width=True):
-            st.session_state.aluno_para_editar = None
-            st.rerun()
+                
+                # Encontra a linha correta pelo ID (Coluna G / index 6 no seu df)
+                idx_original = df_completo[df_completo['ID'] == dados['ID']].index[0] + 2
+                
+                # Atualiza as células conforme a ordem da sua planilha
+                sheet.update_cell(idx_original, 1, novo_status) # Col A
+                sheet.update_cell(idx_original, 8, novo_nome)   # Col H
+                sheet.update_cell(idx_original, 9, novo_tel_r) # Col I
+                sheet.update_cell(idx_original, 10, novo_tel_a)# Col J
+                sheet.update_cell(idx_original, 13, novo_curso) # Col M
+                sheet.update_cell(idx_original, 14, novo_pagto) # Col N
+                
+                st.success("Dados atualizados com sucesso!")
+                st.cache_data.clear()
+                st.rerun()
+            except Exception as e:
+                st.error(f"Erro ao salvar: {e}")
 
-# --- LÓGICA DE ABAS ---
+# --- NAVEGAÇÃO INTELIGENTE E GATILHO ---
+
+# 1. Pegamos o ID da URL
+id_para_editar = st.query_params.get("edit_id")
+
+# 2. Se houver ID na URL, jogamos para o session_state e limpamos a URL
+if id_para_editar:
+    st.session_state.aluno_para_editar = id_para_editar
+    st.query_params.clear()
+    st.rerun()
+
+# 3. Lógica de exibição das abas
 if st.session_state.aluno_para_editar:
+    # Enquanto edita, mostramos apenas as abas de gerenciamento e relatórios
+    # Isso força o Gerenciamento a ser a aba ativa ao fundo (index 0)
     tabs = st.tabs(["🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
     tab_ger, tab_rel, tab_subir = tabs
-    tab_cad = None
+    tab_cad = None # Desativa a aba cadastro para não criar o menu extra
 else:
+    # Fluxo normal com todas as abas
     tabs = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
     tab_cad, tab_ger, tab_rel, tab_subir = tabs
 
-# --- GATILHO POPUP ---
+# --- GATILHO DO POPUP (Fora das abas) ---
 if st.session_state.aluno_para_editar:
-    df_b = safe_read()
-    if not df_b.empty:
-        df_b.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
-        aluno = df_b[df_b['ID'].astype(str) == str(st.session_state.aluno_para_editar)]
-        if not aluno.empty: editar_aluno_popup(aluno.iloc[0].to_dict(), df_b)
-        else: st.session_state.aluno_para_editar = None
+    df_busca = safe_read()
+    if not df_busca.empty:
+        df_busca.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
+        aluno_dados = df_busca[df_busca['ID'] == st.session_state.aluno_para_editar]
+        
+        if not aluno_dados.empty:
+            info_aluno = aluno_dados.iloc[0].to_dict()
+            # Chamamos o popup aqui
+            editar_aluno_popup(info_aluno, df_busca)
+            # NOTA: O reset do st.session_state.aluno_para_editar deve ser feito 
+            # APENAS dentro do botão de salvar ou fechar do popup para manter o fundo.
+
 
 # --- ABA 1: CADASTRO ---
 if tab_cad is not None:      # Se a aba de cadastro existir...
@@ -270,42 +361,64 @@ if tab_cad is not None:      # Se a aba de cadastro existir...
                     st.info("Nenhum aluno na lista de pré-visualização.")
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- CONTEÚDO DA ABA 2: GERENCIAMENTO ---
+# --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
-    st.markdown("""<style>.ger-container-custom { width: 115vw !important; margin-left: -7.5% !important; margin-top: -40px !important; }</style>""", unsafe_allow_html=True)
+    # 1. CSS e Estilos Originais (Mantidos conforme seu design neon)
+    st.markdown("""
+    <style>
+    .ger-header-row { padding: 0 10px; margin-top: -10px; }
+    .ger-container-custom { 
+        width: 115vw !important; 
+        margin-left: -7.5% !important; 
+        margin-top: -40px !important; 
+    }
+    .btn-edit { 
+        color: #00f2ff !important; 
+        text-decoration: none !important; 
+        font-size: 20px !important; 
+    }
+    .btn-edit:hover { color: #ff007a !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
     df_g = safe_read()
     
     if not df_g.empty:
         df_g.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
-        
+
+        # --- FILTROS DE BUSCA ---
+        st.markdown('<div class="ger-header-row">', unsafe_allow_html=True)
         cf1, cf2, cf3, cf4 = st.columns([2.5, 1.5, 1.5, 0.5])
         with cf1: bu = st.text_input("🔍 Buscar...", key="busca_ger", placeholder="Nome ou ID", label_visibility="collapsed")
         with cf2: fs = st.selectbox("Status", ["Todos", "ATIVO", "CANCELADO"], key="filtro_status", label_visibility="collapsed")
         with cf3: fu = st.selectbox("Unidade", ["Todos", "MGA"], key="filtro_unid", label_visibility="collapsed")
         with cf4:
             if st.button("🔄", key="btn_ref"): st.cache_data.clear(); st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
+        # Aplicar Filtros
         df_display = df_g.copy()
-        if bu:
-            df_display = df_display[df_display['ALUNO'].str.contains(bu, case=False, na=False) | df_display['ID'].astype(str).str.contains(bu, case=False, na=False)]
+        if bu: df_display = df_display[df_display['ALUNO'].str.contains(bu, case=False, na=False) | df_display['ID'].str.contains(bu, case=False, na=False)]
         if fs != "Todos": df_display = df_display[df_display['STATUS'] == fs]
-        
+        if fu != "Todos": df_display = df_display[df_display['UNID.'] == fu]
+
         rows = ""
         for _, r in df_display.iloc[::-1].iterrows():
             sc = "status-badge status-ativo" if r['STATUS'] == "ATIVO" else "status-badge status-cancelado"
-            id_alu = str(r['ID'])
-            link_direto = f"https://sistema-ead.streamlit.app/?edit_id={id_alu}"
+            
+            # O Link que envia o ID para o gatilho global que está fora das abas
+            link_id = f"./?edit_id={r['ID']}"
             
             rows += f"""
             <tr class="ger-row">
-                <td style="text-align: center;"><a href="{link_direto}" target="_top" class="btn-edit">✎</a></td>
+                <td style="text-align: center;"><a href="{link_id}" target="_self" class="btn-edit">✎</a></td>
                 <td><span class='{sc}'>{r['STATUS']}</span></td>
                 <td>{r['UNID.']}</td>
-                <td style="white-space: nowrap;">{r['TURMA']}</td>
+                <td style="width: auto; white-space: nowrap;">{r['TURMA']}</td>
                 <td>{r['10C']}</td>
                 <td>{r['ING']}</td>
                 <td>{r['DT_CAD']}</td>
-                <td class="ger-id">{id_alu}</td>
+                <td class="ger-id">{r['ID']}</td>
                 <td class="ger-nome">{r['ALUNO']}</td>
                 <td>{r['TEL_RESP']}</td>
                 <td>{r['TEL_ALU']}</td>
@@ -315,27 +428,52 @@ with tab_ger:
                 <td class="ger-wrap">{r['PAGTO']}</td>
                 <td>{r['VEND.']}</td>
                 <td>{r['DT_MAT']}</td>
-            </tr>"""
+            </tr>
+            """
 
         html_code = f"""
         <style>
-        body {{ background-color: #0b0e1e; color: #e0e0e0; font-family: Arial, sans-serif; margin: 0; padding: 0; }}
+        body {{ background-color: #0b0e1e; color: #e0e0e0; font-family: Arial, sans-serif; margin: 0; padding: 0; overflow: auto; }}
         .ger-table {{ width: 100%; border-collapse: separate; border-spacing: 0 5px; min-width: 1900px; table-layout: fixed; }}
-        .ger-table thead th {{ text-align: left; font-size: 11px; color: #00f2ff; padding: 5px 6px; text-transform: uppercase; position: sticky; top: 0; background: #0b0e1e; }}
-        .ger-row {{ background: rgba(18, 22, 41, 0.7); }}
+        .ger-table thead {{ position: sticky; top: 0; background: #0b0e1e; z-index: 10; }}
+        .ger-table thead th {{ text-align: left; font-size: 11px; color: #00f2ff; padding: 5px 6px; text-transform: uppercase; }}
+        .ger-row {{ background: rgba(18, 22, 41, 0.7); transition: all 0.2s ease; }}
+        .ger-row:hover {{ background: rgba(0, 242, 255, 0.1); }}
         .ger-table td {{ padding: 10px 6px; font-size: 12px; color: #e0e0e0; border-top: 1px solid #1f295a; border-bottom: 1px solid #1f295a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
-        .ger-id, .ger-nome {{ color: #00f2ff; font-weight: bold; }}
+        .ger-id {{ color: #00f2ff; font-weight: bold; }}
+        .ger-nome {{ color: #00f2ff; font-weight: bold; font-size: 13px; }}
         .ger-wrap {{ white-space: normal !important; word-wrap: break-word; }}
         .status-badge {{ padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }}
         .status-ativo {{ background-color: rgba(46, 204, 113, 0.1); color: #2ecc71; border: 1px solid #2ecc71; }}
         .status-cancelado {{ background-color: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid #e74c3c; }}
-        .btn-edit {{ color: #00f2ff !important; text-decoration: none !important; font-size: 20px !important; cursor: pointer; }}
-        .btn-edit:hover {{ color: #ff007a !important; }}
         </style>
-        <div class="ger-container"><table class="ger-table">
-        <thead><tr><th style="width: 40px; text-align: center;">EDIT</th><th style="width: 80px;">STATUS</th><th style="width: 50px;">UNID.</th><th style="width: 38px;">TURMA</th><th style="width: 40px;">10C</th><th style="width: 40px;">ING</th><th style="width: 90px;">DT_CAD</th><th style="width: 100px;">ID</th><th style="width: 180px;">ALUNO</th><th style="width: 110px;">TEL_RESP</th><th style="width: 110px;">TEL_ALU</th><th style="width: 120px;">CPF</th><th style="width: 100px;">CIDADE</th><th style="width: 220px;">CURSO</th><th style="width: 220px;">PAGTO</th><th style="width: 100px;">VEND.</th><th style="width: 90px;">DT_MAT</th></tr></thead>
-        <tbody>{rows}</tbody></table></div>"""
-        
+        <div class="ger-container">
+            <table class="ger-table">
+                <thead>
+                    <tr>
+                        <th style="width: 40px; text-align: center;">EDIT</th>
+                        <th style="width: 80px;">STATUS</th>
+                        <th style="width: 50px;">UNID.</th>
+                        <th style="width: 38px;">TURMA</th>
+                        <th style="width: 40px;">10C</th>
+                        <th style="width: 40px;">ING</th>
+                        <th style="width: 90px;">DT_CAD</th>
+                        <th style="width: 100px;">ID</th>
+                        <th style="width: 180px;">ALUNO</th>
+                        <th style="width: 110px;">TEL_RESP</th>
+                        <th style="width: 110px;">TEL_ALU</th>
+                        <th style="width: 120px;">CPF</th>
+                        <th style="width: 100px;">CIDADE</th>
+                        <th style="width: 220px;">CURSO</th>
+                        <th style="width: 220px;">PAGTO</th>
+                        <th style="width: 100px;">VEND.</th>
+                        <th style="width: 90px;">DT_MAT</th>
+                    </tr>
+                </thead>
+                <tbody>{rows}</tbody>
+            </table>
+        </div>
+        """
         st.markdown('<div class="ger-container-custom">', unsafe_allow_html=True)
         components.html(html_code, height=1000, scrolling=True)
         st.markdown('</div>', unsafe_allow_html=True)
