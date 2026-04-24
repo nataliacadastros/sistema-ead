@@ -198,9 +198,10 @@ def atualizar_pagamento():
     if st.session_state.get(f"chk_3_{suffix}"): novo += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
     st.session_state[f"f_pagto_{suffix}"] = novo.upper()
 
-# --- NOVO: FUNÇÃO DO POPUP DE EDIÇÃO ---
+# --- FUNÇÃO DO POPUP CORRIGIDA ---
 @st.dialog("📝 Perfil do Aluno")
 def editar_aluno_popup(dados, df_completo):
+    # Form de edição
     with st.form("form_popup_edicao"):
         st.markdown(f"### Editando: {dados['ALUNO']}")
         
@@ -216,39 +217,51 @@ def editar_aluno_popup(dados, df_completo):
         novo_pagto = st.text_area("PAGAMENTO", value=dados['PAGTO']).upper()
         
         st.write("---")
-        if st.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
+        
+        col_btn1, col_btn2 = st.columns(2)
+        
+        if col_btn1.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
             try:
                 creds_info = st.secrets["connections"]["gsheets"]
                 client = gspread.authorize(Credentials.from_service_account_info(creds_info, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
                 sheet = client.open_by_url(creds_info["spreadsheet"]).get_worksheet(0)
                 
-                # Encontra a linha correta pelo ID (Coluna G / index 6 no seu df)
+                # Encontra a linha correta pelo ID
                 idx_original = df_completo[df_completo['ID'] == dados['ID']].index[0] + 2
                 
-                # Atualiza as células conforme a ordem da sua planilha
-                sheet.update_cell(idx_original, 1, novo_status) # Col A
-                sheet.update_cell(idx_original, 8, novo_nome)   # Col H
-                sheet.update_cell(idx_original, 9, novo_tel_r) # Col I
-                sheet.update_cell(idx_original, 10, novo_tel_a)# Col J
-                sheet.update_cell(idx_original, 13, novo_curso) # Col M
-                sheet.update_cell(idx_original, 14, novo_pagto) # Col N
+                # Atualização otimizada (Corrigindo o erro de chamada)
+                # Colunas: A (1), H (8), I (9), J (10), M (13), N (14)
+                sheet.update(range_name=f'A{idx_original}', values=[[novo_status]])
+                sheet.update(range_name=f'H{idx_original}', values=[[novo_nome]])
+                sheet.update(range_name=f'I{idx_original}', values=[[novo_tel_r]])
+                sheet.update(range_name=f'J{idx_original}', values=[[novo_tel_a]])
+                sheet.update(range_name=f'M{idx_original}', values=[[novo_curso]])
+                sheet.update(range_name=f'N{idx_original}', values=[[novo_pagto]])
                 
-                st.success("Dados atualizados com sucesso!")
+                st.success("Dados atualizados!")
+                
+                # LIMPEZA CRÍTICA:
+                st.session_state.aluno_para_editar = None 
                 st.cache_data.clear()
                 st.rerun()
             except Exception as e:
                 st.error(f"Erro ao salvar: {e}")
+        
+        if col_btn2.form_submit_button("❌ CANCELAR", use_container_width=True):
+            st.session_state.aluno_para_editar = None
+            st.rerun()
 
-# --- NAVEGAÇÃO INTELIGENTE E GATILHO ---
-
-# 1. Pegamos o ID da URL
-id_para_editar = st.query_params.get("edit_id")
-
-# 2. Se houver ID na URL, jogamos para o session_state e limpamos a URL
-if id_para_editar:
-    st.session_state.aluno_para_editar = id_para_editar
-    st.query_params.clear()
-    st.rerun()
+# --- GATILHO DO POPUP (Ajustado) ---
+if st.session_state.aluno_para_editar:
+    df_busca = safe_read()
+    if not df_busca.empty:
+        # Garantindo nomes de colunas sem espaços para o filtro
+        df_busca.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
+        aluno_dados = df_busca[df_busca['ID'] == st.session_state.aluno_para_editar]
+        
+        if not aluno_dados.empty:
+            info_aluno = aluno_dados.iloc[0].to_dict()
+            editar_aluno_popup(info_aluno, df_busca)
 
 # 3. Lógica de exibição das abas
 if st.session_state.aluno_para_editar:
