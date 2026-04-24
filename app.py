@@ -239,41 +239,34 @@ def editar_aluno_popup(dados, df_completo):
             except Exception as e:
                 st.error(f"Erro ao salvar: {e}")
 
-# --- NAVEGAÇÃO INTELIGENTE ---
+# --- NAVEGAÇÃO INTELIGENTE E GATILHO ---
+
+# 1. Pegamos o ID da URL
 id_para_editar = st.query_params.get("edit_id")
 
+# 2. Lógica de inversão para manter o fundo correto
 if id_para_editar:
-    # Se está editando, removemos a aba de cadastro da lista temporariamente
-    # Assim a primeira aba (index 0) passa a ser GERENCIAMENTO
-    tabs = st.tabs(["🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
-    tab_ger, tab_rel, tab_subir = tabs
-    tab_cad = None # Desativa a aba de cadastro
+    # Se estamos editando, colocamos Gerenciamento como a PRIMEIRA aba
+    # Isso força o Streamlit a mostrar o Gerenciamento atrás do popup
+    tab_ger, tab_cad, tab_rel, tab_subir = st.tabs(["🖥️ GERENCIAMENTO", "📑 CADASTRO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
 else:
-    # Fluxo normal
-    tabs = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
-    tab_cad, tab_ger, tab_rel, tab_subir = tabs
+    # Fluxo normal: Cadastro é a primeira aba
+    tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
 
-
-# --- GATILHO PARA ABRIR O POPUP DE EDIÇÃO ---
+# --- O GATILHO (Deve vir logo após a criação das abas) ---
 if st.session_state.aluno_para_editar:
-    # 1. Busca os dados atuais na planilha
     df_busca = safe_read()
     if not df_busca.empty:
-        # 2. Padroniza os nomes das colunas para bater com a lógica do seu popup
         df_busca.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
-        
-        # 3. Localiza o aluno específico pelo ID que está salvo no session_state
         aluno_dados = df_busca[df_busca['ID'] == st.session_state.aluno_para_editar]
         
         if not aluno_dados.empty:
-            # 4. Converte a linha do aluno em um dicionário
             info_aluno = aluno_dados.iloc[0].to_dict()
-            
-            # 5. IMPORTANTE: Limpa o ID do estado para o popup não reabrir sozinho depois
+            # Limpa o estado para não repetir
             st.session_state.aluno_para_editar = None
-            
-            # 6. CHAMA A FUNÇÃO DO DIALOG (O POPUP)
+            # Abre o popup em cima da aba que agora é a principal (Gerenciamento)
             editar_aluno_popup(info_aluno, df_busca)
+
 
 # --- ABA 1: CADASTRO ---
 with tab_cad:
