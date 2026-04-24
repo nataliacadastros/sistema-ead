@@ -198,43 +198,24 @@ def atualizar_pagamento():
     if st.session_state.get(f"chk_3_{suffix}"): novo += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
     st.session_state[f"f_pagto_{suffix}"] = novo.upper()
 
-# --- NOVO: FUNÇÃO DO POPUP DE EDIÇÃO ---
 @st.dialog("📝 Perfil do Aluno")
 def editar_aluno_popup(dados, df_completo):
+    # O formulário começa AQUI
     with st.form("form_popup_edicao"):
         st.markdown(f"### Editando: {dados['ALUNO']}")
         
-        c1, c2 = st.columns(2)
-        with c1:
-            novo_status = st.selectbox("STATUS", ["ATIVO", "CANCELADO"], index=0 if dados['STATUS'] == "ATIVO" else 1)
-            novo_nome = st.text_input("NOME COMPLETO", value=dados['ALUNO']).upper()
-        with c2:
-            novo_tel_r = st.text_input("TEL. RESPONSÁVEL", value=dados['TEL_RESP'])
-            novo_tel_a = st.text_input("TEL. ALUNO", value=dados['TEL_ALU'])
-            
-        novo_curso = st.text_input("CURSO", value=dados['CURSO']).upper()
-        novo_pagto = st.text_area("PAGAMENTO", value=dados['PAGTO']).upper()
-        
+        # ... seus campos de texto (Nome, Tel, etc) ...
+
         st.write("---")
-        if st.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
+        # O botão TEM que estar dentro do recuo (identação) do 'with st.form'
+        enviou = st.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True)
+        
+        if enviou:
             try:
-                creds_info = st.secrets["connections"]["gsheets"]
-                client = gspread.authorize(Credentials.from_service_account_info(creds_info, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
-                sheet = client.open_by_url(creds_info["spreadsheet"]).get_worksheet(0)
-                
-                # Encontra a linha correta pelo ID (Coluna G / index 6 no seu df)
-                idx_original = df_completo[df_completo['ID'] == dados['ID']].index[0] + 2
-                
-                # Atualiza as células conforme a ordem da sua planilha
-                sheet.update_cell(idx_original, 1, novo_status) # Col A
-                sheet.update_cell(idx_original, 8, novo_nome)   # Col H
-                sheet.update_cell(idx_original, 9, novo_tel_r) # Col I
-                sheet.update_cell(idx_original, 10, novo_tel_a)# Col J
-                sheet.update_cell(idx_original, 13, novo_curso) # Col M
-                sheet.update_cell(idx_original, 14, novo_pagto) # Col N
-                
+                # ... seu código de salvar no GSheets ...
                 st.success("Dados atualizados com sucesso!")
                 st.cache_data.clear()
+                st.query_params.clear() # Limpa o ID da URL ao fechar
                 st.rerun()
             except Exception as e:
                 st.error(f"Erro ao salvar: {e}")
@@ -253,15 +234,17 @@ if st.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
     except Exception as e:
         st.error(f"Erro: {e}")
 
-# --- NAVEGAÇÃO E GATILHO (VERSÃO LIMPA) ---
+# --- NAVEGAÇÃO E GATILHO ---
 
-# 1. Apenas capturamos o ID se ele existir na URL
+# 1. Captura o ID (não use query_params.clear() aqui para não perder o estado antes do popup)
 id_para_editar = st.query_params.get("edit_id")
 
-# 2. Criamos as abas NORMALMENTE (Sempre a mesma ordem)
-tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
+# 2. Define qual aba deve vir aberta por padrão (0=Cadastro, 1=Gerenciamento)
+# Nota: Streamlit não tem 'index' em tabs, mas vamos manter a lógica limpa
+tabs = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
+tab_cad, tab_ger, tab_rel, tab_subir = tabs
 
-# 3. O GATILHO DO POPUP FICA AQUI (Fora de qualquer 'with tab')
+# 3. O GATILHO DO POPUP (Fora das abas, no final do script ou antes dos 'with')
 if id_para_editar:
     df_busca = safe_read()
     if not df_busca.empty:
@@ -270,10 +253,7 @@ if id_para_editar:
         
         if not aluno_dados.empty:
             info_aluno = aluno_dados.iloc[0].to_dict()
-            
-            # Chamamos o popup
-            # IMPORTANTE: Não limpamos a URL aqui ainda, 
-            # para o Streamlit não dar rerun e fechar o popup na hora
+            # Chama a função que agora está com o botão corrigido
             editar_aluno_popup(info_aluno, df_busca)
 
 
