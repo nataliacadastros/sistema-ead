@@ -200,7 +200,7 @@ def atualizar_pagamento():
 
 @st.dialog("📝 Perfil do Aluno")
 def editar_aluno_popup(dados, df_completo):
-    # O formulário começa aqui
+    # 1. O formulário começa aqui
     with st.form("form_popup_edicao"):
         st.markdown(f"### Editando: {dados['ALUNO']}")
         
@@ -217,27 +217,26 @@ def editar_aluno_popup(dados, df_completo):
         
         st.write("---")
         
-        # O BOTÃO PRECISA ESTAR IDENTADO AQUI (DENTRO DO WITH ST.FORM)
-        botao_salvar = st.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True)
-        
-        if botao_salvar:
+        # IMPORTANTE: Este botão PRECISA de 4 espaços (ou 1 tab) a mais que o 'with st.form'
+        if st.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
             try:
                 creds_info = st.secrets["connections"]["gsheets"]
                 client = gspread.authorize(Credentials.from_service_account_info(creds_info, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
                 sheet = client.open_by_url(creds_info["spreadsheet"]).get_worksheet(0)
                 
+                # Localiza a linha (Coluna G é ID)
                 idx_original = df_completo[df_completo['ID'] == dados['ID']].index[0] + 2
                 
+                # Atualizações
                 sheet.update_cell(idx_original, 1, novo_status) # Col A
                 sheet.update_cell(idx_original, 8, novo_nome)   # Col H
-                sheet.update_cell(idx_original, 9, novo_tel_r) # Col I
-                sheet.update_cell(idx_original, 10, novo_tel_a)# Col J
+                sheet.update_cell(idx_original, 9, novo_tel_r)  # Col I
+                sheet.update_cell(idx_original, 10, novo_tel_a) # Col J
                 sheet.update_cell(idx_original, 13, novo_curso) # Col M
                 sheet.update_cell(idx_original, 14, novo_pagto) # Col N
                 
                 st.success("Dados atualizados com sucesso!")
                 st.cache_data.clear()
-                # Limpa o ID da URL apenas após o sucesso para resetar o estado
                 st.query_params.clear() 
                 st.rerun()
             except Exception as e:
