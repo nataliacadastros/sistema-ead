@@ -31,20 +31,14 @@ st.set_page_config(
 )
 
 # --- FUNÇÕES DE SUPORTE E ESTADOS ---
-def detectar_edicao():
-    # Verifica se há um ID na URL
-    id_url = st.query_params.get("edit_id")
-    if id_url:
-        # Salva no estado da sessão
-        st.session_state.aluno_para_editar = id_url
-        # Limpa a URL para o link ficar "limpo"
-        st.query_params.clear()
-        # Não damos rerun aqui para permitir que o fluxo continue e abra o popup abaixo
-
 if "aluno_para_editar" not in st.session_state:
     st.session_state.aluno_para_editar = None
 
-detectar_edicao()
+# Captura o ID da URL toda vez que o script rodar
+# Removi o .clear() automático para garantir que o sistema tenha tempo de ler o ID
+id_na_url = st.query_params.get("edit_id")
+if id_na_url:
+    st.session_state.aluno_para_editar = id_na_url
 
 # --- ARQUIVOS E PERSISTÊNCIA ---
 ARQUIVO_TAGS = "tags_salvas.json"
@@ -251,52 +245,39 @@ def editar_aluno_popup(dados, df_completo):
             st.session_state.aluno_para_editar = None
             st.rerun()
 
-# --- GATILHO DO POPUP (Ajustado) ---
+# --- LÓGICA DE EXIBIÇÃO DAS ABAS ---
 if st.session_state.aluno_para_editar:
-    df_busca = safe_read()
-    if not df_busca.empty:
-        # Garantindo nomes de colunas sem espaços para o filtro
-        df_busca.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
-        aluno_dados = df_busca[df_busca['ID'] == st.session_state.aluno_para_editar]
-        
-        if not aluno_dados.empty:
-            info_aluno = aluno_dados.iloc[0].to_dict()
-            editar_aluno_popup(info_aluno, df_busca)
-
-# 3. Lógica de exibição das abas
-if st.session_state.aluno_para_editar:
-    # Enquanto edita, mostramos apenas as abas de gerenciamento e relatórios
-    # Isso força o Gerenciamento a ser a aba ativa ao fundo (index 0)
+    # Mostra apenas 3 abas durante a edição para manter o foco
     tabs = st.tabs(["🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
     tab_ger, tab_rel, tab_subir = tabs
-    tab_cad = None # Desativa a aba cadastro para não criar o menu extra
+    tab_cad = None 
 else:
-    # Fluxo normal com todas as abas
+    # Fluxo normal
     tabs = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
     tab_cad, tab_ger, tab_rel, tab_subir = tabs
 
-# --- GATILHO DO POPUP (CORRIGIDO PARA EVITAR DUPLICIDADE) ---
+# --- ÚNICO GATILHO DO POPUP (DEVE FICAR AQUI) ---
 if st.session_state.aluno_para_editar:
-    # 1. Buscamos os dados apenas se necessário
     df_busca = safe_read()
     if not df_busca.empty:
         # Padroniza nomes de colunas
         df_busca.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
-        aluno_dados = df_busca[df_busca['ID'] == st.session_state.aluno_para_editar]
+        
+        # O segredo: Converter o ID para string para garantir a comparação
+        id_procurado = str(st.session_state.aluno_para_editar)
+        aluno_dados = df_busca[df_busca['ID'].astype(str) == id_procurado]
         
         if not aluno_dados.empty:
             info_aluno = aluno_dados.iloc[0].to_dict()
-            
-            # 2. CHAMADA SEGURA: Usamos um try/except ou verificamos se já foi disparado
-            # Mas a solução real aqui é garantir que ele só execute UMA VEZ
+            # Try/Except para evitar que o Streamlit trave se o popup for chamado duas vezes
             try:
                 editar_aluno_popup(info_aluno, df_busca)
             except Exception as e:
-                # Se der erro de duplicação, apenas ignoramos ou limpamos
                 if "StreamlitDuplicateElementId" in str(e):
-                    st.session_state.aluno_para_editar = None
-                    st.rerun()
-
+                    pass # Ignora erro de duplicação visual
+        else:
+            # Se não achou o aluno na planilha, limpa o estado para não dar erro
+            st.session_state.aluno_para_editar = None
 
 # --- ABA 1: CADASTRO ---
 if tab_cad is not None:      # Se a aba de cadastro existir...
