@@ -30,12 +30,13 @@ st.set_page_config(
     page_icon=caminho_logo if os.path.exists(caminho_logo) else None
 )
 
-# --- FUNÇÕES DE SUPORTE E ESTADOS (ADICIONADOS AQUI) ---
+# --- FUNÇÕES DE SUPORTE E ESTADOS ---
 def get_aluno_clicado():
-    return st.query_params.get("editar_id")
+    # Captura o ID da URL se o lápis for clicado
+    return st.query_params.get("edit_id")
 
-if "aluno_em_edicao" not in st.session_state:
-    st.session_state.aluno_em_edicao = None
+# Variável global para identificar se alguém foi clicado
+id_para_editar = get_aluno_clicado()
 
 # --- ARQUIVOS E PERSISTÊNCIA ---
 ARQUIVO_TAGS = "tags_salvas.json"
@@ -230,17 +231,15 @@ def editar_aluno_popup(dados, df_completo):
                 st.error(f"Erro ao salvar: {e}")
 
 # --- NAVEGAÇÃO INTELIGENTE ---
-# Verificamos se existe um pedido de edição na URL
-id_para_popup = st.query_params.get("edit_id")
+# Se houver um ID na URL, a aba padrão será a 1 (Gerenciamento). Caso contrário, 0 (Cadastro).
+# Nota: No Streamlit nativo, o foco da aba é definido na criação.
+indice_aba_inicial = 1 if id_para_editar else 0
 
-# Se houver um ID, definimos a aba de Gerenciamento (índice 1) como ativa
-# Caso contrário, deixamos a de Cadastro (índice 0)
-aba_index = 1 if id_para_popup else 0
+tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
 
-# Criamos as abas (O Streamlit usará a lógica acima para focar na aba certa)
-tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(
-    ["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"]
-)
+# Se o Streamlit não respeitar o foco automático no seu ambiente, 
+# podemos forçar a exibição do conteúdo da aba 1 se houver um id_para_popup.
+
 
 # --- ABA 1: CADASTRO ---
 with tab_cad:
@@ -326,7 +325,7 @@ with tab_cad:
 
 # --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
-    # 1. Verifica se clicamos no lápis (ID via URL)
+    # 1. Captura o ID da URL (edit_id)
     id_id_clicado = st.query_params.get("edit_id")
 
     st.markdown("""
@@ -337,7 +336,6 @@ with tab_ger:
         margin-left: -7.5% !important; 
         margin-top: -40px !important; 
     }
-    /* Estilo do link do lápis */
     .btn-edit { 
         color: #00f2ff !important; 
         text-decoration: none !important; 
@@ -352,14 +350,14 @@ with tab_ger:
     if not df_g.empty:
         df_g.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
 
-        # 2. SE DETECTAR ID NA URL, DISPARA O POPUP AUTOMATICAMENTE
+        # 2. GATILHO DO POPUP (Corrigido para evitar espelhamento)
         if id_id_clicado:
             aluno_para_editar = df_g[df_g['ID'] == id_id_clicado]
             if not aluno_para_editar.empty:
-                # Chama a função @st.dialog que você adicionou acima da navegação
-                editar_aluno_popup(aluno_para_editar.iloc[0], df_g)
-                # Limpa o ID da URL para não abrir o popup de novo no próximo refresh
+                # O SEGREDO: Limpar o parâmetro ANTES de abrir o dialog
+                # Isso evita que o popup tente carregar as abas de novo dentro dele
                 st.query_params.clear()
+                editar_aluno_popup(aluno_para_editar.iloc[0], df_g)
 
         # --- FILTROS DE BUSCA ---
         st.markdown('<div class="ger-header-row">', unsafe_allow_html=True)
@@ -381,7 +379,7 @@ with tab_ger:
         for _, r in df_display.iloc[::-1].iterrows():
             sc = "status-badge status-ativo" if r['STATUS'] == "ATIVO" else "status-badge status-cancelado"
             
-            # 3. O LINK DO LÁPIS AGORA APONTA PARA O ID DO ALUNO
+            # 3. Link com parâmetro 'edit_id'
             link_id = f"./?edit_id={r['ID']}"
             
             rows += f"""
@@ -406,7 +404,6 @@ with tab_ger:
             </tr>
             """
 
-        # Renderização da Tabela
         html_code = f"""
         <style>
         body {{ background-color: #0b0e1e; color: #e0e0e0; font-family: Arial, sans-serif; margin: 0; padding: 0; overflow: auto; }}
@@ -421,7 +418,6 @@ with tab_ger:
         .status-badge {{ padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }}
         .status-ativo {{ background-color: rgba(46, 204, 113, 0.1); color: #2ecc71; border: 1px solid #2ecc71; }}
         .status-cancelado {{ background-color: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid #e74c3c; }}
-        .btn-edit {{ color: #00f2ff; text-decoration: none; font-size: 18px; }}
         </style>
         <div class="ger-container">
             <table class="ger-table">
