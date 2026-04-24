@@ -427,12 +427,12 @@ with tab_ger:
         for _, r in df_display.iloc[::-1].iterrows():
             sc = "status-badge status-ativo" if r['STATUS'] == "ATIVO" else "status-badge status-cancelado"
             
-            # O Link que envia o ID para o gatilho global que está fora das abas
+            # Ajuste de URL: Adicionamos target="_top" para evitar que o menu se repita dentro da tabela
             link_id = f"./?edit_id={r['ID']}"
             
             rows += f"""
             <tr class="ger-row">
-                <td style="text-align: center;"><a href="{link_id}" target="_self" class="btn-edit">✎</a></td>
+                <td style="text-align: center;"><a href="{link_id}" target="_top" class="btn-edit">✎</a></td>
                 <td><span class='{sc}'>{r['STATUS']}</span></td>
                 <td>{r['UNID.']}</td>
                 <td style="width: auto; white-space: nowrap;">{r['TURMA']}</td>
@@ -467,6 +467,11 @@ with tab_ger:
         .status-badge {{ padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }}
         .status-ativo {{ background-color: rgba(46, 204, 113, 0.1); color: #2ecc71; border: 1px solid #2ecc71; }}
         .status-cancelado {{ background-color: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid #e74c3c; }}
+        
+        /* Correção da cor do lápis visitado */
+        .btn-edit {{ color: #00f2ff !important; text-decoration: none !important; }}
+        .btn-edit:visited {{ color: #00f2ff !important; }}
+        .btn-edit:hover {{ color: #ff007a !important; }}
         </style>
         <div class="ger-container">
             <table class="ger-table">
