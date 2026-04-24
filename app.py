@@ -32,14 +32,10 @@ st.set_page_config(
 
 # --- FUNÇÕES DE SUPORTE E ESTADOS ---
 def detectar_edicao():
-    # Verifica se há um ID na URL
+    # Apenas captura o ID da URL se ele existir
     id_url = st.query_params.get("edit_id")
     if id_url:
-        # Salva no estado da sessão
         st.session_state.aluno_para_editar = id_url
-        # Limpa a URL para o link ficar "limpo"
-        st.query_params.clear()
-        # Não damos rerun aqui para permitir que o fluxo continue e abra o popup abaixo
 
 if "aluno_para_editar" not in st.session_state:
     st.session_state.aluno_para_editar = None
@@ -200,64 +196,44 @@ def atualizar_pagamento():
 
 @st.dialog("📝 Perfil do Aluno")
 def editar_aluno_popup(dados, df_completo):
-    # O formulário começa aqui
     with st.form("form_popup_edicao"):
         st.markdown(f"### Editando: {dados['ALUNO']}")
         
-        c1, c2 = st.columns(2)
-        with c1:
-            novo_status = st.selectbox("STATUS", ["ATIVO", "CANCELADO"], index=0 if dados['STATUS'] == "ATIVO" else 1)
-            novo_nome = st.text_input("NOME COMPLETO", value=dados['ALUNO']).upper()
-        with c2:
-            novo_tel_r = st.text_input("TEL. RESPONSÁVEL", value=dados['TEL_RESP'])
-            novo_tel_a = st.text_input("TEL. ALUNO", value=dados['TEL_ALU'])
-            
-        novo_curso = st.text_input("CURSO", value=dados['CURSO']).upper()
-        novo_pagto = st.text_area("PAGAMENTO", value=dados['PAGTO']).upper()
-        
+        # ... (seus campos: novo_status, novo_nome, etc) ...
+
         st.write("---")
-        
-        # Este botão está identado CORRETAMENTE dentro do formulário
         if st.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
             try:
-                creds_info = st.secrets["connections"]["gsheets"]
-                client = gspread.authorize(Credentials.from_service_account_info(creds_info, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
-                sheet = client.open_by_url(creds_info["spreadsheet"]).get_worksheet(0)
-                
-                # Acha a linha
-                idx_original = df_completo[df_completo['ID'] == dados['ID']].index[0] + 2
-                
-                # Salva os dados
-                sheet.update_cell(idx_original, 1, novo_status) 
-                sheet.update_cell(idx_original, 8, novo_nome)   
-                sheet.update_cell(idx_original, 9, novo_tel_r)  
-                sheet.update_cell(idx_original, 10, novo_tel_a) 
-                sheet.update_cell(idx_original, 13, novo_curso) 
-                sheet.update_cell(idx_original, 14, novo_pagto) 
+                # ... (seu código de salvar no gsheets) ...
                 
                 st.success("Dados atualizados!")
                 st.cache_data.clear()
-                st.query_params.clear() 
                 st.rerun()
             except Exception as e:
                 st.error(f"Erro ao salvar: {e}")
+# A FUNÇÃO ACABA AQUI. Não pode ter mais nada identado fora do formulário.
 
 # --- NAVEGAÇÃO E GATILHO ---
-# (O bloco 'if st.form_submit_button' que estava aqui foi REMOVIDO pois era o erro)
 
-id_para_editar = st.query_params.get("edit_id")
-
-# Criamos as abas UMA ÚNICA VEZ
+# Criamos as abas APENAS UMA VEZ no código inteiro
 tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
 
-# Gatilho do Popup
-if id_para_editar:
+# Gatilho do Popup (Sempre fora dos 'with tab')
+if st.session_state.aluno_para_editar:
+    id_atual = st.session_state.aluno_para_editar
     df_busca = safe_read()
+    
     if not df_busca.empty:
         df_busca.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
-        aluno_dados = df_busca[df_busca['ID'] == id_para_editar]
+        aluno_dados = df_busca[df_busca['ID'] == id_atual]
+        
         if not aluno_dados.empty:
             info = aluno_dados.iloc[0].to_dict()
+            # Limpamos o estado para o popup não reabrir sozinho no próximo clique
+            st.session_state.aluno_para_editar = None
+            # Limpamos a URL para o link ficar limpo
+            st.query_params.clear()
+            # CHAMA O POPUP
             editar_aluno_popup(info, df_busca)
 
 # --- ABA 1: CADASTRO ---
