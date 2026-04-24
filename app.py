@@ -231,32 +231,40 @@ def editar_aluno_popup(id_aluno):
             st.session_state.aluno_para_editar = None
             st.rerun()
 
-# --- LÓGICA DE EXIBIÇÃO DAS ABAS ---
+# --- LÓGICA DE EXIBIÇÃO DAS ABAS (UNIFICADA E SEGURA) ---
 if st.session_state.aluno_para_editar:
+    # Durante a edição, criamos as abas mas deixamos a de cadastro como None
     tabs = st.tabs(["🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
     tab_ger, tab_rel, tab_subir = tabs
-    tab_cad = None 
+    tab_cad = None # Aqui dizemos explicitamente que ela é nula
+else:
+    # Fluxo normal com as 4 abas
+    tabs = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
+    tab_cad, tab_ger, tab_rel, tab_subir = tabs
 
-# --- GATILHO QUE ABRE A JANELA ---
+# --- GATILHO ÚNICO E CORRETO ---
 if st.session_state.aluno_para_editar:
-    editar_aluno_popup(st.session_state.aluno_para_editar)
-
-
-# --- GATILHO ÚNICO DO POPUP ---
-if st.session_state.aluno_para_editar:
+    # 1. Busca os dados atualizados para garantir que o popup tenha as informações
     df_busca = safe_read()
     if not df_busca.empty:
         df_busca.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
+        
+        # 2. Localiza o aluno pelo ID
         id_alvo = str(st.session_state.aluno_para_editar)
         aluno_dados = df_busca[df_busca['ID'].astype(str) == id_alvo]
         
         if not aluno_dados.empty:
             info_aluno = aluno_dados.iloc[0].to_dict()
+            
+            # 3. Abre o popup uma única vez passando os dados e o dataframe
             try:
                 editar_aluno_popup(info_aluno, df_busca)
-            except:
-                pass
+            except Exception as e:
+                # Se houver erro visual de duplicidade, o Streamlit limpa aqui
+                if "StreamlitDuplicateElementId" in str(e):
+                    pass
         else:
+            # Se não achou o aluno, limpa o estado para não travar o sistema
             st.session_state.aluno_para_editar = None
 
 # --- ABA 1: CADASTRO ---
