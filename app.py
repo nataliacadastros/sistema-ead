@@ -200,22 +200,45 @@ def atualizar_pagamento():
 
 @st.dialog("📝 Perfil do Aluno")
 def editar_aluno_popup(dados, df_completo):
-    # O formulário começa AQUI
+    # O formulário começa aqui
     with st.form("form_popup_edicao"):
         st.markdown(f"### Editando: {dados['ALUNO']}")
         
-        # ... seus campos de texto (Nome, Tel, etc) ...
-
-        st.write("---")
-        # O botão TEM que estar dentro do recuo (identação) do 'with st.form'
-        enviou = st.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True)
+        c1, c2 = st.columns(2)
+        with c1:
+            novo_status = st.selectbox("STATUS", ["ATIVO", "CANCELADO"], index=0 if dados['STATUS'] == "ATIVO" else 1)
+            novo_nome = st.text_input("NOME COMPLETO", value=dados['ALUNO']).upper()
+        with c2:
+            novo_tel_r = st.text_input("TEL. RESPONSÁVEL", value=dados['TEL_RESP'])
+            novo_tel_a = st.text_input("TEL. ALUNO", value=dados['TEL_ALU'])
+            
+        novo_curso = st.text_input("CURSO", value=dados['CURSO']).upper()
+        novo_pagto = st.text_area("PAGAMENTO", value=dados['PAGTO']).upper()
         
-        if enviou:
+        st.write("---")
+        
+        # O BOTÃO PRECISA ESTAR IDENTADO AQUI (DENTRO DO WITH ST.FORM)
+        botao_salvar = st.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True)
+        
+        if botao_salvar:
             try:
-                # ... seu código de salvar no GSheets ...
+                creds_info = st.secrets["connections"]["gsheets"]
+                client = gspread.authorize(Credentials.from_service_account_info(creds_info, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
+                sheet = client.open_by_url(creds_info["spreadsheet"]).get_worksheet(0)
+                
+                idx_original = df_completo[df_completo['ID'] == dados['ID']].index[0] + 2
+                
+                sheet.update_cell(idx_original, 1, novo_status) # Col A
+                sheet.update_cell(idx_original, 8, novo_nome)   # Col H
+                sheet.update_cell(idx_original, 9, novo_tel_r) # Col I
+                sheet.update_cell(idx_original, 10, novo_tel_a)# Col J
+                sheet.update_cell(idx_original, 13, novo_curso) # Col M
+                sheet.update_cell(idx_original, 14, novo_pagto) # Col N
+                
                 st.success("Dados atualizados com sucesso!")
                 st.cache_data.clear()
-                st.query_params.clear() # Limpa o ID da URL ao fechar
+                # Limpa o ID da URL apenas após o sucesso para resetar o estado
+                st.query_params.clear() 
                 st.rerun()
             except Exception as e:
                 st.error(f"Erro ao salvar: {e}")
@@ -234,112 +257,132 @@ if st.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
     except Exception as e:
         st.error(f"Erro: {e}")
 
-# --- NAVEGAÇÃO E GATILHO ---
-
-# 1. Captura o ID (não use query_params.clear() aqui para não perder o estado antes do popup)
-id_para_editar = st.query_params.get("edit_id")
-
-# 2. Define qual aba deve vir aberta por padrão (0=Cadastro, 1=Gerenciamento)
-# Nota: Streamlit não tem 'index' em tabs, mas vamos manter a lógica limpa
+# 1. Definições de abas (Uma única vez)
 tabs = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
 tab_cad, tab_ger, tab_rel, tab_subir = tabs
 
-# 3. O GATILHO DO POPUP (Fora das abas, no final do script ou antes dos 'with')
+# 2. Gatilho do Popup (Independente das abas)
+id_para_editar = st.query_params.get("edit_id")
 if id_para_editar:
     df_busca = safe_read()
     if not df_busca.empty:
+        # ... lógica de filtro do aluno que você já tem ...
+        # (Lembre de nomear as colunas do df_busca para o filtro funcionar)
         df_busca.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
         aluno_dados = df_busca[df_busca['ID'] == id_para_editar]
         
         if not aluno_dados.empty:
-            info_aluno = aluno_dados.iloc[0].to_dict()
-            # Chama a função que agora está com o botão corrigido
-            editar_aluno_popup(info_aluno, df_busca)
+            info = aluno_dados.iloc[0].to_dict()
+            editar_aluno_popup(info, df_busca)
 
 
 # --- ABA 1: CADASTRO ---
-if tab_cad is not None:      # Se a aba de cadastro existir...
-    with tab_cad:            # Entre nela (Note o recuo aqui)
-        st.markdown('<div style="padding: 0 50px;">', unsafe_allow_html=True) # (E aqui)
+if tab_cad is not None:
+    with tab_cad:
+        st.markdown('<div style="padding: 0 50px;">', unsafe_allow_html=True)
         
+        # Logo Central
         if os.path.exists(caminho_logo):
             st.markdown('<div class="logo-container">', unsafe_allow_html=True)
             st.image(caminho_logo, width=90)
             st.markdown('</div>', unsafe_allow_html=True)
-    _, centro, _ = st.columns([0.2, 5.6, 0.2])
-    with centro:
-        s_al = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"; s_ge = f"g_{st.session_state.reset_geral}"
-        fields = [("ID:", f"f_id_{s_al}"), ("ALUNO:", f"f_nome_{s_al}"), ("TEL. RESPONSÁVEL:", f"f_tel_resp_{s_al}"),
-                  ("TEL. ALUNO:", f"f_tel_aluno_{s_al}"), ("CPF RESPONSÁVEL:", f"f_cpf_{s_al}"), ("CIDADE:", f"f_cid_{s_ge}"),
-                  ("CURSO CONTRATADO:", f"input_curso_key_{s_al}"), ("FORMA DE PAGAMENTO:", f"f_pagto_{s_al}"),
-                  ("VENDEDOR:", f"f_vend_{s_ge}"), ("DATA DA MATRÍCULA:", f"f_data_{s_ge}")]
+            
+        _, centro, _ = st.columns([0.2, 5.6, 0.2])
         
-        for l, k in fields:
-            cl, ci = st.columns([1.2, 3.8])
-            cl.markdown(f"<label>{l}</label>", unsafe_allow_html=True)
-            if "curso" in k: ci.text_input(l, key=k, on_change=transformar_curso, args=(k,), label_visibility="collapsed")
-            elif "f_cpf" in k: ci.text_input(l, key=k, on_change=formatar_cpf, args=(k,), label_visibility="collapsed")
-            else: ci.text_input(l, key=k, label_visibility="collapsed")
-        
-        st.write("")
-        _, c1, c2, c3, _ = st.columns([1.2, 1.2, 1.2, 1.2, 0.2])
-        c1.checkbox("LIB. IN-GLÊS", key=f"chk_1_{s_al}", on_change=atualizar_pagamento)
-        c2.checkbox("CURSO BÔNUS", key=f"chk_2_{s_al}", on_change=atualizar_pagamento)
-        c3.checkbox("CONFIRMAÇÃO", key=f"chk_3_{s_al}", on_change=atualizar_pagamento)
-        st.write("")
-        _, b1, b2, _ = st.columns([1.2, 1.9, 1.9, 0.2])
-        
-        with b1:
-            if st.button("💾 SALVAR ALUNO"):
-                if st.session_state[f"f_nome_{s_al}"]:
-                    st.session_state.lista_previa.append({
-                        "ID": st.session_state[f"f_id_{s_al}"].upper(),
-                        "Aluno": st.session_state[f"f_nome_{s_al}"].upper(),
-                        "Tel_Resp": str(st.session_state[f"f_tel_resp_{s_al}"]), 
-                        "Tel_Aluno": str(st.session_state[f"f_tel_aluno_{s_al}"]),
-                        "CPF": st.session_state[f"f_cpf_{s_al}"],
-                        "Cidade": st.session_state[f"f_cid_{s_ge}"].upper(), 
-                        "Course": st.session_state[f"input_curso_key_{s_al}"].upper(),
-                        "Pagto": st.session_state[f"f_pagto_{s_al}"].upper(),
-                        "Vendedor": st.session_state[f"f_vend_{s_ge}"].upper(),
-                        "Data_Mat": st.session_state[f"f_data_{s_ge}"]
-                    })
-                    st.session_state.reset_aluno += 1
-                    st.rerun()
+        with centro:
+            s_al = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"
+            s_ge = f"g_{st.session_state.reset_geral}"
+            
+            fields = [
+                ("ID:", f"f_id_{s_al}"), 
+                ("ALUNO:", f"f_nome_{s_al}"), 
+                ("TEL. RESPONSÁVEL:", f"f_tel_resp_{s_al}"),
+                ("TEL. ALUNO:", f"f_tel_aluno_{s_al}"), 
+                ("CPF RESPONSÁVEL:", f"f_cpf_{s_al}"), 
+                ("CIDADE:", f"f_cid_{s_ge}"),
+                ("CURSO CONTRATADO:", f"input_curso_key_{s_al}"), 
+                ("FORMA DE PAGAMENTO:", f"f_pagto_{s_al}"),
+                ("VENDEDOR:", f"f_vend_{s_ge}"), 
+                ("DATA DA MATRÍCULA:", f"f_data_{s_ge}")
+            ]
+            
+            # Renderização dos campos
+            for l, k in fields:
+                cl, ci = st.columns([1.2, 3.8])
+                cl.markdown(f"<label>{l}</label>", unsafe_allow_html=True)
+                
+                if "curso" in k:
+                    ci.text_input(l, key=k, on_change=transformar_curso, args=(k,), label_visibility="collapsed")
+                elif "f_cpf" in k:
+                    ci.text_input(l, key=k, on_change=formatar_cpf, args=(k,), label_visibility="collapsed")
                 else:
-                    st.warning("Preencha pelo menos o nome do aluno.")
-                    
-        with b2:
-            if st.button("📤 ENVIAR PLANILHA"):
-                if st.session_state.lista_previa:
-                    try:
-                        creds_info = st.secrets["connections"]["gsheets"]
-                        client = gspread.authorize(Credentials.from_service_account_info(creds_info, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
-                        ws = client.open_by_url(creds_info["spreadsheet"]).get_worksheet(0)
-                        
-                        d_f = []
-                        for a in st.session_state.lista_previa:
-                            d_f.append([
-                                "ATIVO", "MGA", "A DEFINIR", 
-                                "SIM" if "10 CURSOS" in a["Course"] else "NÃO", 
-                                "A DEFINIR" if "INGLÊS" in a["Course"] else "NÃO", 
-                                date.today().strftime("%d/%m/%Y"), 
-                                a["ID"], a["Aluno"], a["Tel_Resp"], a["Tel_Aluno"], 
-                                a["CPF"], a["Cidade"], a["Course"], a["Pagto"], 
-                                a["Vendedor"], a["Data_Mat"]
-                            ])
-                        
-                        ws.append_rows(d_f, value_input_option='RAW')
-                        st.session_state.lista_previa = []
-                        st.session_state.reset_geral += 1
-                        st.success("Enviado com sucesso!")
-                        st.cache_data.clear()
+                    ci.text_input(l, key=k, label_visibility="collapsed")
+            
+            st.write("")
+            
+            # Checkboxes de Opções
+            _, c1, c2, c3, _ = st.columns([1.2, 1.2, 1.2, 1.2, 0.2])
+            c1.checkbox("LIB. IN-GLÊS", key=f"chk_1_{s_al}", on_change=atualizar_pagamento)
+            c2.checkbox("CURSO BÔNUS", key=f"chk_2_{s_al}", on_change=atualizar_pagamento)
+            c3.checkbox("CONFIRMAÇÃO", key=f"chk_3_{s_al}", on_change=atualizar_pagamento)
+            
+            st.write("")
+            
+            # Botões de Ação
+            _, b1, b2, _ = st.columns([1.2, 1.9, 1.9, 0.2])
+            
+            with b1:
+                if st.button("💾 SALVAR ALUNO"):
+                    if st.session_state[f"f_nome_{s_al}"]:
+                        st.session_state.lista_previa.append({
+                            "ID": st.session_state[f"f_id_{s_al}"].upper(),
+                            "Aluno": st.session_state[f"f_nome_{s_al}"].upper(),
+                            "Tel_Resp": str(st.session_state[f"f_tel_resp_{s_al}"]), 
+                            "Tel_Aluno": str(st.session_state[f"f_tel_aluno_{s_al}"]),
+                            "CPF": st.session_state[f"f_cpf_{s_al}"],
+                            "Cidade": st.session_state[f"f_cid_{s_ge}"].upper(), 
+                            "Course": st.session_state[f"input_curso_key_{s_al}"].upper(),
+                            "Pagto": st.session_state[f"f_pagto_{s_al}"].upper(),
+                            "Vendedor": st.session_state[f"f_vend_{s_ge}"].upper(),
+                            "Data_Mat": st.session_state[f"f_data_{s_ge}"]
+                        })
+                        st.session_state.reset_aluno += 1
                         st.rerun()
-                    except Exception as e:
-                        st.error(f"Erro ao enviar: {e}")
-                else:
-                    st.info("Nenhum aluno na lista de pré-visualização.")
-    st.markdown('</div>', unsafe_allow_html=True)
+                    else:
+                        st.warning("Preencha pelo menos o nome do aluno.")
+            
+            with b2:
+                if st.button("📤 ENVIAR PLANILHA"):
+                    if st.session_state.lista_previa:
+                        try:
+                            creds_info = st.secrets["connections"]["gsheets"]
+                            client = gspread.authorize(Credentials.from_service_account_info(creds_info, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
+                            ws = client.open_by_url(creds_info["spreadsheet"]).get_worksheet(0)
+                            
+                            d_f = []
+                            for a in st.session_state.lista_previa:
+                                d_f.append([
+                                    "ATIVO", "MGA", "A DEFINIR", 
+                                    "SIM" if "10 CURSOS" in a["Course"] else "NÃO", 
+                                    "A DEFINIR" if "INGLÊS" in a["Course"] else "NÃO", 
+                                    date.today().strftime("%d/%m/%Y"), 
+                                    a["ID"], a["Aluno"], a["Tel_Resp"], a["Tel_Aluno"], 
+                                    a["CPF"], a["Cidade"], a["Course"], a["Pagto"], 
+                                    a["Vendedor"], a["Data_Mat"]
+                                ])
+                            
+                            ws.append_rows(d_f, value_input_option='RAW')
+                            st.session_state.lista_previa = []
+                            st.session_state.reset_geral += 1
+                            st.success("Enviado com sucesso!")
+                            st.cache_data.clear()
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Erro ao enviar: {e}")
+                    else:
+                        st.info("Nenhum aluno na lista de pré-visualização.")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
