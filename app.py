@@ -34,11 +34,10 @@ st.set_page_config(
 if "aluno_para_editar" not in st.session_state:
     st.session_state.aluno_para_editar = None
 
-# Captura o ID da URL toda vez que o script rodar
-# Removi o .clear() automático para garantir que o sistema tenha tempo de ler o ID
-id_na_url = st.query_params.get("edit_id")
-if id_na_url:
-    st.session_state.aluno_para_editar = id_na_url
+# Captura o ID caso venha da URL (reserva)
+id_url = st.query_params.get("edit_id")
+if id_url and st.session_state.aluno_para_editar is None:
+    st.session_state.aluno_para_editar = id_url
 
 # --- ARQUIVOS E PERSISTÊNCIA ---
 ARQUIVO_TAGS = "tags_salvas.json"
@@ -398,18 +397,18 @@ with tab_ger:
         if fs != "Todos": df_display = df_display[df_display['STATUS'] == fs]
         if fu != "Todos": df_display = df_display[df_display['UNID.'] == fu]
 
-        rows = ""
+ rows = ""
         for _, r in df_display.iloc[::-1].iterrows():
             sc = "status-badge status-ativo" if r['STATUS'] == "ATIVO" else "status-badge status-cancelado"
             id_aluno = str(r['ID'])
             
-            # LINK CORRIGIDO: target="_parent" força a página principal a abrir o aluno
-            link_id = f"./?edit_id={id_aluno}"
+            # Este link força o navegador a tratar como uma nova navegação no topo
+            link_direto = f"https://sistema-ead.streamlit.app/?edit_id={id_aluno}"
             
             rows += f"""
             <tr class="ger-row">
                 <td style="text-align: center;">
-                    <a href="{link_id}" target="_parent" class="btn-edit">✎</a>
+                    <a href="{link_direto}" target="_top" class="btn-edit">✎</a>
                 </td>
                 <td><span class='{sc}'>{r['STATUS']}</span></td>
                 <td>{r['UNID.']}</td>
