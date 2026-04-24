@@ -191,10 +191,9 @@ def atualizar_pagamento():
     if st.session_state.get(f"chk_3_{suffix}"): novo += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
     st.session_state[f"f_pagto_{suffix}"] = novo.upper()
 
-# --- FUNÇÃO DO POPUP CORRIGIDA ---
+# --- FUNÇÃO DO POPUP DE EDIÇÃO CORRIGIDA ---
 @st.dialog("📝 Perfil do Aluno")
 def editar_aluno_popup(dados, df_completo):
-    # Form de edição
     with st.form("form_popup_edicao"):
         st.markdown(f"### Editando: {dados['ALUNO']}")
         
@@ -210,20 +209,17 @@ def editar_aluno_popup(dados, df_completo):
         novo_pagto = st.text_area("PAGAMENTO", value=dados['PAGTO']).upper()
         
         st.write("---")
+        col_b1, col_b2 = st.columns(2)
         
-        col_btn1, col_btn2 = st.columns(2)
-        
-        if col_btn1.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
+        if col_b1.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
             try:
                 creds_info = st.secrets["connections"]["gsheets"]
                 client = gspread.authorize(Credentials.from_service_account_info(creds_info, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
                 sheet = client.open_by_url(creds_info["spreadsheet"]).get_worksheet(0)
                 
-                # Encontra a linha correta pelo ID
-                idx_original = df_completo[df_completo['ID'] == dados['ID']].index[0] + 2
+                idx_original = df_completo[df_completo['ID'].astype(str) == str(dados['ID'])].index[0] + 2
                 
-                # Atualização otimizada (Corrigindo o erro de chamada)
-                # Colunas: A (1), H (8), I (9), J (10), M (13), N (14)
+                # Atualizações nas colunas corretas (A, H, I, J, M, N)
                 sheet.update(range_name=f'A{idx_original}', values=[[novo_status]])
                 sheet.update(range_name=f'H{idx_original}', values=[[novo_nome]])
                 sheet.update(range_name=f'I{idx_original}', values=[[novo_tel_r]])
@@ -232,53 +228,40 @@ def editar_aluno_popup(dados, df_completo):
                 sheet.update(range_name=f'N{idx_original}', values=[[novo_pagto]])
                 
                 st.success("Dados atualizados!")
-                
-                # LIMPEZA CRÍTICA:
-                st.session_state.aluno_para_editar = None 
+                st.session_state.aluno_para_editar = None
                 st.cache_data.clear()
                 st.rerun()
             except Exception as e:
                 st.error(f"Erro ao salvar: {e}")
-        
-        if col_btn2.form_submit_button("❌ CANCELAR", use_container_width=True):
+
+        if col_b2.form_submit_button("❌ CANCELAR", use_container_width=True):
             st.session_state.aluno_para_editar = None
             st.rerun()
 
 # --- LÓGICA DE EXIBIÇÃO DAS ABAS ---
 if st.session_state.aluno_para_editar:
-    # Mostra apenas 3 abas durante a edição para manter o foco
     tabs = st.tabs(["🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
     tab_ger, tab_rel, tab_subir = tabs
     tab_cad = None 
 else:
-    # Fluxo normal
     tabs = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
     tab_cad, tab_ger, tab_rel, tab_subir = tabs
 
-# --- GATILHO ÚNICO E DEFINITIVO ---
+# --- GATILHO ÚNICO DO POPUP ---
 if st.session_state.aluno_para_editar:
     df_busca = safe_read()
     if not df_busca.empty:
         df_busca.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
-        
-        # Busca o aluno
         id_alvo = str(st.session_state.aluno_para_editar)
         aluno_dados = df_busca[df_busca['ID'].astype(str) == id_alvo]
         
         if not aluno_dados.empty:
             info_aluno = aluno_dados.iloc[0].to_dict()
-            
-            # Limpa a URL imediatamente para o próximo clique funcionar
-            if st.query_params.get("edit_id"):
-                st.query_params.clear()
-            
-            # Abre o popup
-            editar_aluno_popup(info_aluno, df_busca)
-            except Exception as e:
-                if "StreamlitDuplicateElementId" in str(e):
-                    pass # Ignora erro de duplicação visual
+            try:
+                editar_aluno_popup(info_aluno, df_busca)
+            except:
+                pass
         else:
-            # Se não achou o aluno na planilha, limpa o estado para não dar erro
             st.session_state.aluno_para_editar = None
 
 # --- ABA 1: CADASTRO ---
@@ -365,65 +348,42 @@ if tab_cad is not None:      # Se a aba de cadastro existir...
                     st.info("Nenhum aluno na lista de pré-visualização.")
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- ABA 2: GERENCIAMENTO ---
+# --- CONTEÚDO DA ABA 2: GERENCIAMENTO ---
 with tab_ger:
-    # 1. CSS e Estilos
-    st.markdown("""
-    <style>
-    .ger-header-row { padding: 0 10px; margin-top: -10px; }
-    .ger-container-custom { 
-        width: 115vw !important; 
-        margin-left: -7.5% !important; 
-        margin-top: -40px !important; 
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
+    st.markdown("""<style>.ger-container-custom { width: 115vw !important; margin-left: -7.5% !important; margin-top: -40px !important; }</style>""", unsafe_allow_html=True)
     df_g = safe_read()
     
     if not df_g.empty:
         df_g.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
-
-        # --- FILTROS DE BUSCA ---
-        st.markdown('<div class="ger-header-row">', unsafe_allow_html=True)
+        
         cf1, cf2, cf3, cf4 = st.columns([2.5, 1.5, 1.5, 0.5])
         with cf1: bu = st.text_input("🔍 Buscar...", key="busca_ger", placeholder="Nome ou ID", label_visibility="collapsed")
         with cf2: fs = st.selectbox("Status", ["Todos", "ATIVO", "CANCELADO"], key="filtro_status", label_visibility="collapsed")
         with cf3: fu = st.selectbox("Unidade", ["Todos", "MGA"], key="filtro_unid", label_visibility="collapsed")
         with cf4:
             if st.button("🔄", key="btn_ref"): st.cache_data.clear(); st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
 
-        # Aplicar Filtros
         df_display = df_g.copy()
-        if bu: 
+        if bu:
             df_display = df_display[df_display['ALUNO'].str.contains(bu, case=False, na=False) | df_display['ID'].astype(str).str.contains(bu, case=False, na=False)]
-        if fs != "Todos": 
-            df_display = df_display[df_display['STATUS'] == fs]
-        if fu != "Todos": 
-            df_display = df_display[df_display['UNID.'] == fu]
-
-        # --- CONSTRUÇÃO DA TABELA (INDENTAÇÃO CORRIGIDA) ---
+        if fs != "Todos": df_display = df_display[df_display['STATUS'] == fs]
+        
         rows = ""
         for _, r in df_display.iloc[::-1].iterrows():
             sc = "status-badge status-ativo" if r['STATUS'] == "ATIVO" else "status-badge status-cancelado"
-            id_aluno = str(r['ID'])
-            
-            # Link Completo para forçar o Streamlit Cloud a recarregar no topo
-            link_direto = f"https://sistema-ead.streamlit.app/?edit_id={id_aluno}"
+            id_alu = str(r['ID'])
+            link_direto = f"https://sistema-ead.streamlit.app/?edit_id={id_alu}"
             
             rows += f"""
             <tr class="ger-row">
-                <td style="text-align: center;">
-                    <a href="{link_direto}" target="_top" class="btn-edit">✎</a>
-                </td>
+                <td style="text-align: center;"><a href="{link_direto}" target="_top" class="btn-edit">✎</a></td>
                 <td><span class='{sc}'>{r['STATUS']}</span></td>
                 <td>{r['UNID.']}</td>
-                <td style="width: auto; white-space: nowrap;">{r['TURMA']}</td>
+                <td style="white-space: nowrap;">{r['TURMA']}</td>
                 <td>{r['10C']}</td>
                 <td>{r['ING']}</td>
                 <td>{r['DT_CAD']}</td>
-                <td class="ger-id">{id_aluno}</td>
+                <td class="ger-id">{id_alu}</td>
                 <td class="ger-nome">{r['ALUNO']}</td>
                 <td>{r['TEL_RESP']}</td>
                 <td>{r['TEL_ALU']}</td>
@@ -433,55 +393,27 @@ with tab_ger:
                 <td class="ger-wrap">{r['PAGTO']}</td>
                 <td>{r['VEND.']}</td>
                 <td>{r['DT_MAT']}</td>
-            </tr>
-            """
+            </tr>"""
 
         html_code = f"""
         <style>
-        body {{ background-color: #0b0e1e; color: #e0e0e0; font-family: Arial, sans-serif; margin: 0; padding: 0; overflow: auto; }}
+        body {{ background-color: #0b0e1e; color: #e0e0e0; font-family: Arial, sans-serif; margin: 0; padding: 0; }}
         .ger-table {{ width: 100%; border-collapse: separate; border-spacing: 0 5px; min-width: 1900px; table-layout: fixed; }}
-        .ger-table thead {{ position: sticky; top: 0; background: #0b0e1e; z-index: 10; }}
-        .ger-table thead th {{ text-align: left; font-size: 11px; color: #00f2ff; padding: 5px 6px; text-transform: uppercase; }}
-        .ger-row {{ background: rgba(18, 22, 41, 0.7); transition: all 0.2s ease; }}
-        .ger-row:hover {{ background: rgba(0, 242, 255, 0.1); }}
+        .ger-table thead th {{ text-align: left; font-size: 11px; color: #00f2ff; padding: 5px 6px; text-transform: uppercase; position: sticky; top: 0; background: #0b0e1e; }}
+        .ger-row {{ background: rgba(18, 22, 41, 0.7); }}
         .ger-table td {{ padding: 10px 6px; font-size: 12px; color: #e0e0e0; border-top: 1px solid #1f295a; border-bottom: 1px solid #1f295a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
-        .ger-id {{ color: #00f2ff; font-weight: bold; }}
-        .ger-nome {{ color: #00f2ff; font-weight: bold; font-size: 13px; }}
+        .ger-id, .ger-nome {{ color: #00f2ff; font-weight: bold; }}
         .ger-wrap {{ white-space: normal !important; word-wrap: break-word; }}
         .status-badge {{ padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }}
         .status-ativo {{ background-color: rgba(46, 204, 113, 0.1); color: #2ecc71; border: 1px solid #2ecc71; }}
         .status-cancelado {{ background-color: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid #e74c3c; }}
-        
-        .btn-edit {{ color: #00f2ff !important; text-decoration: none !important; font-size: 20px !important; cursor: pointer !important; }}
+        .btn-edit {{ color: #00f2ff !important; text-decoration: none !important; font-size: 20px !important; cursor: pointer; }}
         .btn-edit:hover {{ color: #ff007a !important; }}
         </style>
-        <div class="ger-container">
-            <table class="ger-table">
-                <thead>
-                    <tr>
-                        <th style="width: 40px; text-align: center;">EDIT</th>
-                        <th style="width: 80px;">STATUS</th>
-                        <th style="width: 50px;">UNID.</th>
-                        <th style="width: 38px;">TURMA</th>
-                        <th style="width: 40px;">10C</th>
-                        <th style="width: 40px;">ING</th>
-                        <th style="width: 90px;">DT_CAD</th>
-                        <th style="width: 100px;">ID</th>
-                        <th style="width: 180px;">ALUNO</th>
-                        <th style="width: 110px;">TEL_RESP</th>
-                        <th style="width: 110px;">TEL_ALU</th>
-                        <th style="width: 120px;">CPF</th>
-                        <th style="width: 100px;">CIDADE</th>
-                        <th style="width: 220px;">CURSO</th>
-                        <th style="width: 220px;">PAGTO</th>
-                        <th style="width: 100px;">VEND.</th>
-                        <th style="width: 90px;">DT_MAT</th>
-                    </tr>
-                </thead>
-                <tbody>{rows}</tbody>
-            </table>
-        </div>
-        """
+        <div class="ger-container"><table class="ger-table">
+        <thead><tr><th style="width: 40px; text-align: center;">EDIT</th><th style="width: 80px;">STATUS</th><th style="width: 50px;">UNID.</th><th style="width: 38px;">TURMA</th><th style="width: 40px;">10C</th><th style="width: 40px;">ING</th><th style="width: 90px;">DT_CAD</th><th style="width: 100px;">ID</th><th style="width: 180px;">ALUNO</th><th style="width: 110px;">TEL_RESP</th><th style="width: 110px;">TEL_ALU</th><th style="width: 120px;">CPF</th><th style="width: 100px;">CIDADE</th><th style="width: 220px;">CURSO</th><th style="width: 220px;">PAGTO</th><th style="width: 100px;">VEND.</th><th style="width: 90px;">DT_MAT</th></tr></thead>
+        <tbody>{rows}</tbody></table></div>"""
+        
         st.markdown('<div class="ger-container-custom">', unsafe_allow_html=True)
         components.html(html_code, height=1000, scrolling=True)
         st.markdown('</div>', unsafe_allow_html=True)
