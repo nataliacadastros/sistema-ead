@@ -393,12 +393,6 @@ with tab_ger:
         margin-left: -7.5% !important; 
         margin-top: -40px !important; 
     }
-    .btn-edit { 
-        color: #00f2ff !important; 
-        text-decoration: none !important; 
-        font-size: 20px !important; 
-    }
-    .btn-edit:hover { color: #ff007a !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -426,14 +420,15 @@ with tab_ger:
         rows = ""
         for _, r in df_display.iloc[::-1].iterrows():
             sc = "status-badge status-ativo" if r['STATUS'] == "ATIVO" else "status-badge status-cancelado"
-            
-            # Pegamos o ID do aluno como string para o JavaScript
             id_aluno = str(r['ID'])
+            
+            # LINK CORRIGIDO: target="_parent" força a página principal a abrir o aluno
+            link_id = f"./?edit_id={id_aluno}"
             
             rows += f"""
             <tr class="ger-row">
                 <td style="text-align: center;">
-                    <span class="btn-edit" onclick="window.parent.location.href='./?edit_id={id_aluno}'" style="cursor: pointer;">✎</span>
+                    <a href="{link_id}" target="_parent" class="btn-edit">✎</a>
                 </td>
                 <td><span class='{sc}'>{r['STATUS']}</span></td>
                 <td>{r['UNID.']}</td>
@@ -470,15 +465,22 @@ with tab_ger:
         .status-ativo {{ background-color: rgba(46, 204, 113, 0.1); color: #2ecc71; border: 1px solid #2ecc71; }}
         .status-cancelado {{ background-color: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid #e74c3c; }}
         
-        /* Ajuste do botão de edição e correção de cor */
+        /* ESTILO DO BOTÃO DE EDIÇÃO */
         .btn-edit {{ 
             color: #00f2ff !important; 
             text-decoration: none !important; 
+            font-size: 20px !important; 
             cursor: pointer !important;
-            transition: 0.2s;
             display: inline-block;
         }}
-        .btn-edit:hover {{ color: #ff007a !important; transform: scale(1.2); }}
+        .btn-edit:visited, .btn-edit:active, .btn-edit:link {{ 
+            color: #00f2ff !important; 
+            text-decoration: none !important; 
+        }}
+        .btn-edit:hover {{ 
+            color: #ff007a !important; 
+            transform: scale(1.2); 
+        }}
         </style>
         <div class="ger-container">
             <table class="ger-table">
