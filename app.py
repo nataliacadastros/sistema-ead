@@ -367,7 +367,7 @@ if tab_cad is not None:      # Se a aba de cadastro existir...
 
 # --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
-    # 1. CSS e Estilos (Alinhados corretamente)
+    # 1. CSS e Estilos
     st.markdown("""
     <style>
     .ger-header-row { padding: 0 10px; margin-top: -10px; }
@@ -403,7 +403,7 @@ with tab_ger:
         if fu != "Todos": 
             df_display = df_display[df_display['UNID.'] == fu]
 
-        # --- INÍCIO DO BLOCO DAS ROWS (Indentei com 8 espaços aqui) ---
+        # --- CONSTRUÇÃO DA TABELA (INDENTAÇÃO CORRIGIDA) ---
         rows = ""
         for _, r in df_display.iloc[::-1].iterrows():
             sc = "status-badge status-ativo" if r['STATUS'] == "ATIVO" else "status-badge status-cancelado"
