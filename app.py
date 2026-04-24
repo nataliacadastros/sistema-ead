@@ -32,19 +32,19 @@ st.set_page_config(
 
 # --- FUNÇÕES DE SUPORTE E ESTADOS ---
 def detectar_edicao():
-    # Verifica se há um ID na URL (vindo do clique no lápis)
+    # Verifica se há um ID na URL
     id_url = st.query_params.get("edit_id")
     if id_url:
-        # Guarda na 'gaveta' e limpa a URL na hora para evitar o looping
+        # Salva no estado da sessão e LIMPA a URL imediatamente
         st.session_state.aluno_para_editar = id_url
         st.query_params.clear()
         st.rerun()
 
-# Inicializa a gaveta se ela estiver vazia
+# Inicializa a variável de controle se não existir
 if "aluno_para_editar" not in st.session_state:
     st.session_state.aluno_para_editar = None
 
-# Chama a limpeza automática
+# Chama a detecção (isso limpa a URL antes de qualquer menu ser desenhado)
 detectar_edicao()
 
 # --- ARQUIVOS E PERSISTÊNCIA ---
@@ -198,7 +198,6 @@ def atualizar_pagamento():
     if st.session_state.get(f"chk_2_{suffix}"): novo += " | Caso pague via link cartão, avisar Natália para liberação curso bônus a escolha"
     if st.session_state.get(f"chk_3_{suffix}"): novo += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
     st.session_state[f"f_pagto_{suffix}"] = novo.upper()
-
 # --- NOVO: FUNÇÃO DO POPUP DE EDIÇÃO ---
 @st.dialog("📝 Perfil do Aluno")
 def editar_aluno_popup(dados, df_completo):
@@ -239,33 +238,17 @@ def editar_aluno_popup(dados, df_completo):
                 st.rerun()
             except Exception as e:
                 st.error(f"Erro ao salvar: {e}")
-# Botão para fechar sem salvar (dentro ou fora do form)
-        if st.button("❌ CANCELAR E VOLTAR", use_container_width=True):
-            st.rerun()
 
 # --- NAVEGAÇÃO INTELIGENTE E GATILHO ---
 
-# 1. Verificamos se há um ID na "gaveta" para editar
-aluno_id_sessao = st.session_state.get("aluno_para_editar")
+# 1. Pegamos o ID da URL
+id_para_editar = st.query_params.get("edit_id")
 
-if aluno_id_sessao:
-    df_g = safe_read()
-    if not df_g.empty:
-        # Padroniza colunas para o popup encontrar os dados
-        df_g.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
-        aluno_row = df_g[df_g['ID'] == aluno_id_sessao]
-        
-        if not aluno_row.empty:
-            # Esvaziamos a gaveta para o popup não abrir em looping
-            st.session_state.aluno_para_editar = None 
-            
-            # DISPARA O POPUP
-            editar_aluno_popup(aluno_row.iloc[0], df_g)
-            
-            # BLOQUEIO: Impede o Streamlit de ler o resto do código e criar o 2º menu
-            st.stop() 
+# 2. Definimos qual aba deve abrir primeiro
+# Se houver ID, focamos na aba 1 (Gerenciamento)
+indice_aba = 1 if id_para_editar else 0
 
-# 2. Se não houver popup, desenha a navegação normal
+# 3. Criamos as abas (Desta vez sem o st.stop para a página não sumir)
 tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
 
 
