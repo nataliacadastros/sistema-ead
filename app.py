@@ -35,16 +35,15 @@ def detectar_edicao():
     # Verifica se há um ID na URL
     id_url = st.query_params.get("edit_id")
     if id_url:
-        # Salva no estado da sessão e LIMPA a URL imediatamente
+        # Salva no estado da sessão
         st.session_state.aluno_para_editar = id_url
+        # Limpa a URL para o link ficar "limpo"
         st.query_params.clear()
-        st.rerun()
+        # Não damos rerun aqui para permitir que o fluxo continue e abra o popup abaixo
 
-# Inicializa a variável de controle se não existir
 if "aluno_para_editar" not in st.session_state:
     st.session_state.aluno_para_editar = None
 
-# Chama a detecção (isso limpa a URL antes de qualquer menu ser desenhado)
 detectar_edicao()
 
 # --- ARQUIVOS E PERSISTÊNCIA ---
@@ -198,6 +197,7 @@ def atualizar_pagamento():
     if st.session_state.get(f"chk_2_{suffix}"): novo += " | Caso pague via link cartão, avisar Natália para liberação curso bônus a escolha"
     if st.session_state.get(f"chk_3_{suffix}"): novo += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
     st.session_state[f"f_pagto_{suffix}"] = novo.upper()
+
 # --- NOVO: FUNÇÃO DO POPUP DE EDIÇÃO ---
 @st.dialog("📝 Perfil do Aluno")
 def editar_aluno_popup(dados, df_completo):
@@ -252,6 +252,26 @@ indice_aba = 1 if id_para_editar else 0
 tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
 
 
+# --- GATILHO PARA ABRIR O POPUP DE EDIÇÃO ---
+if st.session_state.aluno_para_editar:
+    # 1. Busca os dados atuais na planilha
+    df_busca = safe_read()
+    if not df_busca.empty:
+        # 2. Padroniza os nomes das colunas para bater com a lógica do seu popup
+        df_busca.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
+        
+        # 3. Localiza o aluno específico pelo ID que está salvo no session_state
+        aluno_dados = df_busca[df_busca['ID'] == st.session_state.aluno_para_editar]
+        
+        if not aluno_dados.empty:
+            # 4. Converte a linha do aluno em um dicionário
+            info_aluno = aluno_dados.iloc[0].to_dict()
+            
+            # 5. IMPORTANTE: Limpa o ID do estado para o popup não reabrir sozinho depois
+            st.session_state.aluno_para_editar = None
+            
+            # 6. CHAMA A FUNÇÃO DO DIALOG (O POPUP)
+            editar_aluno_popup(info_aluno, df_busca)
 
 # --- ABA 1: CADASTRO ---
 with tab_cad:
