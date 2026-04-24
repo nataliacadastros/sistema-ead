@@ -31,12 +31,21 @@ st.set_page_config(
 )
 
 # --- FUNÇÕES DE SUPORTE E ESTADOS ---
-def get_aluno_clicado():
-    # Captura o ID da URL se o lápis for clicado
-    return st.query_params.get("edit_id")
+def detectar_edicao():
+    # Verifica se há um ID na URL (vindo do clique no lápis)
+    id_url = st.query_params.get("edit_id")
+    if id_url:
+        # Guarda na 'gaveta' e limpa a URL na hora para evitar o looping
+        st.session_state.aluno_para_editar = id_url
+        st.query_params.clear()
+        st.rerun()
 
-# Variável global que vamos usar para disparar o popup antes das abas
-id_para_editar = get_aluno_clicado()
+# Inicializa a gaveta se ela estiver vazia
+if "aluno_para_editar" not in st.session_state:
+    st.session_state.aluno_para_editar = None
+
+# Chama a limpeza automática
+detectar_edicao()
 
 # --- ARQUIVOS E PERSISTÊNCIA ---
 ARQUIVO_TAGS = "tags_salvas.json"
@@ -230,16 +239,28 @@ def editar_aluno_popup(dados, df_completo):
             except Exception as e:
                 st.error(f"Erro ao salvar: {e}")
 
-# --- NAVEGAÇÃO INTELIGENTE E GATILHO ---
+# --- NAVEGAÇÃO INTELIGENTE E GATILHO (Passo 2 Corrigido) ---
 
-# 1. Pegamos o ID da URL
-id_para_editar = st.query_params.get("edit_id")
+# 1. Verificamos se há um aluno para editar (vencendo o looping)
+if st.session_state.get("aluno_para_editar"):
+    df_g = safe_read()
+    if not df_g.empty:
+        # Padroniza as colunas para o popup encontrar os dados
+        df_g.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
+        aluno_row = df_g[df_g['ID'] == st.session_state.aluno_para_editar]
+        
+        if not aluno_row.empty:
+            dados_aluno = aluno_row.iloc[0]
+            # Limpa a gaveta para o popup não abrir de novo sozinho no próximo clique
+            st.session_state.aluno_para_editar = None 
+            # Abre a janela (Popup)
+            editar_aluno_popup(dados_aluno, df_g)
 
-# 2. Definimos qual aba deve abrir primeiro
-# Se houver ID, focamos na aba 1 (Gerenciamento)
-indice_aba = 1 if id_para_editar else 0
+# 2. Definimos qual aba abrir primeiro
+# Se a URL tiver id, indice_aba vira 1 (Gerenciamento)
+indice_aba = 1 if st.query_params.get("edit_id") else 0
 
-# 3. Criamos as abas (Desta vez sem o st.stop para a página não sumir)
+# 3. Criamos as abas (O popup agora aparecerá 'por cima' delas se for acionado)
 tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
 
 
