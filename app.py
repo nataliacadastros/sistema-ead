@@ -35,7 +35,7 @@ def get_aluno_clicado():
     # Captura o ID da URL se o lápis for clicado
     return st.query_params.get("edit_id")
 
-# Variável global para identificar se alguém foi clicado
+# Variável global que vamos usar para disparar o popup antes das abas
 id_para_editar = get_aluno_clicado()
 
 # --- ARQUIVOS E PERSISTÊNCIA ---
@@ -235,6 +235,24 @@ def editar_aluno_popup(dados, df_completo):
 # Nota: No Streamlit nativo, o foco da aba é definido na criação.
 indice_aba_inicial = 1 if id_para_editar else 0
 
+# --- GATILHO GLOBAL DO POPUP ---
+# Este bloco verifica se o lápis foi clicado e abre o popup de forma limpa
+if id_para_editar:
+    df_g = safe_read() 
+    if not df_g.empty:
+        # Padroniza as colunas para o popup encontrar os dados
+        df_g.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
+        
+        # Procura o aluno pelo ID que veio da URL
+        aluno_row = df_g[df_g['ID'] == id_para_editar]
+        
+        if not aluno_row.empty:
+            # 1. Limpa a URL primeiro (Isso evita o "espelhamento" e menus duplicados)
+            st.query_params.clear()
+            
+            # 2. Abre a janelinha branca de edição
+            editar_aluno_popup(aluno_row.iloc[0], df_g)
+
 tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
 
 # Se o Streamlit não respeitar o foco automático no seu ambiente, 
@@ -325,9 +343,8 @@ with tab_cad:
 
 # --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
-    # 1. Captura o ID da URL (edit_id)
-    id_id_clicado = st.query_params.get("edit_id")
-
+    # Removemos o gatilho do popup daqui de dentro para evitar o espelhamento
+    # O CSS e a estrutura da tabela permanecem intactos conforme seu design
     st.markdown("""
     <style>
     .ger-header-row { padding: 0 10px; margin-top: -10px; }
@@ -350,15 +367,6 @@ with tab_ger:
     if not df_g.empty:
         df_g.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
 
-        # 2. GATILHO DO POPUP (Corrigido para evitar espelhamento)
-        if id_id_clicado:
-            aluno_para_editar = df_g[df_g['ID'] == id_id_clicado]
-            if not aluno_para_editar.empty:
-                # O SEGREDO: Limpar o parâmetro ANTES de abrir o dialog
-                # Isso evita que o popup tente carregar as abas de novo dentro dele
-                st.query_params.clear()
-                editar_aluno_popup(aluno_para_editar.iloc[0], df_g)
-
         # --- FILTROS DE BUSCA ---
         st.markdown('<div class="ger-header-row">', unsafe_allow_html=True)
         cf1, cf2, cf3, cf4 = st.columns([2.5, 1.5, 1.5, 0.5])
@@ -379,7 +387,7 @@ with tab_ger:
         for _, r in df_display.iloc[::-1].iterrows():
             sc = "status-badge status-ativo" if r['STATUS'] == "ATIVO" else "status-badge status-cancelado"
             
-            # 3. Link com parâmetro 'edit_id'
+            # O Link que envia o ID para o gatilho global que está fora das abas
             link_id = f"./?edit_id={r['ID']}"
             
             rows += f"""
