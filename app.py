@@ -200,7 +200,7 @@ def atualizar_pagamento():
 
 @st.dialog("📝 Perfil do Aluno")
 def editar_aluno_popup(dados, df_completo):
-    # 1. O formulário começa aqui
+    # O formulário começa aqui
     with st.form("form_popup_edicao"):
         st.markdown(f"### Editando: {dados['ALUNO']}")
         
@@ -217,17 +217,17 @@ def editar_aluno_popup(dados, df_completo):
         
         st.write("---")
         
-        # IMPORTANTE: Este botão PRECISA de 4 espaços (ou 1 tab) a mais que o 'with st.form'
+        # O BOTÃO PRECISA ESTAR EXATAMENTE NESTE RECUO
         if st.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
             try:
                 creds_info = st.secrets["connections"]["gsheets"]
                 client = gspread.authorize(Credentials.from_service_account_info(creds_info, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
                 sheet = client.open_by_url(creds_info["spreadsheet"]).get_worksheet(0)
                 
-                # Localiza a linha (Coluna G é ID)
+                # Localiza a linha correta
                 idx_original = df_completo[df_completo['ID'] == dados['ID']].index[0] + 2
                 
-                # Atualizações
+                # Atualizações na planilha
                 sheet.update_cell(idx_original, 1, novo_status) # Col A
                 sheet.update_cell(idx_original, 8, novo_nome)   # Col H
                 sheet.update_cell(idx_original, 9, novo_tel_r)  # Col I
@@ -237,6 +237,7 @@ def editar_aluno_popup(dados, df_completo):
                 
                 st.success("Dados atualizados com sucesso!")
                 st.cache_data.clear()
+                # Limpa a URL e recarrega o app limpo
                 st.query_params.clear() 
                 st.rerun()
             except Exception as e:
@@ -256,27 +257,28 @@ if st.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
     except Exception as e:
         st.error(f"Erro: {e}")
 
-# 1. Definições de abas (Uma única vez)
-tabs = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
-tab_cad, tab_ger, tab_rel, tab_subir = tabs
+# --- NAVEGAÇÃO E GATILHO ---
 
-# 2. Gatilho do Popup (Independente das abas)
+# 1. Pegamos o ID se ele existir
 id_para_editar = st.query_params.get("edit_id")
+
+# 2. Criamos as abas APENAS UMA VEZ no código inteiro
+tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
+
+# 3. Gatilho do Popup (Sempre fora dos 'with tab')
 if id_para_editar:
     df_busca = safe_read()
     if not df_busca.empty:
-        # ... lógica de filtro do aluno que você já tem ...
-        # (Lembre de nomear as colunas do df_busca para o filtro funcionar)
         df_busca.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
         aluno_dados = df_busca[df_busca['ID'] == id_para_editar]
-        
         if not aluno_dados.empty:
             info = aluno_dados.iloc[0].to_dict()
+            # Chama a função que corrigimos acima
             editar_aluno_popup(info, df_busca)
 
 
 # --- ABA 1: CADASTRO ---
-if tab_cad is not None:
+
     with tab_cad:
         st.markdown('<div style="padding: 0 50px;">', unsafe_allow_html=True)
         
