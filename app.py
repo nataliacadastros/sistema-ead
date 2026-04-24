@@ -220,7 +220,7 @@ with tab_ger:
                         except: st.error("Erro ao salvar.")
             else: st.info("Clique em um aluno para editar.")
 
-# --- ABA 3: RELATÓRIOS (RESTAURADO COMPLETO) ---
+# --- ABA 3: RELATÓRIOS ---
 with tab_rel:
     df_r = safe_read()
     if not df_r.empty:
@@ -273,7 +273,28 @@ with tab_rel:
                 c_ing = len(df_f[df_f["Curso"].str.contains("INGLÊS", case=False, na=False)])
                 c_tec = len(df_f[df_f["Curso"].str.contains("TECNOLOGIA|INFORMÁTICA", case=False, na=False)])
                 st.markdown(f'<div class="card-hud neon-blue"><span class="stat-label">POR ÁREA</span><div style="font-size:15px; text-align:left; color:#e0e0e0; line-height:1.4; padding-left:5px;">BANC: <b>{c_banc}</b> | AGRO: <b>{c_agro}</b><br>INGL: <b>{c_ing}</b> | TECN: <b>{c_tec}</b></div></div>', unsafe_allow_html=True)
-            st.plotly_chart(go.Figure(go.Bar(y=["STATUS"], x=[len(df_f[df_f["STATUS"].str.upper()=="ATIVO")], orientation='h', marker=dict(color='#2ecc71'), text=["ATIVOS"], textposition='inside')).add_trace(go.Bar(y=["STATUS"], x=[len(df_f[df_f["STATUS"].str.upper()=="CANCELADO")], orientation='h', marker=dict(color='#ff4b4b'), text=["CANCELADOS"], textposition='inside')).update_layout(barmode='stack', showlegend=False, height=50, margin=dict(t=5,b=5), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(showgrid=False, zeroline=False, showticklabels=False), yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)), use_container_width=True)
+            
+            # --- CORREÇÃO DA SINTAXE DO GRÁFICO ---
+            at_count = len(df_f[df_f["STATUS"].str.upper()=="ATIVO"])
+            can_count = len(df_f[df_f["STATUS"].str.upper()=="CANCELADO"])
+            
+            fig_st = go.Figure()
+            fig_st.add_trace(go.Bar(
+                y=["STATUS"], x=[at_count], orientation='h', 
+                marker=dict(color='#2ecc71'), text=["ATIVOS"], textposition='inside'
+            ))
+            fig_st.add_trace(go.Bar(
+                y=["STATUS"], x=[can_count], orientation='h', 
+                marker=dict(color='#ff4b4b'), text=["CANCELADOS"], textposition='inside'
+            ))
+            fig_st.update_layout(
+                barmode='stack', showlegend=False, height=50, margin=dict(t=5,b=5), 
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
+                xaxis=dict(showgrid=False, zeroline=False, showticklabels=False), 
+                yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
+            )
+            st.plotly_chart(fig_st, use_container_width=True)
+
             col_g1, col_g2 = st.columns(2)
             with col_g1:
                 df_city = df_f.copy(); df_city["Vendedor_L"] = df_city["Vendedor"].str.split(" - ").str[0].str.strip()
@@ -285,7 +306,7 @@ with tab_rel:
                 df_v = df_stats["Vendedor"].value_counts().reset_index().head(5)
                 st.plotly_chart(go.Figure(go.Scatter(x=df_v['Vendedor'], y=df_v['count'], mode='lines+markers+text', text=df_v['count'], textposition="top center", line=dict(color='#bc13fe'))).update_layout(template="plotly_dark", title="⚡ PERFORMANCE VENDAS"), use_container_width=True)
 
-# --- ABA 4: SUBIR ALUNOS (RESTAURADO COMPLETO) ---
+# --- ABA 4: SUBIR ALUNOS ---
 with tab_subir:
     st.markdown("### 📤 IMPORTAÇÃO EAD")
     modo = st.radio("Método:", ["MANUAL", "AUTOMÁTICO"], horizontal=True)
@@ -299,7 +320,7 @@ with tab_subir:
                 if not df_filtrado.empty:
                     cids = sorted(df_filtrado[df_m.columns[11]].unique()); sel_cids = st.multiselect("Cidades:", cids)
                     st.session_state.df_auto_ready = df_filtrado[df_filtrado[df_m.columns[11]].isin(sel_cids)]
-                    st.info(f"{len(st.session_state.df_auto_ready)} alunos encontrados.")
+                    st.info(f"{len(st.session_state.df_auto_ready)} encontrados.")
             except: st.error("Erro no processamento.")
     else:
         c1, c2 = st.columns(2)
