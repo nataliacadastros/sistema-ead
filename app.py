@@ -239,17 +239,19 @@ def editar_aluno_popup(dados, df_completo):
             except Exception as e:
                 st.error(f"Erro ao salvar: {e}")
 
-# --- NAVEGAÇÃO INTELIGENTE E GATILHO ---
-
-# 1. Pegamos o ID da URL
+# --- NAVEGAÇÃO INTELIGENTE ---
 id_para_editar = st.query_params.get("edit_id")
 
-# 2. Definimos qual aba deve abrir primeiro
-# Se houver ID, focamos na aba 1 (Gerenciamento)
-indice_aba = 1 if id_para_editar else 0
-
-# 3. Criamos as abas (Desta vez sem o st.stop para a página não sumir)
-tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
+if id_para_editar:
+    # Se está editando, removemos a aba de cadastro da lista temporariamente
+    # Assim a primeira aba (index 0) passa a ser GERENCIAMENTO
+    tabs = st.tabs(["🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
+    tab_ger, tab_rel, tab_subir = tabs
+    tab_cad = None # Desativa a aba de cadastro
+else:
+    # Fluxo normal
+    tabs = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
+    tab_cad, tab_ger, tab_rel, tab_subir = tabs
 
 
 # --- GATILHO PARA ABRIR O POPUP DE EDIÇÃO ---
