@@ -231,13 +231,27 @@ def editar_aluno_popup(dados, df_completo):
                 st.error(f"Erro ao salvar: {e}")
 
 # --- NAVEGAÇÃO INTELIGENTE E GATILHO ---
+
+# 1. Pegamos o ID da URL
 id_para_editar = st.query_params.get("edit_id")
 
-# Criamos as abas normalmente aqui
+# 2. O SEGREDO: Se houver ID, o código PARA aqui, mostra o popup e não desenha o resto
+if id_para_editar:
+    df_g = safe_read()
+    if not df_g.empty:
+        df_g.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
+        aluno_row = df_g[df_g['ID'] == id_para_editar]
+        if not aluno_row.empty:
+            # Limpa a URL para que na próxima vez o site carregue normal
+            st.query_params.clear()
+            # Abre o popup branco
+            editar_aluno_popup(aluno_row.iloc[0], df_g)
+            # TRAVA O CÓDIGO AQUI: Impede que o segundo menu apareça lá atrás
+            st.stop()
+
+# 3. Se NÃO tem ID, o código continua e desenha o site normalmente
 tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
 
-# Se houver um ID, nós não abrimos o popup aqui fora! 
-# Vamos apenas avisar a Aba de Gerenciamento que ela deve abrir o popup.
 
 # --- ABA 1: CADASTRO ---
 with tab_cad:
@@ -323,9 +337,7 @@ with tab_cad:
 
 # --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
-    # Removemos qualquer lógica de "if edit_id" daqui de dentro.
-    # O popup agora é disparado globalmente para não duplicar a interface.
-    
+    # 1. CSS e Estilos Originais
     st.markdown("""
     <style>
     .ger-header-row { padding: 0 10px; margin-top: -10px; }
@@ -397,7 +409,8 @@ with tab_ger:
         <style>
         body {{ background-color: #0b0e1e; color: #e0e0e0; font-family: Arial, sans-serif; margin: 0; padding: 0; overflow: auto; }}
         .ger-table {{ width: 100%; border-collapse: separate; border-spacing: 0 5px; min-width: 1900px; table-layout: fixed; }}
-        .ger-table thead th {{ text-align: left; font-size: 11px; color: #00f2ff; padding: 5px 6px; text-transform: uppercase; position: sticky; top: 0; background: #0b0e1e; z-index: 10; }}
+        .ger-table thead {{ position: sticky; top: 0; background: #0b0e1e; z-index: 10; }}
+        .ger-table thead th {{ text-align: left; font-size: 11px; color: #00f2ff; padding: 5px 6px; text-transform: uppercase; }}
         .ger-row {{ background: rgba(18, 22, 41, 0.7); transition: all 0.2s ease; }}
         .ger-row:hover {{ background: rgba(0, 242, 255, 0.1); }}
         .ger-table td {{ padding: 10px 6px; font-size: 12px; color: #e0e0e0; border-top: 1px solid #1f295a; border-bottom: 1px solid #1f295a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
@@ -438,6 +451,7 @@ with tab_ger:
         st.markdown('<div class="ger-container-custom">', unsafe_allow_html=True)
         components.html(html_code, height=1000, scrolling=True)
         st.markdown('</div>', unsafe_allow_html=True)
+
 
 # --- ABA 3: RELATÓRIOS ---
 with tab_rel:
