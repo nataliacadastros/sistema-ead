@@ -230,29 +230,31 @@ def editar_aluno_popup(dados, df_completo):
             except Exception as e:
                 st.error(f"Erro ao salvar: {e}")
 
-# --- NAVEGAÇÃO INTELIGENTE E GATILHO ---
+# --- NAVEGAÇÃO INTELIGENTE E GATILHO (CONTROLE DE FLUXO) ---
 
 # 1. Verificamos se há um ID na URL
 id_para_editar = st.query_params.get("edit_id")
 
 if id_para_editar:
-    # Se existe ID, criamos as abas, mas focamos o código no Popup imediatamente
-    tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
-    
+    # Se existe ID, carregamos os dados
     df_g = safe_read() 
     if not df_g.empty:
         df_g.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
         aluno_row = df_g[df_g['ID'] == id_para_editar]
         
         if not aluno_row.empty:
-            # LIMPAMOS A URL AQUI: Isso impede que o Streamlit carregue o "site dentro do site"
+            # LIMPAMOS A URL
             st.query_params.clear()
             
-            # DISPARAMOS O POPUP: Ele vai flutuar sobre a página de forma limpa
+            # EXIBIMOS O POPUP
             editar_aluno_popup(aluno_row.iloc[0], df_g)
-else:
-    # Se NÃO tem ID, o site carrega normal para o uso do dia a dia
-    tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
+            
+            # IMPORTANTE: Forçamos a página a parar aqui para não desenhar o segundo menu
+            st.stop() 
+
+# 2. Se o código chegou até aqui, significa que NÃO tem nada para editar.
+# Então desenhamos a navegação normal.
+tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
 
 # --- ABA 1: CADASTRO ---
 with tab_cad:
