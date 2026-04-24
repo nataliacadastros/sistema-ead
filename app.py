@@ -367,7 +367,7 @@ if tab_cad is not None:      # Se a aba de cadastro existir...
 
 # --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
-    # 1. CSS e Estilos Originais (Mantidos conforme seu design neon)
+    # 1. CSS e Estilos (Alinhados corretamente)
     st.markdown("""
     <style>
     .ger-header-row { padding: 0 10px; margin-top: -10px; }
@@ -396,16 +396,20 @@ with tab_ger:
 
         # Aplicar Filtros
         df_display = df_g.copy()
-        if bu: df_display = df_display[df_display['ALUNO'].str.contains(bu, case=False, na=False) | df_display['ID'].str.contains(bu, case=False, na=False)]
-        if fs != "Todos": df_display = df_display[df_display['STATUS'] == fs]
-        if fu != "Todos": df_display = df_display[df_display['UNID.'] == fu]
+        if bu: 
+            df_display = df_display[df_display['ALUNO'].str.contains(bu, case=False, na=False) | df_display['ID'].astype(str).str.contains(bu, case=False, na=False)]
+        if fs != "Todos": 
+            df_display = df_display[df_display['STATUS'] == fs]
+        if fu != "Todos": 
+            df_display = df_display[df_display['UNID.'] == fu]
 
- rows = ""
+        # --- INÍCIO DO BLOCO DAS ROWS (Indentei com 8 espaços aqui) ---
+        rows = ""
         for _, r in df_display.iloc[::-1].iterrows():
             sc = "status-badge status-ativo" if r['STATUS'] == "ATIVO" else "status-badge status-cancelado"
             id_aluno = str(r['ID'])
             
-            # Este link força o navegador a tratar como uma nova navegação no topo
+            # Link Completo para forçar o Streamlit Cloud a recarregar no topo
             link_direto = f"https://sistema-ead.streamlit.app/?edit_id={id_aluno}"
             
             rows += f"""
@@ -448,22 +452,8 @@ with tab_ger:
         .status-ativo {{ background-color: rgba(46, 204, 113, 0.1); color: #2ecc71; border: 1px solid #2ecc71; }}
         .status-cancelado {{ background-color: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid #e74c3c; }}
         
-        /* ESTILO DO BOTÃO DE EDIÇÃO */
-        .btn-edit {{ 
-            color: #00f2ff !important; 
-            text-decoration: none !important; 
-            font-size: 20px !important; 
-            cursor: pointer !important;
-            display: inline-block;
-        }}
-        .btn-edit:visited, .btn-edit:active, .btn-edit:link {{ 
-            color: #00f2ff !important; 
-            text-decoration: none !important; 
-        }}
-        .btn-edit:hover {{ 
-            color: #ff007a !important; 
-            transform: scale(1.2); 
-        }}
+        .btn-edit {{ color: #00f2ff !important; text-decoration: none !important; font-size: 20px !important; cursor: pointer !important; }}
+        .btn-edit:hover {{ color: #ff007a !important; }}
         </style>
         <div class="ger-container">
             <table class="ger-table">
