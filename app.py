@@ -239,42 +239,42 @@ def editar_aluno_popup(dados, df_completo):
             except Exception as e:
                 st.error(f"Erro ao salvar: {e}")
 
-# --- NAVEGAÇÃO INTELIGENTE E GATILHO ---
+# Dentro da função editar_aluno_popup, no final do sucesso:
+if st.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
+    try:
+        # ... seu código de salvar no gsheets ...
+        
+        st.success("Dados atualizados!")
+        st.cache_data.clear()
+        
+        # AGORA SIM LIMPAMOS A URL E RECARREGAMOS
+        st.query_params.clear() 
+        st.rerun()
+    except Exception as e:
+        st.error(f"Erro: {e}")
 
-# 1. Pegamos o ID da URL
+# --- NAVEGAÇÃO E GATILHO (VERSÃO LIMPA) ---
+
+# 1. Apenas capturamos o ID se ele existir na URL
 id_para_editar = st.query_params.get("edit_id")
 
-# 2. Se houver ID na URL, jogamos para o session_state e limpamos a URL
+# 2. Criamos as abas NORMALMENTE (Sempre a mesma ordem)
+tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
+
+# 3. O GATILHO DO POPUP FICA AQUI (Fora de qualquer 'with tab')
 if id_para_editar:
-    st.session_state.aluno_para_editar = id_para_editar
-    st.query_params.clear()
-    st.rerun()
-
-# 3. Lógica de exibição das abas
-if st.session_state.aluno_para_editar:
-    # Enquanto edita, mostramos apenas as abas de gerenciamento e relatórios
-    # Isso força o Gerenciamento a ser a aba ativa ao fundo (index 0)
-    tabs = st.tabs(["🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
-    tab_ger, tab_rel, tab_subir = tabs
-    tab_cad = None # Desativa a aba cadastro para não criar o menu extra
-else:
-    # Fluxo normal com todas as abas
-    tabs = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
-    tab_cad, tab_ger, tab_rel, tab_subir = tabs
-
-# --- GATILHO DO POPUP (Fora das abas) ---
-if st.session_state.aluno_para_editar:
     df_busca = safe_read()
     if not df_busca.empty:
         df_busca.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
-        aluno_dados = df_busca[df_busca['ID'] == st.session_state.aluno_para_editar]
+        aluno_dados = df_busca[df_busca['ID'] == id_para_editar]
         
         if not aluno_dados.empty:
             info_aluno = aluno_dados.iloc[0].to_dict()
-            # Chamamos o popup aqui
+            
+            # Chamamos o popup
+            # IMPORTANTE: Não limpamos a URL aqui ainda, 
+            # para o Streamlit não dar rerun e fechar o popup na hora
             editar_aluno_popup(info_aluno, df_busca)
-            # NOTA: O reset do st.session_state.aluno_para_editar deve ser feito 
-            # APENAS dentro do botão de salvar ou fechar do popup para manter o fundo.
 
 
 # --- ABA 1: CADASTRO ---
