@@ -189,6 +189,46 @@ def atualizar_pagamento():
     if st.session_state.get(f"chk_2_{suffix}"): novo += " | Caso pague via link cartão, avisar Natália para liberação curso bônus a escolha"
     if st.session_state.get(f"chk_3_{suffix}"): novo += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
     st.session_state[f"f_pagto_{suffix}"] = novo.upper()
+# --- NOVO: FUNÇÃO DO POPUP DE EDIÇÃO ---
+@st.dialog("📝 Perfil do Aluno")
+def editar_aluno_popup(dados, df_completo):
+    with st.form("form_popup_edicao"):
+        st.markdown(f"### Editando: {dados['ALUNO']}")
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            novo_status = st.selectbox("STATUS", ["ATIVO", "CANCELADO"], index=0 if dados['STATUS'] == "ATIVO" else 1)
+            novo_nome = st.text_input("NOME COMPLETO", value=dados['ALUNO']).upper()
+        with c2:
+            novo_tel_r = st.text_input("TEL. RESPONSÁVEL", value=dados['TEL_RESP'])
+            novo_tel_a = st.text_input("TEL. ALUNO", value=dados['TEL_ALU'])
+            
+        novo_curso = st.text_input("CURSO", value=dados['CURSO']).upper()
+        novo_pagto = st.text_area("PAGAMENTO", value=dados['PAGTO']).upper()
+        
+        st.write("---")
+        if st.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
+            try:
+                creds_info = st.secrets["connections"]["gsheets"]
+                client = gspread.authorize(Credentials.from_service_account_info(creds_info, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
+                sheet = client.open_by_url(creds_info["spreadsheet"]).get_worksheet(0)
+                
+                # Encontra a linha correta pelo ID (Coluna G / index 6 no seu df)
+                idx_original = df_completo[df_completo['ID'] == dados['ID']].index[0] + 2
+                
+                # Atualiza as células conforme a ordem da sua planilha
+                sheet.update_cell(idx_original, 1, novo_status) # Col A
+                sheet.update_cell(idx_original, 8, novo_nome)   # Col H
+                sheet.update_cell(idx_original, 9, novo_tel_r) # Col I
+                sheet.update_cell(idx_original, 10, novo_tel_a)# Col J
+                sheet.update_cell(idx_original, 13, novo_curso) # Col M
+                sheet.update_cell(idx_original, 14, novo_pagto) # Col N
+                
+                st.success("Dados atualizados com sucesso!")
+                st.cache_data.clear()
+                st.rerun()
+            except Exception as e:
+                st.error(f"Erro ao salvar: {e}")
 
 # --- NAVEGAÇÃO ---
 tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
@@ -277,9 +317,6 @@ with tab_cad:
 
 # --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
-    # Captura se algum ID foi passado via clique no lápis na URL
-    id_para_editar = get_aluno_clicado()
-
     st.markdown("""
     <style>
     .ger-header-row { padding: 0 10px; margin-top: -10px; }
@@ -288,113 +325,60 @@ with tab_ger:
         margin-left: -7.5% !important; 
         margin-top: -20px !important; 
     }
-    .btn-edit { 
-        color: #00f2ff !important; 
-        text-decoration: none !important; 
-        font-size: 20px !important; 
-        font-weight: bold;
-    }
-    .btn-edit:hover { color: #ff007a !important; }
-    
-    /* Estilo do container do Perfil */
-    .perfil-container {
-        background: rgba(18, 22, 41, 0.95);
-        border: 2px solid #00f2ff;
-        padding: 20px;
-        border-radius: 15px;
-        margin-bottom: 25px;
-        box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
-    }
     </style>
     """, unsafe_allow_html=True)
 
     df_g = safe_read()
     
     if not df_g.empty:
+        # Padronizando as colunas para o DataFrame
         df_g.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
 
-        # --- SEÇÃO DE PERFIL (Só aparece se clicar no lápis) ---
-        if id_para_editar:
-            aluno_filtrado = df_g[df_g['ID'] == id_para_editar]
-            if not aluno_filtrado.empty:
-                dados = aluno_filtrado.iloc[0]
-                
-                st.markdown('<div class="perfil-container">', unsafe_allow_html=True)
-                st.subheader(f"👤 PERFIL DO ALUNO: {dados['ALUNO']}")
-                
-                with st.form("form_edicao_perfil"):
-                    c1, c2, c3 = st.columns([1, 2, 1])
-                    novo_status = c1.selectbox("STATUS", ["ATIVO", "CANCELADO"], index=0 if dados['STATUS'] == "ATIVO" else 1)
-                    novo_nome = c2.text_input("NOME COMPLETO", value=dados['ALUNO']).upper()
-                    novo_id = c3.text_input("ID (MATRÍCULA)", value=dados['ID'], disabled=True)
-                    
-                    c4, c5, c6 = st.columns(3)
-                    novo_tel_r = c4.text_input("TEL. RESPONSÁVEL", value=dados['TEL_RESP'])
-                    novo_tel_a = c5.text_input("TEL. ALUNO", value=dados['TEL_ALU'])
-                    novo_cpf = c6.text_input("CPF RESPONSÁVEL", value=dados['CPF'])
-                    
-                    c7, c8 = st.columns(2)
-                    novo_curso = c7.text_input("CURSO CONTRATADO", value=dados['CURSO']).upper()
-                    novo_pagto = c8.text_area("FORMA DE PAGAMENTO", value=dados['PAGTO']).upper()
-                    
-                    st.write("")
-                    col_b1, col_b2 = st.columns(2)
-                    
-                    if col_b1.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
-                        try:
-                            creds_info = st.secrets["connections"]["gsheets"]
-                            client = gspread.authorize(Credentials.from_service_account_info(creds_info, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
-                            sheet = client.open_by_url(creds_info["spreadsheet"]).get_worksheet(0)
-                            
-                            # Localiza a linha correta na planilha original (Index + 2)
-                            idx_original = df_g[df_g['ID'] == id_para_editar].index[0] + 2
-                            
-                            # Atualiza as células baseadas na ordem das suas colunas
-                            sheet.update_cell(idx_original, 1, novo_status) # STATUS
-                            sheet.update_cell(idx_original, 8, novo_nome)   # ALUNO
-                            sheet.update_cell(idx_original, 9, novo_tel_r) # TEL_RESP
-                            sheet.update_cell(idx_original, 10, novo_tel_a)# TEL_ALU
-                            sheet.update_cell(idx_original, 11, novo_cpf)  # CPF
-                            sheet.update_cell(idx_original, 13, novo_curso) # CURSO
-                            sheet.update_cell(idx_original, 14, novo_pagto) # PAGTO
-                            
-                            st.success(f"Dados de {novo_nome} atualizados com sucesso!")
-                            st.query_params.clear() # Limpa a URL e fecha o perfil
-                            st.cache_data.clear()
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Erro ao salvar: {e}")
-                            
-                    if col_b2.form_submit_button("❌ CANCELAR", use_container_width=True):
-                        st.query_params.clear()
-                        st.rerun()
-                st.markdown('</div>', unsafe_allow_html=True)
+        # --- SEÇÃO DE COMANDO DO POPUP ---
+        # Removendo a lógica de id_para_editar da URL para evitar o refresh de abas
+        st.write("### 📝 Perfil e Edição")
+        col_ed, _ = st.columns([2.5, 2.5])
+        with col_ed:
+            # Seletor para abrir o popup
+            aluno_opcoes = ["-- Escolha um aluno para editar --"] + sorted(df_g['ALUNO'].tolist())
+            aluno_selecionado = st.selectbox(
+                "Editar Aluno:",
+                options=aluno_opcoes,
+                label_visibility="collapsed"
+            )
+            
+            # Se escolher um aluno, chama a função do popup (st.dialog)
+            if aluno_selecionado != "-- Escolha um aluno para editar --":
+                dados_aluno = df_g[df_g['ALUNO'] == aluno_selecionado].iloc[0]
+                editar_aluno_popup(dados_aluno, df_g)
 
-        # --- FILTROS DE VISUALIZAÇÃO ---
+        st.markdown("---")
+
+        # --- FILTROS DE BUSCA (Abaixo do comando de edição) ---
         st.markdown('<div class="ger-header-row">', unsafe_allow_html=True)
         cf1, cf2, cf3, cf4 = st.columns([2.5, 1.5, 1.5, 0.5])
-        with cf1: bu = st.text_input("🔍 Buscar...", key="busca_ger", placeholder="Nome ou ID", label_visibility="collapsed")
+        with cf1: bu = st.text_input("🔍 Buscar na tabela...", key="busca_ger", placeholder="Nome ou ID", label_visibility="collapsed")
         with cf2: fs = st.selectbox("Status", ["Todos", "ATIVO", "CANCELADO"], key="filtro_status", label_visibility="collapsed")
         with cf3: fu = st.selectbox("Unidade", ["Todos", "MGA"], key="filtro_unid", label_visibility="collapsed")
         with cf4:
             if st.button("🔄", key="btn_ref"): st.cache_data.clear(); st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # Aplicar Filtros ao DataFrame para a tabela HTML
+        # Aplicar Filtros para exibição na tabela
         df_display = df_g.copy()
         if bu: df_display = df_display[df_display['ALUNO'].str.contains(bu, case=False, na=False) | df_display['ID'].str.contains(bu, case=False, na=False)]
         if fs != "Todos": df_display = df_display[df_display['STATUS'] == fs]
         if fu != "Todos": df_display = df_display[df_display['UNID.'] == fu]
 
+        # Montagem das linhas da tabela HTML
         rows = ""
         for _, r in df_display.iloc[::-1].iterrows():
             sc = "status-badge status-ativo" if r['STATUS'] == "ATIVO" else "status-badge status-cancelado"
-            # Link que adiciona o ID na URL para o Streamlit reconhecer o clique
-            link_edicao = f"./?editar_id={r['ID']}"
             
+            # Nota: O ícone do lápis aqui agora é apenas visual/informativo
             rows += f"""
             <tr class="ger-row">
-                <td style="text-align: center;"><a href="{link_edicao}" target="_self" class="btn-edit">✎</a></td>
+                <td style="text-align: center; color: #00f2ff; font-weight: bold; font-size: 18px;">✎</td>
                 <td><span class='{sc}'>{r['STATUS']}</span></td>
                 <td>{r['UNID.']}</td>
                 <td style="width: auto; white-space: nowrap;">{r['TURMA']}</td>
@@ -414,7 +398,6 @@ with tab_ger:
             </tr>
             """
 
-        # Renderização da Tabela Neon (Mantendo seu design original de 115vw)
         html_code = f"""
         <style>
         body {{ background-color: #0b0e1e; color: #e0e0e0; font-family: Arial, sans-serif; margin: 0; padding: 0; overflow: auto; }}
@@ -429,7 +412,6 @@ with tab_ger:
         .status-badge {{ padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }}
         .status-ativo {{ background-color: rgba(46, 204, 113, 0.1); color: #2ecc71; border: 1px solid #2ecc71; }}
         .status-cancelado {{ background-color: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid #e74c3c; }}
-        .btn-edit {{ color: #00f2ff; text-decoration: none; font-size: 18px; }}
         </style>
         <div class="ger-container">
             <table class="ger-table">
