@@ -230,31 +230,14 @@ def editar_aluno_popup(dados, df_completo):
             except Exception as e:
                 st.error(f"Erro ao salvar: {e}")
 
-# --- NAVEGAÇÃO INTELIGENTE E GATILHO (CONTROLE DE FLUXO) ---
-
-# 1. Verificamos se há um ID na URL
+# --- NAVEGAÇÃO INTELIGENTE E GATILHO ---
 id_para_editar = st.query_params.get("edit_id")
 
-if id_para_editar:
-    # Se existe ID, carregamos os dados
-    df_g = safe_read() 
-    if not df_g.empty:
-        df_g.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
-        aluno_row = df_g[df_g['ID'] == id_para_editar]
-        
-        if not aluno_row.empty:
-            # LIMPAMOS A URL
-            st.query_params.clear()
-            
-            # EXIBIMOS O POPUP
-            editar_aluno_popup(aluno_row.iloc[0], df_g)
-            
-            # IMPORTANTE: Forçamos a página a parar aqui para não desenhar o segundo menu
-            st.stop() 
-
-# 2. Se o código chegou até aqui, significa que NÃO tem nada para editar.
-# Então desenhamos a navegação normal.
+# Criamos as abas normalmente aqui
 tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
+
+# Se houver um ID, nós não abrimos o popup aqui fora! 
+# Vamos apenas avisar a Aba de Gerenciamento que ela deve abrir o popup.
 
 # --- ABA 1: CADASTRO ---
 with tab_cad:
@@ -340,8 +323,9 @@ with tab_cad:
 
 # --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
-    # Removemos o gatilho do popup daqui de dentro para evitar o espelhamento
-    # O CSS e a estrutura da tabela permanecem intactos conforme seu design
+    # Removemos qualquer lógica de "if edit_id" daqui de dentro.
+    # O popup agora é disparado globalmente para não duplicar a interface.
+    
     st.markdown("""
     <style>
     .ger-header-row { padding: 0 10px; margin-top: -10px; }
@@ -384,7 +368,7 @@ with tab_ger:
         for _, r in df_display.iloc[::-1].iterrows():
             sc = "status-badge status-ativo" if r['STATUS'] == "ATIVO" else "status-badge status-cancelado"
             
-            # O Link que envia o ID para o gatilho global que está fora das abas
+            # O Link aponta para o parâmetro que o gatilho global lá no topo vai ler
             link_id = f"./?edit_id={r['ID']}"
             
             rows += f"""
