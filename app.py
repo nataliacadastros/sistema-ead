@@ -255,22 +255,25 @@ else:
     tabs = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
     tab_cad, tab_ger, tab_rel, tab_subir = tabs
 
-# --- ÚNICO GATILHO DO POPUP (DEVE FICAR AQUI) ---
+# --- GATILHO ÚNICO E DEFINITIVO ---
 if st.session_state.aluno_para_editar:
     df_busca = safe_read()
     if not df_busca.empty:
-        # Padroniza nomes de colunas
         df_busca.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
         
-        # O segredo: Converter o ID para string para garantir a comparação
-        id_procurado = str(st.session_state.aluno_para_editar)
-        aluno_dados = df_busca[df_busca['ID'].astype(str) == id_procurado]
+        # Busca o aluno
+        id_alvo = str(st.session_state.aluno_para_editar)
+        aluno_dados = df_busca[df_busca['ID'].astype(str) == id_alvo]
         
         if not aluno_dados.empty:
             info_aluno = aluno_dados.iloc[0].to_dict()
-            # Try/Except para evitar que o Streamlit trave se o popup for chamado duas vezes
-            try:
-                editar_aluno_popup(info_aluno, df_busca)
+            
+            # Limpa a URL imediatamente para o próximo clique funcionar
+            if st.query_params.get("edit_id"):
+                st.query_params.clear()
+            
+            # Abre o popup
+            editar_aluno_popup(info_aluno, df_busca)
             except Exception as e:
                 if "StreamlitDuplicateElementId" in str(e):
                     pass # Ignora erro de duplicação visual
