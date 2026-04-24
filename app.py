@@ -198,7 +198,6 @@ def atualizar_pagamento():
     if st.session_state.get(f"chk_3_{suffix}"): novo += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
     st.session_state[f"f_pagto_{suffix}"] = novo.upper()
 
-# --- NOVO: FUNÇÃO DO POPUP DE EDIÇÃO ---
 @st.dialog("📝 Perfil do Aluno")
 def editar_aluno_popup(dados, df_completo):
     with st.form("form_popup_edicao"):
@@ -216,28 +215,35 @@ def editar_aluno_popup(dados, df_completo):
         novo_pagto = st.text_area("PAGAMENTO", value=dados['PAGTO']).upper()
         
         st.write("---")
-        if st.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
+        col_b1, col_b2 = st.columns(2)
+        
+        if col_b1.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
             try:
                 creds_info = st.secrets["connections"]["gsheets"]
                 client = gspread.authorize(Credentials.from_service_account_info(creds_info, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
                 sheet = client.open_by_url(creds_info["spreadsheet"]).get_worksheet(0)
                 
-                # Encontra a linha correta pelo ID (Coluna G / index 6 no seu df)
-                idx_original = df_completo[df_completo['ID'] == dados['ID']].index[0] + 2
+                # Encontra a linha correta
+                idx_original = df_completo[df_completo['ID'].astype(str) == str(dados['ID'])].index[0] + 2
                 
-                # Atualiza as células conforme a ordem da sua planilha
-                sheet.update_cell(idx_original, 1, novo_status) # Col A
-                sheet.update_cell(idx_original, 8, novo_nome)   # Col H
-                sheet.update_cell(idx_original, 9, novo_tel_r) # Col I
-                sheet.update_cell(idx_original, 10, novo_tel_a)# Col J
-                sheet.update_cell(idx_original, 13, novo_curso) # Col M
-                sheet.update_cell(idx_original, 14, novo_pagto) # Col N
+                # Atualiza as células (A=Status, H=Nome, I=TelR, J=TelA, M=Curso, N=Pagto)
+                sheet.update(range_name=f'A{idx_original}', values=[[novo_status]])
+                sheet.update(range_name=f'H{idx_original}', values=[[novo_nome]])
+                sheet.update(range_name=f'I{idx_original}', values=[[novo_tel_r]])
+                sheet.update(range_name=f'J{idx_original}', values=[[novo_tel_a]])
+                sheet.update(range_name=f'M{idx_original}', values=[[novo_curso]])
+                sheet.update(range_name=f'N{idx_original}', values=[[novo_pagto]])
                 
-                st.success("Dados atualizados com sucesso!")
+                st.success("Dados atualizados!")
+                st.session_state.aluno_para_editar = None # Limpa o estado
                 st.cache_data.clear()
                 st.rerun()
             except Exception as e:
                 st.error(f"Erro ao salvar: {e}")
+
+        if col_b2.form_submit_button("❌ CANCELAR", use_container_width=True):
+            st.session_state.aluno_para_editar = None
+            st.rerun()
 
 # --- NAVEGAÇÃO INTELIGENTE E GATILHO ---
 
@@ -250,31 +256,30 @@ if id_para_editar:
     st.query_params.clear()
     st.rerun()
 
-# 3. Lógica de exibição das abas
+# --- LÓGICA DE EXIBIÇÃO DAS ABAS ---
 if st.session_state.aluno_para_editar:
-    # Enquanto edita, mostramos apenas as abas de gerenciamento e relatórios
-    # Isso força o Gerenciamento a ser a aba ativa ao fundo (index 0)
     tabs = st.tabs(["🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
     tab_ger, tab_rel, tab_subir = tabs
-    tab_cad = None # Desativa a aba cadastro para não criar o menu extra
+    tab_cad = None 
 else:
-    # Fluxo normal com todas as abas
     tabs = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
     tab_cad, tab_ger, tab_rel, tab_subir = tabs
 
-# --- GATILHO DO POPUP (Fora das abas) ---
+# --- COLOQUE O GATILHO AQUI (Logo após as abas) ---
 if st.session_state.aluno_para_editar:
     df_busca = safe_read()
     if not df_busca.empty:
         df_busca.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
-        aluno_dados = df_busca[df_busca['ID'] == st.session_state.aluno_para_editar]
+        
+        id_alvo = str(st.session_state.aluno_para_editar)
+        aluno_dados = df_busca[df_busca['ID'].astype(str) == id_alvo]
         
         if not aluno_dados.empty:
             info_aluno = aluno_dados.iloc[0].to_dict()
-            # Chamamos o popup aqui
+            # Chama a função do popup
             editar_aluno_popup(info_aluno, df_busca)
-            # NOTA: O reset do st.session_state.aluno_para_editar deve ser feito 
-            # APENAS dentro do botão de salvar ou fechar do popup para manter o fundo.
+        else:
+            st.session_state.aluno_para_editar = None
 
 
 # --- ABA 1: CADASTRO ---
