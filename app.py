@@ -230,34 +230,29 @@ def editar_aluno_popup(dados, df_completo):
             except Exception as e:
                 st.error(f"Erro ao salvar: {e}")
 
-# --- NAVEGAÇÃO INTELIGENTE ---
-# Se houver um ID na URL, a aba padrão será a 1 (Gerenciamento). Caso contrário, 0 (Cadastro).
-# Nota: No Streamlit nativo, o foco da aba é definido na criação.
-indice_aba_inicial = 1 if id_para_editar else 0
+# --- NAVEGAÇÃO INTELIGENTE E GATILHO ---
 
-# --- GATILHO GLOBAL DO POPUP ---
-# Este bloco verifica se o lápis foi clicado e abre o popup de forma limpa
+# 1. Verificamos se há um ID na URL
+id_para_editar = st.query_params.get("edit_id")
+
 if id_para_editar:
+    # Se existe ID, criamos as abas, mas focamos o código no Popup imediatamente
+    tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
+    
     df_g = safe_read() 
     if not df_g.empty:
-        # Padroniza as colunas para o popup encontrar os dados
         df_g.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
-        
-        # Procura o aluno pelo ID que veio da URL
         aluno_row = df_g[df_g['ID'] == id_para_editar]
         
         if not aluno_row.empty:
-            # 1. Limpa a URL primeiro (Isso evita o "espelhamento" e menus duplicados)
+            # LIMPAMOS A URL AQUI: Isso impede que o Streamlit carregue o "site dentro do site"
             st.query_params.clear()
             
-            # 2. Abre a janelinha branca de edição
+            # DISPARAMOS O POPUP: Ele vai flutuar sobre a página de forma limpa
             editar_aluno_popup(aluno_row.iloc[0], df_g)
-
-tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
-
-# Se o Streamlit não respeitar o foco automático no seu ambiente, 
-# podemos forçar a exibição do conteúdo da aba 1 se houver um id_para_popup.
-
+else:
+    # Se NÃO tem ID, o site carrega normal para o uso do dia a dia
+    tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
 
 # --- ABA 1: CADASTRO ---
 with tab_cad:
