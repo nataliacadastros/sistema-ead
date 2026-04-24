@@ -2,14 +2,9 @@ import streamlit as st
 import pandas as pd
 import re
 import json
-import streamlit as st
-import pandas as pd
-import re
-import json
 import os
 import plotly.express as px
 import plotly.graph_objects as go
-import streamlit.components.v1 as components
 from datetime import date, timedelta
 from streamlit_gsheets import GSheetsConnection
 import gspread
@@ -22,29 +17,12 @@ diretorio_atual = os.path.dirname(os.path.abspath(__file__))
 caminho_logo = os.path.join(diretorio_atual, "logo.png")
 
 # --- CONFIGURAÇÕES DA PÁGINA ---
-# Este comando DEVE ser o primeiro 'st' do código
 st.set_page_config(
     page_title="SISTEMA ADM | PROFISSIONALIZA", 
     layout="wide", 
     initial_sidebar_state="collapsed",
     page_icon=caminho_logo if os.path.exists(caminho_logo) else None
 )
-
-# --- FUNÇÕES DE SUPORTE E ESTADOS ---
-def detectar_edicao():
-    # Verifica se há um ID na URL
-    id_url = st.query_params.get("edit_id")
-    if id_url:
-        # Salva no estado da sessão
-        st.session_state.aluno_para_editar = id_url
-        # Limpa a URL para o link ficar "limpo"
-        st.query_params.clear()
-        # Não damos rerun aqui para permitir que o fluxo continue e abra o popup abaixo
-
-if "aluno_para_editar" not in st.session_state:
-    st.session_state.aluno_para_editar = None
-
-detectar_edicao()
 
 # --- ARQUIVOS E PERSISTÊNCIA ---
 ARQUIVO_TAGS = "tags_salvas.json"
@@ -81,21 +59,6 @@ DIC_CURSOS = {
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e1e; color: #e0e0e0; }
-    
-    /* REMOVE BARREIRAS LATERAIS DO STREAMLIT */
-    [data-testid="stAppViewBlockContainer"] { 
-        padding-top: 40px !important; 
-        padding-left: 0px !important; 
-        padding-right: 0px !important; 
-        max-width: 100% !important; 
-    }
-    
-    /* GARANTE QUE O CONTEÚDO DAS ABAS TAMBÉM USEM TUDO */
-    [data-testid="stTab"] {
-        padding-left: 10px !important;
-        padding-right: 10px !important;
-    }
-
     .stTabs [data-baseweb="tab-list"] { 
         background-color: #121629; border-bottom: 1px solid #1f295a;
         position: fixed; top: 0; left: 0 !important; width: 100vw !important;
@@ -104,10 +67,21 @@ st.markdown("""
     .stTabs [data-baseweb="tab"] { color: #64748b !important; font-size: 11px !important; padding: 0 30px !important; }
     .stTabs [aria-selected="true"] { color: #00f2ff !important; border-bottom: 2px solid #00f2ff !important; background-color: rgba(0, 242, 255, 0.05) !important; }
     
+    .main .block-container { padding-top: 40px !important; max-width: 100% !important; margin: 0 auto !important; }
+    
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; display: flex; align-items: center; justify-content: flex-end; }
     div[data-testid="stTextInput"] { width: 100% !important; }
     .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 18px !important; border-radius: 5px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
+
+    .custom-table-wrapper { width: 100%; max-height: 600px; overflow: auto; background-color: #121629; border: 2px solid #1f295a; border-radius: 10px; margin-top: 15px; }
+    .custom-table { width: 100%; border-collapse: collapse; min-width: 2500px !important; }
+    .custom-table th { background-color: #1f295a; color: #00f2ff; text-align: left; padding: 15px; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; z-index: 99; }
+    .custom-table td { padding: 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: pre-wrap !important; }
+    
+    .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }
+    .status-ativo { background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
+    .status-cancelado { background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
 
     .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 110px; display: flex; flex-direction: column; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
     .neon-pink { color: #ff007a; border-top: 2px solid #ff007a; }
@@ -131,6 +105,12 @@ st.markdown("""
     .stat-label { font-size: 12px; font-weight: bold; margin-bottom: 4px; display: block; }
     </style>
     """, unsafe_allow_html=True)
+
+# --- LOGO NO CANTO ESQUERDO ---
+if os.path.exists(caminho_logo):
+    st.markdown('<div class="logo-container">', unsafe_allow_html=True)
+    st.image(caminho_logo, width=90)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # --- CONEXÃO REFORÇADA ---
 conn = st.connection("gsheets", type=GSheetsConnection)
@@ -198,99 +178,11 @@ def atualizar_pagamento():
     if st.session_state.get(f"chk_3_{suffix}"): novo += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
     st.session_state[f"f_pagto_{suffix}"] = novo.upper()
 
-@st.dialog("📝 Perfil do Aluno")
-def editar_aluno_popup(dados, df_completo):
-    with st.form("form_popup_edicao"):
-        st.markdown(f"### Editando: {dados['ALUNO']}")
-        
-        c1, c2 = st.columns(2)
-        with c1:
-            novo_status = st.selectbox("STATUS", ["ATIVO", "CANCELADO"], index=0 if dados['STATUS'] == "ATIVO" else 1)
-            novo_nome = st.text_input("NOME COMPLETO", value=dados['ALUNO']).upper()
-        with c2:
-            novo_tel_r = st.text_input("TEL. RESPONSÁVEL", value=dados['TEL_RESP'])
-            novo_tel_a = st.text_input("TEL. ALUNO", value=dados['TEL_ALU'])
-            
-        novo_curso = st.text_input("CURSO", value=dados['CURSO']).upper()
-        novo_pagto = st.text_area("PAGAMENTO", value=dados['PAGTO']).upper()
-        
-        st.write("---")
-        col_b1, col_b2 = st.columns(2)
-        
-        if col_b1.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
-            try:
-                creds_info = st.secrets["connections"]["gsheets"]
-                client = gspread.authorize(Credentials.from_service_account_info(creds_info, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
-                sheet = client.open_by_url(creds_info["spreadsheet"]).get_worksheet(0)
-                
-                # Encontra a linha correta
-                idx_original = df_completo[df_completo['ID'].astype(str) == str(dados['ID'])].index[0] + 2
-                
-                # Atualiza as células (A=Status, H=Nome, I=TelR, J=TelA, M=Curso, N=Pagto)
-                sheet.update(range_name=f'A{idx_original}', values=[[novo_status]])
-                sheet.update(range_name=f'H{idx_original}', values=[[novo_nome]])
-                sheet.update(range_name=f'I{idx_original}', values=[[novo_tel_r]])
-                sheet.update(range_name=f'J{idx_original}', values=[[novo_tel_a]])
-                sheet.update(range_name=f'M{idx_original}', values=[[novo_curso]])
-                sheet.update(range_name=f'N{idx_original}', values=[[novo_pagto]])
-                
-                st.success("Dados atualizados!")
-                st.session_state.aluno_para_editar = None # Limpa o estado
-                st.cache_data.clear()
-                st.rerun()
-            except Exception as e:
-                st.error(f"Erro ao salvar: {e}")
-
-        if col_b2.form_submit_button("❌ CANCELAR", use_container_width=True):
-            st.session_state.aluno_para_editar = None
-            st.rerun()
-
-# --- NAVEGAÇÃO INTELIGENTE E GATILHO ---
-
-# 1. Pegamos o ID da URL
-id_para_editar = st.query_params.get("edit_id")
-
-# 2. Se houver ID na URL, jogamos para o session_state e limpamos a URL
-if id_para_editar:
-    st.session_state.aluno_para_editar = id_para_editar
-    st.query_params.clear()
-    st.rerun()
-
-# --- LÓGICA DE EXIBIÇÃO DAS ABAS ---
-if st.session_state.aluno_para_editar:
-    tabs = st.tabs(["🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
-    tab_ger, tab_rel, tab_subir = tabs
-    tab_cad = None 
-else:
-    tabs = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
-    tab_cad, tab_ger, tab_rel, tab_subir = tabs
-
-# --- COLOQUE O GATILHO AQUI (Logo após as abas) ---
-if st.session_state.aluno_para_editar:
-    df_busca = safe_read()
-    if not df_busca.empty:
-        df_busca.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
-        
-        id_alvo = str(st.session_state.aluno_para_editar)
-        aluno_dados = df_busca[df_busca['ID'].astype(str) == id_alvo]
-        
-        if not aluno_dados.empty:
-            info_aluno = aluno_dados.iloc[0].to_dict()
-            # Chama a função do popup
-            editar_aluno_popup(info_aluno, df_busca)
-        else:
-            st.session_state.aluno_para_editar = None
-
+# --- NAVEGAÇÃO ---
+tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
 
 # --- ABA 1: CADASTRO ---
-if tab_cad is not None:      # Se a aba de cadastro existir...
-    with tab_cad:            # Entre nela (Note o recuo aqui)
-        st.markdown('<div style="padding: 0 50px;">', unsafe_allow_html=True) # (E aqui)
-        
-        if os.path.exists(caminho_logo):
-            st.markdown('<div class="logo-container">', unsafe_allow_html=True)
-            st.image(caminho_logo, width=90)
-            st.markdown('</div>', unsafe_allow_html=True)
+with tab_cad:
     _, centro, _ = st.columns([0.2, 5.6, 0.2])
     with centro:
         s_al = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"; s_ge = f"g_{st.session_state.reset_geral}"
@@ -364,166 +256,104 @@ if tab_cad is not None:      # Se a aba de cadastro existir...
                         st.error(f"Erro ao enviar: {e}")
                 else:
                     st.info("Nenhum aluno na lista de pré-visualização.")
-    st.markdown('</div>', unsafe_allow_html=True)
+        
+        if st.session_state.lista_previa: 
+            st.markdown(f"### 📋 PRÉ-VISUALIZAÇÃO ({len(st.session_state.lista_previa)} ALUNOS)")
+            st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
 # --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
-    # 1. CSS e Estilos Originais (Mantidos conforme seu design neon)
-    st.markdown("""
-    <style>
-    .ger-header-row { padding: 0 10px; margin-top: -10px; }
-    .ger-container-custom { 
-        width: 115vw !important; 
-        margin-left: -7.5% !important; 
-        margin-top: -40px !important; 
-    }
-    .btn-edit { 
-        color: #00f2ff !important; 
-        text-decoration: none !important; 
-        font-size: 20px !important; 
-    }
-    .btn-edit:hover { color: #ff007a !important; }
-    </style>
-    """, unsafe_allow_html=True)
-
+    cf1, cf2, cf3, cf4 = st.columns([2.5, 1.5, 1.5, 0.5])
+    with cf1: bu = st.text_input("🔍 Buscar...", key="busca_ger", placeholder="Nome ou ID", label_visibility="collapsed")
+    with cf2: fs = st.selectbox("Status", ["Todos", "ATIVO", "CANCELADO"], key="filtro_status", label_visibility="collapsed")
+    with cf3: fu = st.selectbox("Unidade", ["Todos", "MGA"], key="filtro_unid", label_visibility="collapsed")
+    with cf4: 
+        if st.button("🔄", key="btn_ref"): st.cache_data.clear(); st.rerun()
     df_g = safe_read()
-    
     if not df_g.empty:
         df_g.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
-
-        # --- FILTROS DE BUSCA ---
-        st.markdown('<div class="ger-header-row">', unsafe_allow_html=True)
-        cf1, cf2, cf3, cf4 = st.columns([2.5, 1.5, 1.5, 0.5])
-        with cf1: bu = st.text_input("🔍 Buscar...", key="busca_ger", placeholder="Nome ou ID", label_visibility="collapsed")
-        with cf2: fs = st.selectbox("Status", ["Todos", "ATIVO", "CANCELADO"], key="filtro_status", label_visibility="collapsed")
-        with cf3: fu = st.selectbox("Unidade", ["Todos", "MGA"], key="filtro_unid", label_visibility="collapsed")
-        with cf4:
-            if st.button("🔄", key="btn_ref"): st.cache_data.clear(); st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        # Aplicar Filtros
-        df_display = df_g.copy()
-        if bu: df_display = df_display[df_display['ALUNO'].str.contains(bu, case=False, na=False) | df_display['ID'].str.contains(bu, case=False, na=False)]
-        if fs != "Todos": df_display = df_display[df_display['STATUS'] == fs]
-        if fu != "Todos": df_display = df_display[df_display['UNID.'] == fu]
-
+        if bu: df_g = df_g[df_g['ALUNO'].str.contains(bu, case=False) | df_g['ID'].str.contains(bu, case=False)]
+        if fs != "Todos": df_g = df_g[df_g['STATUS'] == fs]
+        if fu != "Todos": df_g = df_g[df_g['UNID.'] == fu]
         rows = ""
-        for _, r in df_display.iloc[::-1].iterrows():
+        for _, r in df_g.iloc[::-1].iterrows():
             sc = "status-badge status-ativo" if r['STATUS'] == "ATIVO" else "status-badge status-cancelado"
-            
-            # O Link que envia o ID para o gatilho global que está fora das abas
-            link_id = f"./?edit_id={r['ID']}"
-            
-            rows += f"""
-            <tr class="ger-row">
-                <td style="text-align: center;"><a href="{link_id}" target="_self" class="btn-edit">✎</a></td>
-                <td><span class='{sc}'>{r['STATUS']}</span></td>
-                <td>{r['UNID.']}</td>
-                <td style="width: auto; white-space: nowrap;">{r['TURMA']}</td>
-                <td>{r['10C']}</td>
-                <td>{r['ING']}</td>
-                <td>{r['DT_CAD']}</td>
-                <td class="ger-id">{r['ID']}</td>
-                <td class="ger-nome">{r['ALUNO']}</td>
-                <td>{r['TEL_RESP']}</td>
-                <td>{r['TEL_ALU']}</td>
-                <td>{r['CPF']}</td>
-                <td>{r['CIDADE']}</td>
-                <td class="ger-wrap">{r['CURSO']}</td>
-                <td class="ger-wrap">{r['PAGTO']}</td>
-                <td>{r['VEND.']}</td>
-                <td>{r['DT_MAT']}</td>
-            </tr>
-            """
-
-        html_code = f"""
-        <style>
-        body {{ background-color: #0b0e1e; color: #e0e0e0; font-family: Arial, sans-serif; margin: 0; padding: 0; overflow: auto; }}
-        .ger-table {{ width: 100%; border-collapse: separate; border-spacing: 0 5px; min-width: 1900px; table-layout: fixed; }}
-        .ger-table thead {{ position: sticky; top: 0; background: #0b0e1e; z-index: 10; }}
-        .ger-table thead th {{ text-align: left; font-size: 11px; color: #00f2ff; padding: 5px 6px; text-transform: uppercase; }}
-        .ger-row {{ background: rgba(18, 22, 41, 0.7); transition: all 0.2s ease; }}
-        .ger-row:hover {{ background: rgba(0, 242, 255, 0.1); }}
-        .ger-table td {{ padding: 10px 6px; font-size: 12px; color: #e0e0e0; border-top: 1px solid #1f295a; border-bottom: 1px solid #1f295a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
-        .ger-id {{ color: #00f2ff; font-weight: bold; }}
-        .ger-nome {{ color: #00f2ff; font-weight: bold; font-size: 13px; }}
-        .ger-wrap {{ white-space: normal !important; word-wrap: break-word; }}
-        .status-badge {{ padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }}
-        .status-ativo {{ background-color: rgba(46, 204, 113, 0.1); color: #2ecc71; border: 1px solid #2ecc71; }}
-        .status-cancelado {{ background-color: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid #e74c3c; }}
-        </style>
-        <div class="ger-container">
-            <table class="ger-table">
-                <thead>
-                    <tr>
-                        <th style="width: 40px; text-align: center;">EDIT</th>
-                        <th style="width: 80px;">STATUS</th>
-                        <th style="width: 50px;">UNID.</th>
-                        <th style="width: 38px;">TURMA</th>
-                        <th style="width: 40px;">10C</th>
-                        <th style="width: 40px;">ING</th>
-                        <th style="width: 90px;">DT_CAD</th>
-                        <th style="width: 100px;">ID</th>
-                        <th style="width: 180px;">ALUNO</th>
-                        <th style="width: 110px;">TEL_RESP</th>
-                        <th style="width: 110px;">TEL_ALU</th>
-                        <th style="width: 120px;">CPF</th>
-                        <th style="width: 100px;">CIDADE</th>
-                        <th style="width: 220px;">CURSO</th>
-                        <th style="width: 220px;">PAGTO</th>
-                        <th style="width: 100px;">VEND.</th>
-                        <th style="width: 90px;">DT_MAT</th>
-                    </tr>
-                </thead>
-                <tbody>{rows}</tbody>
-            </table>
-        </div>
-        """
-        st.markdown('<div class="ger-container-custom">', unsafe_allow_html=True)
-        components.html(html_code, height=1000, scrolling=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+            rows += f"<tr><td><span class='{sc}'>{r['STATUS']}</span></td><td>{r['UNID.']}</td><td>{r['TURMA']}</td><td>{r['10C']}</td><td>{r['ING']}</td><td>{r['DT_CAD']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ID']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ALUNO']}</td><td>{r['TEL_RESP']}</td><td>{r['TEL_ALU']}</td><td>{r['CPF']}</td><td>{r['CIDADE']}</td><td>{r['CURSO']}</td><td>{r['PAGTO']}</td><td>{r['VEND.']}</td><td>{r['DT_MAT']}</td></tr>"
+        st.markdown(f'<div class="custom-table-wrapper"><table class="custom-table"><thead><tr>' + ''.join([f'<th>{h}</th>' for h in df_g.columns]) + f'</tr></thead><tbody>{rows}</tbody></table></div>', unsafe_allow_html=True)
 
 # --- ABA 3: RELATÓRIOS ---
 with tab_rel:
-    st.markdown('<div style="padding: 0 20px;">', unsafe_allow_html=True)
     df_r = safe_read()
     if not df_r.empty:
         df_r.columns = [c.strip() for c in df_r.columns]
+        
         dt_col = "Data Matrícula"
         df_r[dt_col] = pd.to_datetime(df_r[dt_col], dayfirst=True, errors='coerce')
+        
         iv = st.date_input("Filtrar Período (Data de Matrícula)", value=(date.today()-timedelta(days=7), date.today()), format="DD/MM/YYYY")
+        
         if len(iv) == 2:
             df_f = df_r.loc[(df_r[dt_col].dt.date >= iv[0]) & (df_r[dt_col].dt.date <= iv[1])].copy()
-            v_taxa = 0.0; v_cartao = 0.0; v_entrada = 0.0
+            
+            # --- LÓGICA DE PROCESSAMENTO (RESILIENTE) ---
+            v_taxa = 0.0
+            v_cartao = 0.0
+            v_entrada = 0.0
             pagamentos = df_f['Pagamento'].tolist()
 
             for linha in pagamentos:
                 if not linha or str(linha).strip() == "": continue
                 linha_upper = str(linha).upper()
+                
+                # 1. TRATAMENTO DE ALTERAÇÕES
                 if "ALTERAÇÃO" in linha_upper or "ALTEROU PARA" in linha_upper:
                     match_alt = re.search(r'\((?:.*?PARA\s+)?(.*?)\)', linha_upper)
-                    if match_alt: linha_upper = match_alt.group(1)
+                    if match_alt:
+                        linha_upper = match_alt.group(1)
+
+                # 2. CAPTURA DE TAXAS
                 taxas_na_linha = re.findall(r'TAXA.*?(\d+)', linha_upper)
                 for t in taxas_na_linha:
                     try: v_taxa += float(t)
                     except: pass
-                if "TAXA" in linha_upper and "PAGA" in linha_upper and not taxas_na_linha: v_taxa += 50.0
+                if "TAXA" in linha_upper and "PAGA" in linha_upper and not taxas_na_linha:
+                    v_taxa += 50.0
+
+                # 3. REGRA DO CARTÃO (Multiplicação e Valor Integral)
                 match_mult = re.findall(r'(\d+)\s*[X]\s*(?:R\$)?\s*([\d\.,]+)', linha_upper)
                 if match_mult and ("CARTÃO" in linha_upper or "LINK" in linha_upper):
                     for qtd, val in match_mult:
-                        try: v_cartao += int(qtd) * float(val.replace('.', '').replace(',', '.'))
+                        try:
+                            v_u = val.replace('.', '').replace(',', '.')
+                            v_cartao += int(qtd) * float(v_u)
                         except: pass
                 else:
                     match_fixo = re.findall(r'(?:PAGO|R\$)\s*([\d\.]+,\d{2}|[\d\.]+)', linha_upper)
                     for val in match_fixo:
                         try:
-                            valor_limpo = float(val.replace('.', '').replace(',', '.'))
+                            v_l = val.replace('.', '').replace(',', '.')
+                            valor_limpo = float(v_l)
                             if valor_limpo != 50.0:
-                                if "CARTÃO" in linha_upper or "LINK" in linha_upper: v_cartao += valor_limpo
-                                else: v_entrada += valor_limpo
+                                if "CARTÃO" in linha_upper or "LINK" in linha_upper:
+                                    v_cartao += valor_limpo
+                                else:
+                                    v_entrada += valor_limpo
+                        except: pass
+
+                # 4. ENTRADAS DE BOLETO, PIX E DINHEIRO
+                if any(x in linha_upper for x in ["BOLETO", "PIX", "DINHEIRO", "DÉBITO"]):
+                    match_ent = re.findall(r'(?:PARCELA|ENTRADA|PIX|DINHEIRO|DÉBITO).*?(?:R\$)?\s*([\d\.,]+)', linha_upper)
+                    for val in match_ent:
+                        try:
+                            v_e = val.replace('.', '').replace(',', '.')
+                            valor_ent = float(v_e)
+                            # Verifica se o valor já foi capturado para não duplicar
+                            if valor_ent not in [float(v.replace('.', '').replace(',', '.')) for v in re.findall(r'(?:PAGO|R\$)\s*([\d\.]+,\d{2}|[\d\.]+)', linha_upper) if v]:
+                                v_entrada += valor_ent
                         except: pass
             
             total_final = v_taxa + v_cartao + v_entrada
+
             c1, c2, c3, c4, c5, c6 = st.columns(6)
             with c1: st.markdown(f'<div class="card-hud neon-pink"><span class="stat-label">MATRÍCULAS</span><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
             with c2: st.markdown(f'<div class="card-hud neon-green"><span class="stat-label">ATIVOS</span><h2>{len(df_f[df_f["STATUS"].str.upper()=="ATIVO"])}</h2></div>', unsafe_allow_html=True)
@@ -541,15 +371,23 @@ with tab_rel:
                 c_agro = len(df_f[df_f["Curso"].str.contains("AGRO", case=False, na=False)])
                 c_ing = len(df_f[df_f["Curso"].str.contains("INGLÊS", case=False, na=False)])
                 c_tec = len(df_f[df_f["Curso"].str.contains("TECNOLOGIA|INFORMÁTICA", case=False, na=False)])
-                st.markdown(f'''<div class="card-hud neon-blue"><span class="stat-label">POR ÁREA</span><div style="font-size:15px; text-align:left; color:#e0e0e0; line-height:1.4; padding-left:5px;">BANC: <b style="color:#00f2ff;">{c_banc}</b> | AGRO: <b style="color:#00f2ff;">{c_agro}</b><br>INGL: <b style="color:#00f2ff;">{c_ing}</b> | TECN: <b style="color:#00f2ff;">{c_tec}</b></div></div>''', unsafe_allow_html=True)
+                st.markdown(f'''
+                    <div class="card-hud neon-blue">
+                        <span class="stat-label">POR ÁREA</span>
+                        <div style="font-size:15px; text-align:left; color:#e0e0e0; line-height:1.4; padding-left:5px;">
+                            BANC: <b style="color:#00f2ff;">{c_banc}</b> | AGRO: <b style="color:#00f2ff;">{c_agro}</b><br>
+                            INGL: <b style="color:#00f2ff;">{c_ing}</b> | TECN: <b style="color:#00f2ff;">{c_tec}</b>
+                        </div>
+                    </div>''', unsafe_allow_html=True)
 
             st.write("")
-            if len(df_f) > 0:
+            total_st = len(df_f)
+            if total_st > 0:
                 at_c = len(df_f[df_f["STATUS"].str.upper()=="ATIVO"])
                 can_c = len(df_f[df_f["STATUS"].str.upper()=="CANCELADO"])
                 fig_status = go.Figure()
-                fig_status.add_trace(go.Bar(y=["STATUS"], x=[at_c], orientation='h', marker=dict(color='#2ecc71'), text=[f"<b>ATIVOS: {at_c}</b>"], textposition='inside'))
-                fig_status.add_trace(go.Bar(y=["STATUS"], x=[can_c], orientation='h', marker=dict(color='#ff4b4b'), text=[f"<b>CANCELADOS: {can_c}</b>"], textposition='inside'))
+                fig_status.add_trace(go.Bar(y=["STATUS"], x=[at_c], orientation='h', marker=dict(color='#2ecc71'), text=[f"<b>ATIVOS: {at_c}</b>"], textposition='inside', insidetextanchor='start'))
+                fig_status.add_trace(go.Bar(y=["STATUS"], x=[can_c], orientation='h', marker=dict(color='#ff4b4b'), text=[f"<b>CANCELADOS: {can_c}</b>"], textposition='inside', insidetextanchor='end'))
                 fig_status.update_layout(barmode='stack', showlegend=False, height=40, margin=dict(t=5, b=5, l=10, r=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(showgrid=False, zeroline=False, showticklabels=False), yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
                 st.plotly_chart(fig_status, use_container_width=True, config={'displayModeBar': False})
 
@@ -560,12 +398,23 @@ with tab_rel:
                 df_city_full = df_f.copy()
                 df_city_full["Vendedor_Limpo"] = df_city_full["Vendedor"].str.split(" - ").str[0].str.strip()
                 top_cities = df_city_full['Cidade'].value_counts().head(5).index
+                
                 df_city_vends = []
                 for city in top_cities:
                     vends = df_city_full[df_city_full['Cidade'] == city]['Vendedor_Limpo'].unique()
-                    df_city_vends.append({"Cidade": city, "Qtd": len(df_city_full[df_city_full['Cidade'] == city]), "Vendedores": ", ".join(list(vends))})
+                    vends_str = ", ".join(list(vends))
+                    count = len(df_city_full[df_city_full['Cidade'] == city])
+                    df_city_vends.append({"Cidade": city, "Qtd": count, "Vendedores": vends_str})
+                
                 df_city_plot = pd.DataFrame(df_city_vends)
-                fig_city = go.Figure(go.Bar(x=df_city_plot['Cidade'], y=df_city_plot['Qtd'], text=df_city_plot.apply(lambda r: f"<b>{r['Qtd']}</b><br><span style='font-size:11px; color:#ff007a;'>{r['Vendedores']}</span>", axis=1), textposition='outside', marker=dict(color=df_city_plot['Qtd'], colorscale=[[0, '#1f295a'], [1, '#00f2ff']], line=dict(width=0))))
+                
+                fig_city = go.Figure(go.Bar(
+                    x=df_city_plot['Cidade'], 
+                    y=df_city_plot['Qtd'], 
+                    text=df_city_plot.apply(lambda r: f"<b>{r['Qtd']}</b><br><span style='font-size:11px; color:#ff007a;'>{r['Vendedores']}</span>", axis=1),
+                    textposition='outside', 
+                    marker=dict(color=df_city_plot['Qtd'], colorscale=[[0, '#1f295a'], [1, '#00f2ff']], line=dict(width=0))
+                ))
                 fig_city.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=450, margin=dict(t=50), xaxis=dict(showgrid=False), yaxis=dict(showgrid=False, showticklabels=False))
                 st.plotly_chart(fig_city, use_container_width=True, config={'displayModeBar': False})
 
@@ -578,14 +427,13 @@ with tab_rel:
                 num_vendedores = len(df_stats)
                 max_v = df_stats['Total'].max() if not df_stats.empty else 10
                 scatter_mode = 'markers+text' if num_vendedores == 1 else 'lines+markers+text'
-                fig_vend = go.Figure(go.Scatter(x=df_stats['Vendedor'], y=df_stats['Total'], mode=scatter_mode, text=df_stats['Total'], textposition="top center", line=dict(color='#bc13fe', width=4, shape='spline'), marker=dict(size=12, color='#ffffff', line=dict(color='#bc13fe', width=3)), fill='tozeroy' if num_vendedores > 1 else None, fillcolor='rgba(188, 19, 254, 0.2)'))
-                fig_vend.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=400, margin=dict(t=50, l=60, r=60), xaxis=dict(showgrid=False), yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", showticklabels=False, range=[0, max_v * 1.35]))
+                fig_vend = go.Figure(go.Scatter(x=df_stats['Vendedor'], y=df_stats['Total'], mode=scatter_mode, text=df_stats['Total'], textposition="top center", line=dict(color='#bc13fe', width=4, shape='spline'), marker=dict(size=12, color='#ffffff', line=dict(color='#bc13fe', width=3)), fill='tozeroy' if num_vendedores > 1 else None, fillcolor='rgba(188, 19, 254, 0.2)', textfont=dict(size=10, color="#bc13fe", family="Arial Black")))
+                x_range = [-1, 1] if num_vendedores == 1 else [-0.5, num_vendedores - 0.5]
+                fig_vend.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=400, margin=dict(t=50, l=60, r=60), xaxis=dict(showgrid=False, range=x_range, tickfont=dict(size=10)), yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", showticklabels=False, range=[0, max_v * 1.35]))
                 st.plotly_chart(fig_vend, use_container_width=True, config={'displayModeBar': False})
-    st.markdown('</div>', unsafe_allow_html=True)
 
 # --- ABA 4: SUBIR ALUNOS ---
 with tab_subir:
-    st.markdown('<div style="padding: 0 50px;">', unsafe_allow_html=True)
     st.markdown("### 📤 IMPORTAÇÃO EAD")
     modo = st.radio("Método:", ["MANUAL", "AUTOMÁTICO"], horizontal=True)
     st.write("---")
@@ -622,28 +470,17 @@ with tab_subir:
                 idx_default = (tags_lista.index(last_sel) + 1) if last_sel in tags_lista else 0
                 c_sel, c_del = st.columns([0.4, 0.6])
                 cur_tag = c_sel.selectbox("", [""] + tags_lista, index=idx_default, key=f"sel_{curso}", label_visibility="collapsed")
-                
                 if cur_tag != last_sel:
-                    st.session_state.dados_tags["last_selection"][curso] = cur_tag
-                    salvar_tags(st.session_state.dados_tags)
-                
+                    st.session_state.dados_tags["last_selection"][curso] = cur_tag; salvar_tags(st.session_state.dados_tags)
                 if c_del.button("🗑️", key=f"del_{curso}"):
                     if cur_tag and cur_tag in st.session_state.dados_tags["tags"][curso]:
-                        st.session_state.dados_tags["tags"][curso].remove(cur_tag)
-                        st.session_state.dados_tags["last_selection"][curso] = ""
-                        salvar_tags(st.session_state.dados_tags)
-                        st.rerun()
-                
-                c_new, _ = st.columns([0.4, 0.6])
-                new_tag = c_new.text_input("", placeholder="Nova...", key=f"new_{i}", label_visibility="collapsed").upper()
+                        st.session_state.dados_tags["tags"][curso].remove(cur_tag); st.session_state.dados_tags["last_selection"][curso] = ""; salvar_tags(st.session_state.dados_tags); st.rerun()
+                c_new, _ = st.columns([0.4, 0.6]); new_tag = c_new.text_input("", placeholder="Nova...", key=f"new_{i}", label_visibility="collapsed").upper()
                 if new_tag and new_tag not in tags_lista:
                     if "tags" not in st.session_state.dados_tags: st.session_state.dados_tags["tags"] = {}
                     if curso not in st.session_state.dados_tags["tags"]: st.session_state.dados_tags["tags"][curso] = []
-                    st.session_state.dados_tags["tags"][curso].append(new_tag)
-                    st.session_state.dados_tags["last_selection"][curso] = new_tag
-                    salvar_tags(st.session_state.dados_tags)
-                    st.rerun()
-                selected_tags[curso] = (new_tag if new_tag else cur_tag).upper()
+                    st.session_state.dados_tags["tags"][curso].append(new_tag); st.session_state.dados_tags["last_selection"][curso] = new_tag; salvar_tags(st.session_state.dados_tags); st.rerun()
+                final_tag = (new_tag if new_tag else cur_tag).upper(); selected_tags[curso] = final_tag
 
     if st.button("🚀 PROCESSAR DADOS", use_container_width=True):
         raw_list = []
@@ -651,12 +488,14 @@ with tab_subir:
             l_ids = u_user.strip().split('\n'); l_nomes = u_nome.strip().split('\n'); l_pays = u_pay.strip().split('\n')
             l_cours = u_cour.strip().split('\n'); l_cells = u_cell.strip().split('\n'); l_docs = u_doc.strip().split('\n')
             l_citys = u_city.strip().split('\n'); l_sells = u_sell.strip().split('\n'); l_dates = u_date.strip().split('\n')
-            if len(l_ids) > 0:
-                for i in range(len(l_ids)):
+            min_len = len(l_ids)
+            if min_len > 0:
+                for i in range(min_len):
                     try: raw_list.append({"User": l_ids[i], "Nome": l_nomes[i] if i < len(l_nomes) else "", "Pay": l_pays[i] if i < len(l_pays) else "", "Cour": l_cours[i] if i < len(l_cours) else "", "Cell": l_cells[i] if i < len(l_cells) else "", "Doc": l_docs[i] if i < len(l_docs) else "", "City": l_citys[i] if i < len(l_citys) else "", "Sell": l_sells[i] if i < len(l_sells) else "", "Date": l_dates[i] if i < len(l_dates) else ""})
                     except: continue
         elif "df_auto_ready" in st.session_state and st.session_state.df_auto_ready is not None:
             for _, r in st.session_state.df_auto_ready.iterrows(): raw_list.append({"User": r.iloc[6], "Nome": r.iloc[7], "Cell": r.iloc[9], "Doc": r.iloc[10], "City": r.iloc[11], "Cour": r.iloc[12], "Pay": r.iloc[13], "Sell": r.iloc[14], "Date": r.iloc[15]})
+        
         if raw_list:
             try:
                 wb_c = load_workbook(ARQUIVO_CIDADES); ws_c = wb_c.active
@@ -687,4 +526,3 @@ with tab_subir:
             output = BytesIO(); wb = Workbook(); ws = wb.active; ws.append(list(st.session_state.df_final_processado.columns))
             for r in st.session_state.df_final_processado.values.tolist(): ws.append([str(val) for val in r])
             wb.save(output); st.download_button("📥 BAIXAR EXCEL FINAL", output.getvalue(), f"ead_{date.today()}.xlsx", on_click=reset_campos_subir, use_container_width=True)
-    st.markdown('</div>', unsafe_allow_html=True)
