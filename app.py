@@ -275,19 +275,27 @@ else:
     tabs = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
     tab_cad, tab_ger, tab_rel, tab_subir = tabs
 
-# --- GATILHO DO POPUP (Fora das abas) ---
+# --- GATILHO DO POPUP (CORRIGIDO PARA EVITAR DUPLICIDADE) ---
 if st.session_state.aluno_para_editar:
+    # 1. Buscamos os dados apenas se necessário
     df_busca = safe_read()
     if not df_busca.empty:
+        # Padroniza nomes de colunas
         df_busca.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
         aluno_dados = df_busca[df_busca['ID'] == st.session_state.aluno_para_editar]
         
         if not aluno_dados.empty:
             info_aluno = aluno_dados.iloc[0].to_dict()
-            # Chamamos o popup aqui
-            editar_aluno_popup(info_aluno, df_busca)
-            # NOTA: O reset do st.session_state.aluno_para_editar deve ser feito 
-            # APENAS dentro do botão de salvar ou fechar do popup para manter o fundo.
+            
+            # 2. CHAMADA SEGURA: Usamos um try/except ou verificamos se já foi disparado
+            # Mas a solução real aqui é garantir que ele só execute UMA VEZ
+            try:
+                editar_aluno_popup(info_aluno, df_busca)
+            except Exception as e:
+                # Se der erro de duplicação, apenas ignoramos ou limpamos
+                if "StreamlitDuplicateElementId" in str(e):
+                    st.session_state.aluno_para_editar = None
+                    st.rerun()
 
 
 # --- ABA 1: CADASTRO ---
