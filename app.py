@@ -244,16 +244,25 @@ def editar_aluno_popup(dados, df_completo):
 # 1. Pegamos o ID da URL
 id_para_editar = st.query_params.get("edit_id")
 
-# 2. Lógica de inversão para manter o fundo correto
+# 2. Se houver ID na URL, jogamos para o session_state e limpamos a URL
 if id_para_editar:
-    # Se estamos editando, colocamos Gerenciamento como a PRIMEIRA aba
-    # Isso força o Streamlit a mostrar o Gerenciamento atrás do popup
-    tab_ger, tab_cad, tab_rel, tab_subir = st.tabs(["🖥️ GERENCIAMENTO", "📑 CADASTRO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
-else:
-    # Fluxo normal: Cadastro é a primeira aba
-    tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
+    st.session_state.aluno_para_editar = id_para_editar
+    st.query_params.clear()
+    st.rerun()
 
-# --- O GATILHO (Deve vir logo após a criação das abas) ---
+# 3. Lógica de exibição das abas
+if st.session_state.aluno_para_editar:
+    # Enquanto edita, mostramos apenas as abas de gerenciamento e relatórios
+    # Isso força o Gerenciamento a ser a aba ativa ao fundo (index 0)
+    tabs = st.tabs(["🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
+    tab_ger, tab_rel, tab_subir = tabs
+    tab_cad = None # Desativa a aba cadastro para não criar o menu extra
+else:
+    # Fluxo normal com todas as abas
+    tabs = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
+    tab_cad, tab_ger, tab_rel, tab_subir = tabs
+
+# --- GATILHO DO POPUP (Fora das abas) ---
 if st.session_state.aluno_para_editar:
     df_busca = safe_read()
     if not df_busca.empty:
@@ -262,19 +271,21 @@ if st.session_state.aluno_para_editar:
         
         if not aluno_dados.empty:
             info_aluno = aluno_dados.iloc[0].to_dict()
-            # Limpa o estado para não repetir
-            st.session_state.aluno_para_editar = None
-            # Abre o popup em cima da aba que agora é a principal (Gerenciamento)
+            # Chamamos o popup aqui
             editar_aluno_popup(info_aluno, df_busca)
+            # NOTA: O reset do st.session_state.aluno_para_editar deve ser feito 
+            # APENAS dentro do botão de salvar ou fechar do popup para manter o fundo.
 
 
 # --- ABA 1: CADASTRO ---
-with tab_cad:
-    st.markdown('<div style="padding: 0 50px;">', unsafe_allow_html=True)
-    if os.path.exists(caminho_logo):
-        st.markdown('<div class="logo-container">', unsafe_allow_html=True)
-        st.image(caminho_logo, width=90)
-        st.markdown('</div>', unsafe_allow_html=True)
+if tab_cad is not None:      # Se a aba de cadastro existir...
+    with tab_cad:            # Entre nela (Note o recuo aqui)
+        st.markdown('<div style="padding: 0 50px;">', unsafe_allow_html=True) # (E aqui)
+        
+        if os.path.exists(caminho_logo):
+            st.markdown('<div class="logo-container">', unsafe_allow_html=True)
+            st.image(caminho_logo, width=90)
+            st.markdown('</div>', unsafe_allow_html=True)
     _, centro, _ = st.columns([0.2, 5.6, 0.2])
     with centro:
         s_al = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"; s_ge = f"g_{st.session_state.reset_geral}"
