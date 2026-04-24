@@ -135,63 +135,30 @@ def safe_read():
         st.error(f"Erro de conexão: {e}")
         return pd.DataFrame()
 
-# --- ESTADOS DE SESSÃO ---
+# --- ESTADOS DE SESSÃO (CORRIGIDO PARA EVITAR ATTRIBUTEERROR) ---
 if "aluno_para_editar" not in st.session_state: 
     st.session_state.aluno_para_editar = None
 
-# Captura prioritária: Se tiver edit_id na URL, salva no estado e limpa a URL
-if st.query_params.get("edit_id"):
-    st.session_state.aluno_para_editar = st.query_params.get("edit_id")
-    st.query_params.clear() # Limpa para o link não ficar "preso"
+if "lista_previa" not in st.session_state: 
+    st.session_state.lista_previa = []
 
-# --- FUNÇÕES AUXILIARES ---
-def reset_campos_subir():
-    for c in ["in_user", "in_nome", "in_cell", "in_doc", "in_city", "in_cour", "in_pay", "in_sell", "in_date"]:
-        if c in st.session_state: st.session_state[c] = ""
+# ESTAS LINHAS SÃO AS QUE ESTAVAM FALTANDO NO RECARREGAMENTO:
+if "reset_aluno" not in st.session_state: 
+    st.session_state.reset_aluno = 0
+
+if "reset_geral" not in st.session_state: 
+    st.session_state.reset_geral = 0
+
+if "df_final_processado" not in st.session_state: 
     st.session_state.df_final_processado = None
+
+if "df_auto_ready" not in st.session_state: 
     st.session_state.df_auto_ready = None
 
-def extrair_valor_recebido(texto):
-    if not texto: return 0.0
-    match = re.search(r'PAG[OA]S?\s*(?:R\$)?\s*([\d\.,]+)', str(texto).upper())
-    if match:
-        try:
-            return float(match.group(1).replace('.', '').replace(',', '.'))
-        except:
-            return 0.0
-    return 0.0
-
-def extrair_valor_geral(texto):
-    if not texto: return 0.0
-    try:
-        v = re.findall(r'\d+(?:\.\d+)?(?:,\d+)?', str(texto).replace('.', '').replace(',', '.'))
-        return float(v[0]) if v else 0.0
-    except: return 0.0
-
-def transformar_curso(chave):
-    entrada = st.session_state[chave].strip()
-    if not entrada: return
-    match = re.search(r'(\d+)$', entrada)
-    if match:
-        codigo = match.group(1); nome = DIC_CURSOS.get(codigo)
-        if nome:
-            base = entrada[:match.start()].strip().rstrip('+').strip()
-            st.session_state[chave] = (f"{base} + {nome}" if base and nome.upper() not in base.upper() else (base if base else nome)).upper()
-    else: st.session_state[chave] = entrada.upper()
-
-def formatar_cpf(chave):
-    valor = re.sub(r'\D', '', st.session_state[chave])
-    if len(valor) == 11:
-        st.session_state[chave] = f"{valor[:3]}.{valor[3:6]}.{valor[6:9]}-{valor[9:]}"
-
-def atualizar_pagamento():
-    suffix = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"
-    base = st.session_state.get(f"f_pagto_{suffix}", "").split('|')[0].strip()
-    novo = base
-    if st.session_state.get(f"chk_1_{suffix}"): novo += " | Após pagamento link cartão, avisar Natália para liberação In-glês"
-    if st.session_state.get(f"chk_2_{suffix}"): novo += " | Caso pague via link cartão, avisar Natália para liberação curso bônus a escolha"
-    if st.session_state.get(f"chk_3_{suffix}"): novo += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
-    st.session_state[f"f_pagto_{suffix}"] = novo.upper()
+# Captura prioritária do ID da URL
+if st.query_params.get("edit_id"):
+    st.session_state.aluno_para_editar = st.query_params.get("edit_id")
+    st.query_params.clear()
 
 @st.dialog("📝 Perfil do Aluno")
 def editar_aluno_popup(id_aluno):
