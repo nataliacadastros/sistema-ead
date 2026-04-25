@@ -205,30 +205,22 @@ DIC_CURSOS = {"00": "COLÉGIO COMBO", "1": "PREPARATÓRIO JOVEM BANCÁRIO", "2":
 is_admin = st.session_state.nivel_ativo == "ADMIN"
 is_consulta = st.session_state.nivel_ativo == "CONSULTA"
 
-# 1. Monta a lista de abas dependendo de quem logou
 if is_admin:
     lista_abas = ["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS", "👥 USUÁRIOS"]
 elif is_consulta:
     lista_abas = ["🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"]
 else:
-    lista_abas = ["🖥️ GERENCIAMENTO"] # Segurança mínima
+    lista_abas = ["🖥️ GERENCIAMENTO"]
 
-# 2. Cria as abas na tela
 abas = st.tabs(lista_abas)
 
-# 3. Define as variáveis das abas com cuidado (evita erro de índice)
+# Definição das variáveis para evitar o erro de "não definido"
+tab_cad = tab_ger = tab_rel = tab_subir = tab_users = None
+
 if is_admin:
-    tab_cad = abas[0]
-    tab_ger = abas[1]
-    tab_rel = abas[2]
-    tab_subir = abas[3]
-    tab_users = abas[4]
+    tab_cad, tab_ger, tab_rel, tab_subir, tab_users = abas[0], abas[1], abas[2], abas[3], abas[4]
 elif is_consulta:
-    tab_ger = abas[0] # Para consulta, o índice 0 é Gerenciamento
-    tab_rel = abas[1] # E o índice 1 é Relatórios
-    # Criamos as outras vazias para o código não dar erro de "NameError"
-    tab_cad = st.empty() 
-    tab_subir = st.empty()
+    tab_ger, tab_rel = abas[0], abas[1]
 
 
 # --- ABA 1: CADASTRO ---
