@@ -103,26 +103,31 @@ st.markdown("""
         text-transform: none !important;
     }
 
-    /* --- CORREÇÃO DO BOTÃO DE LOGIN (MUDANDO DE BRANCO PARA CIANO) --- */
-    /* Aplica a cor de fundo ciano e texto preto apenas ao botão de login */
+    /* --- CORREÇÃO DO BOTÃO DE LOGIN (ROXO COM LETRA BRANCA) --- */
+    /* Aplica a cor de fundo roxa (#bc13fe) e texto branco puro (#ffffff) */
     .login-box button {
-        background-color: #00f2ff !important;
-        color: black !important;
+        background-color: #bc13fe !important;
+        color: #ffffff !important;
         font-weight: bold !important;
         border: none !important;
     }
     
-    /* Efeito de hover mantido para o botão de login */
+    /* Efeito de hover para o botão de login */
     .login-box button:hover {
-        background-color: #00d4df !important;
-        box-shadow: 0 0 15px rgba(0, 242, 255, 0.6) !important;
+        background-color: #a30fdb !important; /* Roxo ligeiramente mais escuro no hover */
+        box-shadow: 0 0 15px rgba(188, 19, 254, 0.6) !important; /* Brilho roxo */
     }
 
     /* --- ESTILO DOS DEMAIS BOTÕES DO SISTEMA (MANTIDO ORIGINAL) --- */
-    /* Garante que os botões dentro das abas continuem com o estilo original */
-    .stTabs button {
+    div.stButton > button {
         background-color: #00f2ff !important;
         color: black !important;
+        font-weight: bold !important;
+        transition: all 0.3s ease !important;
+    }
+    div.stButton > button:hover {
+        background-color: #00d4df !important;
+        box-shadow: 0 0 15px rgba(0, 242, 255, 0.6) !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -136,9 +141,8 @@ if not st.session_state.logado:
             st.image(caminho_logo, width=180)
         st.markdown("<h2 style='color: #00f2ff; margin-bottom:30px;'>ACESSO RESTRITO</h2>", unsafe_allow_html=True)
         
-        # Agora permite digitar minúsculas visualmente aqui
-        user_in = st.text_input("USUÁRIO", key="login_u_final").strip()
-        pass_in = st.text_input("SENHA", type="password", key="login_p_final").strip()
+        user_in = st.text_input("USUÁRIO", key="login_u_v3").strip()
+        pass_in = st.text_input("SENHA", type="password", key="login_p_v3").strip()
         
         if st.button("ENTRAR NO SISTEMA", use_container_width=True):
             df_users = carregar_usuarios()
@@ -241,158 +245,4 @@ def atualizar_pagamento():
     base = st.session_state.get(f"f_pagto_{suffix}", "").split('|')[0].strip()
     novo = base
     if st.session_state.get(f"chk_1_{suffix}"): novo += " | Após pagamento link cartão, avisar Natália para liberação In-glês"
-    if st.session_state.get(f"chk_2_{suffix}"): novo += " | Caso pague via link cartão, avisar Natália para liberação curso bônus a escolha"
-    if st.session_state.get(f"chk_3_{suffix}"): novo += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
-    st.session_state[f"f_pagto_{suffix}"] = novo.upper()
-
-if os.path.exists(caminho_logo):
-    st.markdown('<div class="logo-container">', unsafe_allow_html=True)
-    st.image(caminho_logo, width=90)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-is_admin = st.session_state.nivel_ativo == "ADMIN"
-titulos_abas = ["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS", "👥 USUÁRIOS"] if is_admin else ["🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"]
-abas = st.tabs(titulos_abas)
-
-if is_admin:
-    tab_cad, tab_ger, tab_rel, tab_subir, tab_users = abas
-else:
-    tab_ger, tab_rel = abas
-
-# --- ABA 1: CADASTRO ---
-if is_admin:
-    with tab_cad:
-        _, centro, _ = st.columns([0.2, 5.6, 0.2])
-        with centro:
-            s_al = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"; s_ge = f"g_{st.session_state.reset_geral}"
-            fields = [("ID:", f"f_id_{s_al}"), ("ALUNO:", f"f_nome_{s_al}"), ("TEL. RESPONSÁVEL:", f"f_tel_resp_{s_al}"),
-                      ("TEL. ALUNO:", f"f_tel_aluno_{s_al}"), ("CPF RESPONSÁVEL:", f"f_cpf_{s_al}"), ("CIDADE:", f"f_cid_{s_ge}"),
-                      ("CURSO CONTRATADO:", f"input_curso_key_{s_al}"), ("FORMA DE PAGAMENTO:", f"f_pagto_{s_al}"),
-                      ("VENDEDOR:", f"f_vend_{s_ge}"), ("DATA DA MATRÍCULA:", f"f_data_{s_ge}")]
-            for l, k in fields:
-                cl, ci = st.columns([1.2, 3.8]); cl.markdown(f"<label>{l}</label>", unsafe_allow_html=True)
-                if "curso" in k: ci.text_input(l, key=k, on_change=transformar_curso, args=(k,), label_visibility="collapsed")
-                elif "f_cpf" in k: ci.text_input(l, key=k, on_change=formatar_cpf, args=(k,), label_visibility="collapsed")
-                else: ci.text_input(l, key=k, label_visibility="collapsed")
-            st.write("")
-            _, c1, c2, c3, _ = st.columns([1.2, 1.2, 1.2, 1.2, 0.2])
-            c1.checkbox("LIB. IN-GLÊS", key=f"chk_1_{s_al}", on_change=atualizar_pagamento)
-            c2.checkbox("CURSO BÔNUS", key=f"chk_2_{s_al}", on_change=atualizar_pagamento)
-            c3.checkbox("CONFIRMAÇÃO", key=f"chk_3_{s_al}", on_change=atualizar_pagamento)
-            st.write("")
-            _, b1, b2, _ = st.columns([1.2, 1.9, 1.9, 0.2])
-            with b1:
-                if st.button("💾 SALVAR ALUNO"):
-                    if st.session_state[f"f_nome_{s_al}"]:
-                        st.session_state.lista_previa.append({
-                            "ID": st.session_state[f"f_id_{s_al}"].upper(), "Aluno": st.session_state[f"f_nome_{s_al}"].upper(),
-                            "Tel_Resp": str(st.session_state[f"f_tel_resp_{s_al}"]), "Tel_Aluno": str(st.session_state[f"f_tel_aluno_{s_al}"]),
-                            "CPF": st.session_state[f"f_cpf_{s_al}"], "Cidade": st.session_state[f"f_cid_{s_ge}"].upper(), 
-                            "Course": st.session_state[f"input_curso_key_{s_al}"].upper(), "Pagto": st.session_state[f"f_pagto_{s_al}"].upper(),
-                            "Vendedor": st.session_state[f"f_vend_{s_ge}"].upper(), "Data_Mat": st.session_state[f"f_data_{s_ge}"]
-                        })
-                        st.session_state.reset_aluno += 1; st.rerun()
-            with b2:
-                if st.button("📤 ENVIAR PLANILHA"):
-                    if st.session_state.lista_previa:
-                        try:
-                            creds_info = st.secrets["connections"]["gsheets"]
-                            client = gspread.authorize(Credentials.from_service_account_info(creds_info, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
-                            ws = client.open_by_url(creds_info["spreadsheet"]).get_worksheet(0)
-                            d_f = []
-                            for a in st.session_state.lista_previa:
-                                d_f.append(["ATIVO", "MGA", "A DEFINIR", "SIM" if "10 CURSOS" in a["Course"] else "NÃO", "A DEFINIR" if "INGLÊS" in a["Course"] else "NÃO", date.today().strftime("%d/%m/%Y"), a["ID"], a["Aluno"], a["Tel_Resp"], a["Tel_Aluno"], a["CPF"], a["Cidade"], a["Course"], a["Pagto"], a["Vendedor"], a["Data_Mat"]])
-                            ws.append_rows(d_f, value_input_option='RAW')
-                            st.session_state.lista_previa = []; st.session_state.reset_geral += 1; st.success("Enviado com sucesso!"); st.cache_data.clear(); st.rerun()
-                        except Exception as e: st.error(f"Erro ao enviar: {e}")
-            if st.session_state.lista_previa:
-                st.markdown(f"### 📋 PRÉ-VISUALIZAÇÃO ({len(st.session_state.lista_previa)} ALUNOS)")
-                st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
-
-# ABA 2: GERENCIAMENTO
-with tab_ger:
-    cf1, cf2, cf3, cf4 = st.columns([2.5, 1.5, 1.5, 0.5])
-    with cf1: bu = st.text_input("🔍 Buscar...", key="busca_ger", placeholder="Nome ou ID", label_visibility="collapsed")
-    with cf2: fs = st.selectbox("Status", ["Todos", "ATIVO", "CANCELADO"], key="filtro_status", label_visibility="collapsed")
-    with cf3: fu = st.selectbox("Unidade", ["Todos", "MGA"], key="filtro_unid", label_visibility="collapsed")
-    with cf4: 
-        if st.button("🔄", key="btn_ref"): st.cache_data.clear(); st.rerun()
-    df_g = safe_read()
-    if not df_g.empty:
-        df_g.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
-        if bu: df_g = df_g[df_g['ALUNO'].str.contains(bu, case=False) | df_g['ID'].str.contains(bu, case=False)]
-        if fs != "Todos": df_g = df_g[df_g['STATUS'] == fs]
-        if fu != "Todos": df_g = df_g[df_g['UNID.'] == fu]
-        rows = ""
-        for _, r in df_g.iloc[::-1].iterrows():
-            sc = "status-badge status-ativo" if r['STATUS'] == "ATIVO" else "status-badge status-cancelado"
-            rows += f"<tr><td><span class='{sc}'>{r['STATUS']}</span></td><td>{r['UNID.']}</td><td>{r['TURMA']}</td><td>{r['10C']}</td><td>{r['ING']}</td><td>{r['DT_CAD']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ID']}</td><td style='color:#00f2ff;font-weight:bold'>{r['ALUNO']}</td><td>{r['TEL_RESP']}</td><td>{r['TEL_ALU']}</td><td>{r['CPF']}</td><td>{r['CIDADE']}</td><td>{r['CURSO']}</td><td>{r['PAGTO']}</td><td>{r['VEND.']}</td><td>{r['DT_MAT']}</td></tr>"
-        st.markdown(f'<div class="custom-table-wrapper"><table class="custom-table"><thead><tr>' + ''.join([f'<th>{h}</th>' for h in df_g.columns]) + f'</tr></thead><tbody>{rows}</tbody></table></div>', unsafe_allow_html=True)
-
-# ABA 3: RELATÓRIOS
-with tab_rel:
-    df_r = safe_read()
-    if not df_r.empty:
-        df_r.columns = [c.strip() for c in df_r.columns]
-        dt_col = "Data Matrícula"
-        df_r[dt_col] = pd.to_datetime(df_r[dt_col], dayfirst=True, errors='coerce')
-        iv = st.date_input("Filtrar Período", value=(date.today()-timedelta(days=7), date.today()))
-        if len(iv) == 2:
-            df_f = df_r.loc[(df_r[dt_col].dt.date >= iv[0]) & (df_r[dt_col].dt.date <= iv[1])].copy()
-            v_taxa = 0.0; v_cartao = 0.0; v_entrada = 0.0
-            for linha in df_f['Pagamento'].tolist():
-                if not linha: continue
-                l_u = str(linha).upper()
-                if "TAXA" in l_u: v_taxa += 50.0
-                m_m = re.findall(r'(\d+)\s*[X]\s*(?:R\$)?\s*([\d\.,]+)', l_u)
-                if m_m and ("CARTÃO" in l_u or "LINK" in l_u):
-                    for q, v in m_m: v_cartao += int(q) * float(v.replace('.', '').replace(',', '.'))
-                else:
-                    m_f = re.findall(r'(?:PAGO|R\$)\s*([\d\.]+,\d{2}|[\d\.]+)', l_u)
-                    for v in m_f:
-                        try:
-                            val = float(v.replace('.', '').replace(',', '.'))
-                            if val != 50.0:
-                                if "CARTÃO" in l_u or "LINK" in l_u: v_cartao += val
-                                else: v_entrada += val
-                        except: pass
-            total = v_taxa + v_cartao + v_entrada
-            c1, c2, c3, c4 = st.columns(4)
-            c1.markdown(f'<div class="card-hud neon-pink"><span class="stat-label">MATRÍCULAS</span><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
-            c2.markdown(f'<div class="card-hud neon-green"><span class="stat-label">ATIVOS</span><h2>{len(df_f[df_f["STATUS"].str.upper()=="ATIVO"])}</h2></div>', unsafe_allow_html=True)
-            c3.markdown(f'<div class="card-hud neon-red"><span class="stat-label">CANCELADOS</span><h2>{len(df_f[df_f["STATUS"].str.upper()=="CANCELADO"])}</h2></div>', unsafe_allow_html=True)
-            c4.markdown(f'<div class="card-hud neon-blue"><span class="stat-label">TOTAL</span><h2>R${total:,.2f}</h2></div>', unsafe_allow_html=True)
-
-# ABA 4: SUBIR ALUNOS (ADMIN)
-if is_admin:
-    with tab_subir:
-        st.markdown("### 📤 IMPORTAÇÃO EAD")
-        st.info("Função original preservada.")
-
-# ABA 5: USUÁRIOS (ADMIN)
-if is_admin:
-    with tab_users:
-        st.markdown("### 👥 GESTÃO DE ACESSOS")
-        with st.form("form_users_login_v3", clear_on_submit=True):
-            nu_user = st.text_input("Novo Usuário (Login)").strip()
-            nu_pass = st.text_input("Senha").strip()
-            nu_nivel = st.selectbox("Nível", ["ADMIN", "CONSULTA"])
-            if st.form_submit_button("CADASTRAR"):
-                if nu_user and nu_pass:
-                    try:
-                        creds_info = st.secrets["connections"]["gsheets"]
-                        client = gspread.authorize(Credentials.from_service_account_info(creds_info, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
-                        ws_u = client.open_by_url(creds_info["spreadsheet"]).worksheet("usuários")
-                        ws_u.append_row([nu_user, nu_pass, nu_nivel])
-                        st.success(f"Usuário {nu_user} cadastrado!")
-                        st.cache_data.clear()
-                    except Exception as e: st.error(f"Erro: {e}")
-        st.write("---")
-        st.dataframe(carregar_usuarios(), use_container_width=True, hide_index=True)
-
-with st.sidebar:
-    st.markdown(f"### 👤 {st.session_state.usuario_ativo.upper() if st.session_state.usuario_ativo else ''}")
-    st.write(f"Nível: {st.session_state.nivel_ativo}")
-    if st.button("SAIR DO SISTEMA"):
-        st.session_state.logado = False
-        st.rerun()
+    if st.session_state.get(f"chk_2_{suffix}"): novo += "
