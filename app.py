@@ -476,8 +476,9 @@ with tab_rel:
                 st.plotly_chart(fig_vend, use_container_width=True, config={'displayModeBar': False})
 
 # --- ABA 4: SUBIR ALUNOS ---
-with tab_subir:
-    st.markdown("### 📤 IMPORTAÇÃO EAD")
+if tab_subir: # <--- Adicione esta linha aqui
+    with tab_subir:
+        st.markdown("### 📤 IMPORTAÇÃO EAD")
     modo = st.radio("Método:", ["MANUAL", "AUTOMÁTICO"], horizontal=True)
     st.write("---")
     if modo == "AUTOMÁTICO":
@@ -571,7 +572,7 @@ with tab_subir:
             wb.save(output); st.download_button("📥 BAIXAR EXCEL FINAL", output.getvalue(), f"ead_{date.today()}.xlsx", on_click=reset_campos_subir, use_container_width=True)
 
 # --- ABA USUÁRIOS (Corrigida com Scopes) ---
-if is_admin:
+if tab_users: # <--- Proteção para não dar erro no Consulta
     with tab_users:
         st.markdown("### 👥 GESTÃO DE ACESSOS")
         with st.form("novo_user_final", clear_on_submit=True):
