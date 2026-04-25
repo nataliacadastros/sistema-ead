@@ -28,7 +28,6 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 def carregar_usuarios():
     try:
-        # Busca a aba 'usuários' dentro da planilha principal
         return conn.read(worksheet="usuários", ttl="1s").dropna(how='all')
     except Exception as e:
         return pd.DataFrame(columns=["usuario", "senha", "nivel"])
@@ -39,7 +38,7 @@ if "logado" not in st.session_state:
     st.session_state.usuario_ativo = None
     st.session_state.nivel_ativo = None
 
-# --- CSS HUD NEON COMPLETO ---
+# --- CSS HUD NEON COMPLETO (COM CORREÇÃO PARA LOGIN) ---
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e1e; color: #e0e0e0; }
@@ -54,8 +53,15 @@ st.markdown("""
     .main .block-container { padding-top: 40px !important; max-width: 100% !important; margin: 0 auto !important; }
     
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; display: flex; align-items: center; justify-content: flex-end; }
-    div[data-testid="stTextInput"] { width: 100% !important; }
-    .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 18px !important; border-radius: 5px !important; }
+    
+    /* ESTILO DOS INPUTS DE CADASTRO (MANTIDO MAIÚSCULO) */
+    div[data-testid="stTextInput"] input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 18px !important; border-radius: 5px !important; }
+    
+    /* EXCEÇÃO PARA A TELA DE LOGIN (IMPEDE MAIÚSCULO FORÇADO) */
+    div.login-box div[data-testid="stTextInput"] input {
+        text-transform: none !important;
+    }
+
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
 
     .custom-table-wrapper { width: 100%; max-height: 600px; overflow: auto; background-color: #121629; border: 2px solid #1f295a; border-radius: 10px; margin-top: 15px; }
@@ -98,13 +104,14 @@ if not st.session_state.logado:
             st.image(caminho_logo, width=180)
         st.markdown("<h2 style='color: #00f2ff; margin-bottom:30px;'>ACESSO RESTRITO</h2>", unsafe_allow_html=True)
         
-        user_in = st.text_input("USUÁRIO").strip().lower()
-        pass_in = st.text_input("SENHA", type="password").strip()
+        # Inputs agora respeitam letras minúsculas visualmente
+        user_in = st.text_input("USUÁRIO", key="login_user").strip().lower()
+        pass_in = st.text_input("SENHA", type="password", key="login_pass").strip()
         
         if st.button("ENTRAR NO SISTEMA", use_container_width=True):
             df_users = carregar_usuarios()
             if not df_users.empty:
-                # O segredo está aqui: converter a coluna da planilha para string para bater com o input
+                # Verificação robusta: remove espaços e ignora maiúsculas/minúsculas
                 valido = df_users[
                     (df_users['usuario'].astype(str).str.strip().str.lower() == user_in) & 
                     (df_users['senha'].astype(str).str.strip() == pass_in)
@@ -117,7 +124,7 @@ if not st.session_state.logado:
                 else:
                     st.error("Usuário ou senha incorretos.")
             else:
-                st.error("Planilha de usuários não encontrada ou vazia.")
+                st.error("Erro ao carregar banco de usuários.")
         st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
@@ -219,7 +226,7 @@ if is_admin:
 else:
     tab_ger, tab_rel = abas
 
-# ABA 1: CADASTRO
+# --- ABA 1: CADASTRO ---
 if is_admin:
     with tab_cad:
         _, centro, _ = st.columns([0.2, 5.6, 0.2])
@@ -327,7 +334,6 @@ with tab_rel:
 if is_admin:
     with tab_subir:
         st.markdown("### 📤 IMPORTAÇÃO EAD")
-        # Sua lógica original de subir alunos
         st.info("Função original mantida para processamento.")
 
 # ABA 5: USUÁRIOS (ADMIN)
@@ -352,7 +358,7 @@ if is_admin:
         st.dataframe(carregar_usuarios(), use_container_width=True, hide_index=True)
 
 with st.sidebar:
-    st.markdown(f"### 👤 {st.session_state.usuario_ativo.upper()}")
+    st.markdown(f"### 👤 {st.session_state.usuario_ativo.upper() if st.session_state.usuario_ativo else ''}")
     st.write(f"Nível: {st.session_state.nivel_ativo}")
     if st.button("SAIR DO SISTEMA"):
         st.session_state.logado = False
