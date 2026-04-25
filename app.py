@@ -224,8 +224,9 @@ elif is_consulta:
 
 
 # --- ABA 1: CADASTRO ---
-with tab_cad:
-    _, centro, _ = st.columns([0.2, 5.6, 0.2])
+if tab_cad: # Só executa se a aba existir (Admin)
+    with tab_cad:
+        _, centro, _ = st.columns([0.2, 5.6, 0.2])
     with centro:
         s_al = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"; s_ge = f"g_{st.session_state.reset_geral}"
         fields = [("ID:", f"f_id_{s_al}"), ("ALUNO:", f"f_nome_{s_al}"), ("TEL. RESPONSÁVEL:", f"f_tel_resp_{s_al}"),
