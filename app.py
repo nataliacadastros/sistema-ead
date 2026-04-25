@@ -38,7 +38,7 @@ if "logado" not in st.session_state:
     st.session_state.usuario_ativo = None
     st.session_state.nivel_ativo = None
 
-# --- CSS HUD NEON COMPLETO (COM CORREÇÃO PARA LOGIN) ---
+# --- CSS HUD NEON COMPLETO (CORREÇÃO DEFINITIVA DO LOGIN) ---
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e1e; color: #e0e0e0; }
@@ -54,11 +54,19 @@ st.markdown("""
     
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; display: flex; align-items: center; justify-content: flex-end; }
     
-    /* ESTILO DOS INPUTS DE CADASTRO (MANTIDO MAIÚSCULO) */
-    div[data-testid="stTextInput"] input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 18px !important; border-radius: 5px !important; }
+    /* REGRA GERAL PARA CADASTRO (MAIÚSCULO) */
+    div[data-testid="stTextInput"] input { 
+        background-color: white !important; 
+        color: black !important; 
+        text-transform: uppercase !important; 
+        font-size: 12px !important; 
+        height: 18px !important; 
+        border-radius: 5px !important; 
+    }
     
-    /* EXCEÇÃO PARA A TELA DE LOGIN (IMPEDE MAIÚSCULO FORÇADO) */
-    div.login-box div[data-testid="stTextInput"] input {
+    /* REGRA ESPECÍFICA PARA LOGIN (IGNORA O MAIÚSCULO) */
+    [data-testid="stForm"] div[data-testid="stTextInput"] input,
+    .login-wrapper div[data-testid="stTextInput"] input {
         text-transform: none !important;
     }
 
@@ -97,6 +105,8 @@ st.markdown("""
 
 # --- LÓGICA DE TELA DE LOGIN ---
 if not st.session_state.logado:
+    # Div container para aplicar a exceção CSS
+    st.markdown('<div class="login-wrapper">', unsafe_allow_html=True)
     _, centro_login, _ = st.columns([1, 1.2, 1])
     with centro_login:
         st.markdown('<div class="login-box">', unsafe_allow_html=True)
@@ -104,14 +114,12 @@ if not st.session_state.logado:
             st.image(caminho_logo, width=180)
         st.markdown("<h2 style='color: #00f2ff; margin-bottom:30px;'>ACESSO RESTRITO</h2>", unsafe_allow_html=True)
         
-        # Inputs agora respeitam letras minúsculas visualmente
-        user_in = st.text_input("USUÁRIO", key="login_user").strip().lower()
-        pass_in = st.text_input("SENHA", type="password", key="login_pass").strip()
+        user_in = st.text_input("USUÁRIO", key="login_user_final").strip().lower()
+        pass_in = st.text_input("SENHA", type="password", key="login_pass_final").strip()
         
         if st.button("ENTRAR NO SISTEMA", use_container_width=True):
             df_users = carregar_usuarios()
             if not df_users.empty:
-                # Verificação robusta: remove espaços e ignora maiúsculas/minúsculas
                 valido = df_users[
                     (df_users['usuario'].astype(str).str.strip().str.lower() == user_in) & 
                     (df_users['senha'].astype(str).str.strip() == pass_in)
@@ -124,8 +132,9 @@ if not st.session_state.logado:
                 else:
                     st.error("Usuário ou senha incorretos.")
             else:
-                st.error("Erro ao carregar banco de usuários.")
+                st.error("Erro ao conectar com a base de usuários.")
         st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
 # --- ABAIXO TODO O RESTO DO SEU CÓDIGO ORIGINAL (MANTIDO) ---
@@ -340,7 +349,7 @@ if is_admin:
 if is_admin:
     with tab_users:
         st.markdown("### 👥 GESTÃO DE ACESSOS")
-        with st.form("form_users", clear_on_submit=True):
+        with st.form("form_users_geral", clear_on_submit=True):
             nu_user = st.text_input("Novo Usuário (Login)").strip().lower()
             nu_pass = st.text_input("Senha").strip()
             nu_nivel = st.selectbox("Nível", ["ADMIN", "CONSULTA"])
