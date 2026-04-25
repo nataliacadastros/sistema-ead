@@ -27,6 +27,17 @@ def carregar_usuarios():
     except:
         return pd.DataFrame(columns=["usuario", "senha", "nivel"])
 
+def carregar_tags():
+    padrao = {"tags": {}, "last_selection": {}}
+    if os.path.exists("tags_salvas.json"):
+        try:
+            with open("tags_salvas.json", "r", encoding="utf-8") as f:
+                return json.load(f)
+        except: 
+            return padrao
+    return padrao
+
+
 # --- ESTADOS DE SESSÃO ---
 if "logado" not in st.session_state:
     st.session_state.logado = False
@@ -127,6 +138,10 @@ if not st.session_state.logado:
 # --- VARIÁVEL ADMIN (Criada agora para não dar erro) ---
 is_admin = st.session_state.nivel_ativo == "ADMIN"
 
+# --- INICIALIZAÇÃO DE TAGS ---
+if "dados_tags" not in st.session_state:
+    st.session_state.dados_tags = carregar_tags()
+
 # --- BLOCO DE FUNÇÕES MOTOR (OBRIGATÓRIO) ---
 def transformar_curso(chave):
     entrada = st.session_state[chave].strip()
@@ -171,6 +186,9 @@ if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
 if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
 if "df_final_processado" not in st.session_state: st.session_state.df_final_processado = None
+# --- INICIALIZAÇÃO DE TAGS (COLOQUE ISSO ANTES DAS ABAS) ---
+if "dados_tags" not in st.session_state:
+    st.session_state.dados_tags = carregar_tags()
 
 # --- FUNÇÕES ---
 def safe_read():
