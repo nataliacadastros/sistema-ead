@@ -38,7 +38,7 @@ if "logado" not in st.session_state:
     st.session_state.usuario_ativo = None
     st.session_state.nivel_ativo = None
 
-# --- CSS HUD NEON COMPLETO ---
+# --- CSS HUD NEON ---
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e1e; color: #e0e0e0; }
@@ -54,20 +54,24 @@ st.markdown("""
     
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; display: flex; align-items: center; justify-content: flex-end; }
     
-    /* --- REGRA INDISPENSÁVEL DO CADASTRO (MAIÚSCULO) --- */
+    /* --- REGRA PARA OS CAMPOS DAS ABAS (MANTÉM MAIÚSCULO NO CADASTRO) --- */
+    .stTabs div[data-testid="stTextInput"] input { 
+        text-transform: uppercase !important; 
+    }
+
+    /* --- REGRA GERAL DE ESTILO (SEM FORÇAR MAIÚSCULO NO LOGIN) --- */
     div[data-testid="stTextInput"] input { 
         background-color: white !important; 
         color: black !important; 
-        text-transform: uppercase !important; 
         font-size: 12px !important; 
         height: 18px !important; 
         border-radius: 5px !important; 
     }
     
-    /* --- EXCEÇÃO EXCLUSIVA PARA A TELA DE LOGIN --- */
-    /* Remove o maiúsculo forçado apenas quando o input está dentro da login-box */
-    .login-box div[data-testid="stTextInput"] input {
-        text-transform: none !important;
+    .login-box { 
+        background: rgba(18, 22, 41, 0.9); padding: 40px; border-radius: 15px; 
+        border: 2px solid #1f295a; box-shadow: 0 0 30px rgba(0, 242, 255, 0.1);
+        margin-top: 100px; text-align: center;
     }
 
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
@@ -94,16 +98,10 @@ st.markdown("""
     header {visibility: hidden;} footer {visibility: hidden;}
     .logo-container { position: relative; top: -10px; left: 0px; margin-bottom: 10px; }
     .stat-label { font-size: 12px; font-weight: bold; margin-bottom: 4px; display: block; }
-
-    .login-box { 
-        background: rgba(18, 22, 41, 0.9); padding: 40px; border-radius: 15px; 
-        border: 2px solid #1f295a; box-shadow: 0 0 30px rgba(0, 242, 255, 0.1);
-        margin-top: 100px; text-align: center;
-    }
     </style>
     """, unsafe_allow_html=True)
 
-# --- LÓGICA DE TELA DE LOGIN ---
+# --- TELA DE LOGIN ---
 if not st.session_state.logado:
     _, centro_login, _ = st.columns([1, 1.2, 1])
     with centro_login:
@@ -112,14 +110,13 @@ if not st.session_state.logado:
             st.image(caminho_logo, width=180)
         st.markdown("<h2 style='color: #00f2ff; margin-bottom:30px;'>ACESSO RESTRITO</h2>", unsafe_allow_html=True)
         
-        # Agora permite digitar minúsculas visualmente aqui
-        user_in = st.text_input("USUÁRIO", key="login_u").strip()
-        pass_in = st.text_input("SENHA", type="password", key="login_p").strip()
+        user_in = st.text_input("USUÁRIO", key="login_user_field").strip()
+        pass_in = st.text_input("SENHA", type="password", key="login_pass_field").strip()
         
         if st.button("ENTRAR NO SISTEMA", use_container_width=True):
             df_users = carregar_usuarios()
             if not df_users.empty:
-                # Compara ignorando maiúsculas/minúsculas para evitar erro de digitação
+                # Compara ignorando espaços e forçando tudo para maiúsculo apenas na verificação interna
                 valido = df_users[
                     (df_users['usuario'].astype(str).str.strip().str.upper() == user_in.upper()) & 
                     (df_users['senha'].astype(str).str.strip() == pass_in)
@@ -136,8 +133,7 @@ if not st.session_state.logado:
         st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
-# --- ABAIXO TODO O RESTO DO SEU CÓDIGO ORIGINAL ---
-# (Cadastro, Gerenciamento, Relatórios e Usuários)
+# --- ABAIXO TODO O RESTO DO SEU CÓDIGO ORIGINAL (MANTIDO) ---
 
 ARQUIVO_TAGS = "tags_salvas.json"
 ARQUIVO_CIDADES = "cidades.xlsx"
@@ -349,7 +345,7 @@ if is_admin:
 if is_admin:
     with tab_users:
         st.markdown("### 👥 GESTÃO DE ACESSOS")
-        with st.form("form_users_final", clear_on_submit=True):
+        with st.form("form_users_final_fix", clear_on_submit=True):
             nu_user = st.text_input("Novo Usuário (Login)").strip()
             nu_pass = st.text_input("Senha").strip()
             nu_nivel = st.selectbox("Nível", ["ADMIN", "CONSULTA"])
