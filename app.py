@@ -11,6 +11,8 @@ import gspread
 from google.oauth2.service_account import Credentials
 from openpyxl import Workbook, load_workbook
 from io import BytesIO
+
+# --- CONEXÃO INICIAL ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def carregar_usuarios():
@@ -20,11 +22,11 @@ def carregar_usuarios():
     except:
         return pd.DataFrame(columns=["usuario", "senha", "nivel"])
 
+# --- ESTADOS DE SESSÃO ---
 if "logado" not in st.session_state:
     st.session_state.logado = False
     st.session_state.usuario_ativo = None
     st.session_state.nivel_ativo = None
-
 
 # --- DEFINIÇÃO DO CAMINHO DA LOGO ---
 diretorio_atual = os.path.dirname(os.path.abspath(__file__))
@@ -37,37 +39,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
     page_icon=caminho_logo if os.path.exists(caminho_logo) else None
 )
-
-# --- ARQUIVOS E PERSISTÊNCIA ---
-ARQUIVO_TAGS = "tags_salvas.json"
-ARQUIVO_CIDADES = "cidades.xlsx"
-
-def carregar_tags():
-    padrao = {"tags": {}, "last_selection": {}}
-    if os.path.exists(ARQUIVO_TAGS):
-        try:
-            with open(ARQUIVO_TAGS, "r", encoding="utf-8") as f:
-                conteudo = json.load(f)
-                if isinstance(conteudo, dict) and "tags" in conteudo:
-                    return conteudo
-                elif isinstance(conteudo, dict):
-                    return {"tags": conteudo, "last_selection": {}}
-        except: 
-            return padrao
-    return padrao
-
-def salvar_tags(dados):
-    with open(ARQUIVO_TAGS, "w", encoding="utf-8") as f:
-        json.dump(dados, f, ensure_ascii=False, indent=2)
-
-if "dados_tags" not in st.session_state:
-    st.session_state.dados_tags = carregar_tags()
-
-DIC_CURSOS = {
-    "00": "COLÉGIO COMBO", "1": "PREPARATÓRIO JOVEM BANCÁRIO", "2": "10 CURSOS PROFISSIONALIZANTES",
-    "3": "PREPARATÓRIO AGRO", "4": "INGLÊS", "5": "JOVEM NO DIREITO", "6": "PRÉ MILITAR",
-    "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"
-}
 
 # --- CSS HUD NEON COMPLETO ---
 st.markdown("""
@@ -84,8 +55,22 @@ st.markdown("""
     .main .block-container { padding-top: 40px !important; max-width: 100% !important; margin: 0 auto !important; }
     
     label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; display: flex; align-items: center; justify-content: flex-end; }
-    div[data-testid="stTextInput"] { width: 100% !important; }
-    .stTextInput input { background-color: white !important; color: black !important; text-transform: uppercase !important; font-size: 12px !important; height: 18px !important; border-radius: 5px !important; }
+    
+    /* CADASTRO EM MAIÚSCULO */
+    .stTabs div[data-testid="stTextInput"] input { text-transform: uppercase !important; }
+    
+    /* LOGIN EM MINÚSCULO E ESTILO */
+    .login-box div[data-testid="stTextInput"] input { text-transform: none !important; background-color: white !important; color: black !important; }
+    
+    .login-box { 
+        background: rgba(18, 22, 41, 0.9); padding: 40px; border-radius: 15px; 
+        border: 2px solid #1f295a; box-shadow: 0 0 30px rgba(0, 242, 255, 0.1);
+        margin-top: 100px; text-align: center;
+    }
+    
+    .login-box button { background-color: #bc13fe !important; color: white !important; font-weight: bold !important; }
+
+    .stTextInput input { background-color: white !important; color: black !important; font-size: 12px !important; height: 18px !important; border-radius: 5px !important; }
     .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
 
     .custom-table-wrapper { width: 100%; max-height: 600px; overflow: auto; background-color: #121629; border: 2px solid #1f295a; border-radius: 10px; margin-top: 15px; }
@@ -108,17 +93,12 @@ st.markdown("""
     div.stButton > button:hover { background-color: #00d4df !important; box-shadow: 0 0 15px rgba(0, 242, 255, 0.6) !important; color: #000000 !important; }
 
     header {visibility: hidden;} footer {visibility: hidden;}
-    
-    .logo-container {
-        position: relative;
-        top: -10px;
-        left: 0px;
-        margin-bottom: 10px;
-    }
-
+    .logo-container { position: relative; top: -10px; left: 0px; margin-bottom: 10px; }
     .stat-label { font-size: 12px; font-weight: bold; margin-bottom: 4px; display: block; }
     </style>
     """, unsafe_allow_html=True)
+
+# --- TELA DE LOGIN ---
 if not st.session_state.logado:
     _, centro_login, _ = st.columns([1, 1.2, 1])
     with centro_login:
@@ -132,7 +112,6 @@ if not st.session_state.logado:
         
         if st.button("ENTRAR NO SISTEMA", use_container_width=True):
             df_u = carregar_usuarios()
-            # Limpa espaços e converte para comparar corretamente
             def limpar(v): return str(v).strip().upper().replace('.0', '')
             
             valido = df_u[(df_u['usuario'].apply(limpar) == user_in.upper()) & 
@@ -146,8 +125,9 @@ if not st.session_state.logado:
             else:
                 st.error("Usuário ou senha incorretos.")
         st.markdown('</div>', unsafe_allow_html=True)
-    st.stop() # Bloqueia o carregamento do resto do código
+    st.stop()
 
+# --- DAQUI PARA BAIXO O SISTEMA CARREGA PÓS-LOGIN ---
 
 # --- LOGO NO CANTO ESQUERDO ---
 if os.path.exists(caminho_logo):
@@ -155,9 +135,7 @@ if os.path.exists(caminho_logo):
     st.image(caminho_logo, width=90)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- CONEXÃO REFORÇADA ---
-conn = st.connection("gsheets", type=GSheetsConnection)
-
+# --- FUNÇÕES DE DADOS E AUXILIARES ---
 def safe_read():
     try:
         return conn.read(ttl="10s").dropna(how='all')
@@ -165,36 +143,31 @@ def safe_read():
         st.error(f"Erro de conexão: {e}")
         return pd.DataFrame()
 
-# --- ESTADOS DE SESSÃO ---
+# Estados e funções (mesmos do seu código original)
 if "lista_previa" not in st.session_state: st.session_state.lista_previa = []
 if "reset_aluno" not in st.session_state: st.session_state.reset_aluno = 0
 if "reset_geral" not in st.session_state: st.session_state.reset_geral = 0
 if "df_final_processado" not in st.session_state: st.session_state.df_final_processado = None
 if "df_auto_ready" not in st.session_state: st.session_state.df_auto_ready = None
 
-# --- FUNÇÕES AUXILIARES ---
-def reset_campos_subir():
-    for c in ["in_user", "in_nome", "in_cell", "in_doc", "in_city", "in_cour", "in_pay", "in_sell", "in_date"]:
-        if c in st.session_state: st.session_state[c] = ""
-    st.session_state.df_final_processado = None
-    st.session_state.df_auto_ready = None
-
-def extrair_valor_recebido(texto):
-    if not texto: return 0.0
-    match = re.search(r'PAG[OA]S?\s*(?:R\$)?\s*([\d\.,]+)', str(texto).upper())
-    if match:
+def carregar_tags():
+    padrao = {"tags": {}, "last_selection": {}}
+    if os.path.exists("tags_salvas.json"):
         try:
-            return float(match.group(1).replace('.', '').replace(',', '.'))
-        except:
-            return 0.0
-    return 0.0
+            with open("tags_salvas.json", "r", encoding="utf-8") as f:
+                return json.load(f)
+        except: return padrao
+    return padrao
 
-def extrair_valor_geral(texto):
-    if not texto: return 0.0
-    try:
-        v = re.findall(r'\d+(?:\.\d+)?(?:,\d+)?', str(texto).replace('.', '').replace(',', '.'))
-        return float(v[0]) if v else 0.0
-    except: return 0.0
+def salvar_tags(dados):
+    with open("tags_salvas.json", "w", encoding="utf-8") as f:
+        json.dump(dados, f, ensure_ascii=False, indent=2)
+
+if "dados_tags" not in st.session_state:
+    st.session_state.dados_tags = carregar_tags()
+
+# --- DICIONÁRIOS E AUXILIARES ---
+DIC_CURSOS = {"00": "COLÉGIO COMBO", "1": "PREPARATÓRIO JOVEM BANCÁRIO", "2": "10 CURSOS PROFISSIONALIZANTES", "3": "PREPARATÓRIO AGRO", "4": "INGLÊS", "5": "JOVEM NO DIREITO", "6": "PRÉ MILITAR", "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"}
 
 def transformar_curso(chave):
     entrada = st.session_state[chave].strip()
@@ -209,8 +182,14 @@ def transformar_curso(chave):
 
 def formatar_cpf(chave):
     valor = re.sub(r'\D', '', st.session_state[chave])
-    if len(valor) == 11:
-        st.session_state[chave] = f"{valor[:3]}.{valor[3:6]}.{valor[6:9]}-{valor[9:]}"
+    if len(valor) == 11: st.session_state[chave] = f"{valor[:3]}.{valor[3:6]}.{valor[6:9]}-{valor[9:]}"
+
+def extrair_valor_geral(texto):
+    if not texto: return 0.0
+    try:
+        v = re.findall(r'\d+(?:\.\d+)?(?:,\d+)?', str(texto).replace('.', '').replace(',', '.'))
+        return float(v[0]) if v else 0.0
+    except: return 0.0
 
 def atualizar_pagamento():
     suffix = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"
@@ -221,8 +200,22 @@ def atualizar_pagamento():
     if st.session_state.get(f"chk_3_{suffix}"): novo += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
     st.session_state[f"f_pagto_{suffix}"] = novo.upper()
 
-# --- NAVEGAÇÃO ---
-tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"])
+def reset_campos_subir():
+    for c in ["in_user", "in_nome", "in_cell", "in_doc", "in_city", "in_cour", "in_pay", "in_sell", "in_date"]:
+        if c in st.session_state: st.session_state[c] = ""
+    st.session_state.df_final_processado = None
+    st.session_state.df_auto_ready = None
+
+# --- NAVEGAÇÃO DINÂMICA ---
+is_admin = st.session_state.nivel_ativo == "ADMIN"
+lista_abas = ["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"]
+if is_admin: lista_abas.append("👥 USUÁRIOS")
+
+abas = st.tabs(lista_abas)
+tab_cad = abas[0]; tab_ger = abas[1]; tab_rel = abas[2]; tab_subir = abas[3]
+if is_admin: tab_users = abas[4]
+
+# --- CONTEÚDO DAS ABAS (SEU CÓDIGO ORIGINAL) ---
 
 # --- ABA 1: CADASTRO ---
 with tab_cad:
@@ -569,29 +562,3 @@ with tab_subir:
             output = BytesIO(); wb = Workbook(); ws = wb.active; ws.append(list(st.session_state.df_final_processado.columns))
             for r in st.session_state.df_final_processado.values.tolist(): ws.append([str(val) for val in r])
             wb.save(output); st.download_button("📥 BAIXAR EXCEL FINAL", output.getvalue(), f"ead_{date.today()}.xlsx", on_click=reset_campos_subir, use_container_width=True)
-
-# NOVA ABA PARA ADMIN CRIAR USUÁRIOS
-if is_admin:
-    with tab_users:
-        st.markdown("### 👥 GESTÃO DE ACESSOS")
-        with st.form("novo_user", clear_on_submit=True):
-            nu_user = st.text_input("Novo Usuário").strip()
-            nu_pass = st.text_input("Senha").strip()
-            nu_nivel = st.selectbox("Nível", ["ADMIN", "CONSULTA"])
-            if st.form_submit_button("CADASTRAR"):
-                if nu_user and nu_pass:
-                    creds = st.secrets["connections"]["gsheets"]
-                    client = gspread.authorize(Credentials.from_service_account_info(creds))
-                    ws = client.open_by_url(creds["spreadsheet"]).worksheet("usuários")
-                    ws.append_row([nu_user, nu_pass, nu_nivel])
-                    st.success(f"Usuário {nu_user} criado!")
-                    st.cache_data.clear()
-        st.write("---")
-        st.dataframe(carregar_usuarios(), use_container_width=True, hide_index=True)
-
-# BOTÃO DE LOGOUT NA SIDEBAR
-with st.sidebar:
-    st.write(f"Logado como: **{st.session_state.usuario_ativo}**")
-    if st.button("SAIR"):
-        st.session_state.logado = False
-        st.rerun()
