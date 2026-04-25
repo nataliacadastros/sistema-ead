@@ -155,6 +155,13 @@ lista_abas = ["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "�
 if is_admin: lista_abas.append("👥 USUÁRIOS")
 abas = st.tabs(lista_abas)
 
+tab_cad = abas[0]
+tab_ger = abas[1]
+tab_rel = abas[2]
+tab_subir = abas[3]
+if is_admin:
+    tab_users = abas[4]
+
 # --- ABA 1: CADASTRO ---
 with tab_cad:
     _, centro, _ = st.columns([0.2, 5.6, 0.2])
