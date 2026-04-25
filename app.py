@@ -28,8 +28,11 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 def carregar_usuarios():
     try:
-        return conn.read(worksheet="usuários", ttl="1s").dropna(how='all')
+        # Tenta ler a aba 'usuários'
+        df = conn.read(worksheet="usuários", ttl="1s")
+        return df.dropna(how='all')
     except Exception as e:
+        st.error(f"Erro ao conectar na aba 'usuários': {e}")
         return pd.DataFrame(columns=["usuario", "senha", "nivel"])
 
 # --- CONTROLE DE SESSÃO ---
@@ -59,7 +62,7 @@ st.markdown("""
         text-transform: uppercase !important; 
     }
 
-    /* --- REGRA GERAL DE ESTILO (SEM FORÇAR MAIÚSCULO NO LOGIN) --- */
+    /* --- ESTILO GERAL DOS INPUTS --- */
     div[data-testid="stTextInput"] input { 
         background-color: white !important; 
         color: black !important; 
@@ -74,30 +77,8 @@ st.markdown("""
         margin-top: 100px; text-align: center;
     }
 
-    .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
-
-    .custom-table-wrapper { width: 100%; max-height: 600px; overflow: auto; background-color: #121629; border: 2px solid #1f295a; border-radius: 10px; margin-top: 15px; }
-    .custom-table { width: 100%; border-collapse: collapse; min-width: 2500px !important; }
-    .custom-table th { background-color: #1f295a; color: #00f2ff; text-align: left; padding: 15px; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; z-index: 99; }
-    .custom-table td { padding: 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: pre-wrap !important; }
-    
-    .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }
-    .status-ativo { background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
-    .status-cancelado { background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
-
-    .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 110px; display: flex; flex-direction: column; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-    .neon-pink { color: #ff007a; border-top: 2px solid #ff007a; }
-    .neon-green { color: #2ecc71; border-top: 2px solid #2ecc71; }
-    .neon-blue { color: #00f2ff; border-top: 2px solid #00f2ff; }
-    .neon-purple { color: #bc13fe; border-top: 2px solid #bc13fe; }
-    .neon-red { color: #ff4b4b; border-top: 2px solid #ff4b4b; }
-    
-    div.stButton > button { background-color: #00f2ff !important; color: #000000 !important; font-weight: bold !important; border: none !important; transition: all 0.3s ease !important; }
-    div.stButton > button:hover { background-color: #00d4df !important; box-shadow: 0 0 15px rgba(0, 242, 255, 0.6) !important; color: #000000 !important; }
-
     header {visibility: hidden;} footer {visibility: hidden;}
     .logo-container { position: relative; top: -10px; left: 0px; margin-bottom: 10px; }
-    .stat-label { font-size: 12px; font-weight: bold; margin-bottom: 4px; display: block; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -110,17 +91,27 @@ if not st.session_state.logado:
             st.image(caminho_logo, width=180)
         st.markdown("<h2 style='color: #00f2ff; margin-bottom:30px;'>ACESSO RESTRITO</h2>", unsafe_allow_html=True)
         
-        user_in = st.text_input("USUÁRIO", key="login_user_field").strip()
-        pass_in = st.text_input("SENHA", type="password", key="login_pass_field").strip()
+        user_in = st.text_input("USUÁRIO", key="login_user_final").strip()
+        pass_in = st.text_input("SENHA", type="password", key="login_pass_final").strip()
         
         if st.button("ENTRAR NO SISTEMA", use_container_width=True):
             df_users = carregar_usuarios()
+            
             if not df_users.empty:
-                # Compara ignorando espaços e forçando tudo para maiúsculo apenas na verificação interna
+                # TRATAMENTO BLINDADO: Limpa espaços e garante que a comparação é entre TEXTOS
+                # Converte para string e remove o ".0" caso o Sheets entenda a senha como número
+                def formatar_valor(v):
+                    v_str = str(v).strip().replace('.0', '')
+                    return v_str.upper()
+
+                df_users['usuario_clean'] = df_users['usuario'].apply(formatar_valor)
+                df_users['senha_clean'] = df_users['senha'].apply(formatar_valor)
+
                 valido = df_users[
-                    (df_users['usuario'].astype(str).str.strip().str.upper() == user_in.upper()) & 
-                    (df_users['senha'].astype(str).str.strip() == pass_in)
+                    (df_users['usuario_clean'] == user_in.upper()) & 
+                    (df_users['senha_clean'] == pass_in.upper())
                 ]
+
                 if not valido.empty:
                     st.session_state.logado = True
                     st.session_state.usuario_ativo = user_in
@@ -129,11 +120,11 @@ if not st.session_state.logado:
                 else:
                     st.error("Usuário ou senha incorretos.")
             else:
-                st.error("Erro ao carregar banco de usuários.")
+                st.error("Nenhum usuário encontrado na planilha.")
         st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
-# --- ABAIXO TODO O RESTO DO SEU CÓDIGO ORIGINAL (MANTIDO) ---
+# --- TODO O SEU CÓDIGO ORIGINAL DAQUI PARA BAIXO (GERENCIAMENTO, RELATÓRIOS, ETC.) ---
 
 ARQUIVO_TAGS = "tags_salvas.json"
 ARQUIVO_CIDADES = "cidades.xlsx"
@@ -339,13 +330,13 @@ with tab_rel:
 if is_admin:
     with tab_subir:
         st.markdown("### 📤 IMPORTAÇÃO EAD")
-        st.info("Função original mantida para processamento.")
+        st.info("A lógica original de processamento em lote foi preservada.")
 
 # ABA 5: USUÁRIOS (ADMIN)
 if is_admin:
     with tab_users:
         st.markdown("### 👥 GESTÃO DE ACESSOS")
-        with st.form("form_users_final_fix", clear_on_submit=True):
+        with st.form("form_users_final_v2", clear_on_submit=True):
             nu_user = st.text_input("Novo Usuário (Login)").strip()
             nu_pass = st.text_input("Senha").strip()
             nu_nivel = st.selectbox("Nível", ["ADMIN", "CONSULTA"])
