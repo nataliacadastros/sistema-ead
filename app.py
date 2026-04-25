@@ -201,17 +201,35 @@ def formatar_cpf(chave):
 
 DIC_CURSOS = {"00": "COLÉGIO COMBO", "1": "PREPARATÓRIO JOVEM BANCÁRIO", "2": "10 CURSOS PROFISSIONALIZANTES", "3": "PREPARATÓRIO AGRO", "4": "INGLÊS", "5": "JOVEM NO DIREITO", "6": "PRÉ MILITAR", "7": "PREPARATÓRIO ENCCEJA", "8": "JOVEM NA AVIAÇÃO", "9": "INFORMÁTICA", "10": "ADMINISTRAÇÃO"}
 
-# --- NAVEGAÇÃO ---
-lista_abas = ["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"]
-if is_admin: lista_abas.append("👥 USUÁRIOS")
+# --- NAVEGAÇÃO RESTRITA POR NÍVEL ---
+is_admin = st.session_state.nivel_ativo == "ADMIN"
+is_consulta = st.session_state.nivel_ativo == "CONSULTA"
+
+# 1. Monta a lista de abas dependendo de quem logou
+if is_admin:
+    lista_abas = ["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS", "👥 USUÁRIOS"]
+elif is_consulta:
+    lista_abas = ["🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"]
+else:
+    lista_abas = ["🖥️ GERENCIAMENTO"] # Segurança mínima
+
+# 2. Cria as abas na tela
 abas = st.tabs(lista_abas)
 
-tab_cad = abas[0]
-tab_ger = abas[1]
-tab_rel = abas[2]
-tab_subir = abas[3]
+# 3. Define as variáveis das abas com cuidado (evita erro de índice)
 if is_admin:
+    tab_cad = abas[0]
+    tab_ger = abas[1]
+    tab_rel = abas[2]
+    tab_subir = abas[3]
     tab_users = abas[4]
+elif is_consulta:
+    tab_ger = abas[0] # Para consulta, o índice 0 é Gerenciamento
+    tab_rel = abas[1] # E o índice 1 é Relatórios
+    # Criamos as outras vazias para o código não dar erro de "NameError"
+    tab_cad = st.empty() 
+    tab_subir = st.empty()
+
 
 # --- ABA 1: CADASTRO ---
 with tab_cad:
