@@ -127,6 +127,39 @@ if not st.session_state.logado:
 # --- VARIÁVEL ADMIN (Criada agora para não dar erro) ---
 is_admin = st.session_state.nivel_ativo == "ADMIN"
 
+# --- BLOCO DE FUNÇÕES MOTOR (OBRIGATÓRIO) ---
+def transformar_curso(chave):
+    entrada = st.session_state[chave].strip()
+    if not entrada: return
+    match = re.search(r'(\d+)$', entrada)
+    if match:
+        codigo = match.group(1); nome = DIC_CURSOS.get(codigo)
+        if nome:
+            base = entrada[:match.start()].strip().rstrip('+').strip()
+            st.session_state[chave] = (f"{base} + {nome}" if base and nome.upper() not in base.upper() else (base if base else nome)).upper()
+    else: st.session_state[chave] = entrada.upper()
+
+def extrair_valor_geral(texto):
+    if not texto: return 0.0
+    try:
+        v = re.findall(r'\d+(?:\.\d+)?(?:,\d+)?', str(texto).replace('.', '').replace(',', '.'))
+        return float(v[0]) if v else 0.0
+    except: return 0.0
+
+def atualizar_pagamento():
+    suffix = f"a_{st.session_state.reset_aluno}_{st.session_state.reset_geral}"
+    base = st.session_state.get(f"f_pagto_{suffix}", "").split('|')[0].strip()
+    novo = base
+    if st.session_state.get(f"chk_1_{suffix}"): novo += " | Após pagamento link cartão, avisar Natália para liberação In-glês"
+    if st.session_state.get(f"chk_2_{suffix}"): novo += " | Caso pague via link cartão, avisar Natália para liberação curso bônus a escolha"
+    if st.session_state.get(f"chk_3_{suffix}"): novo += " | AGUARDANDO CONFIRMAÇÃO DA MATRÍCULA"
+    st.session_state[f"f_pagto_{suffix}"] = novo.upper()
+
+def reset_campos_subir():
+    for c in ["in_user", "in_nome", "in_cell", "in_doc", "in_city", "in_cour", "in_pay", "in_sell", "in_date"]:
+        if c in st.session_state: st.session_state[c] = ""
+    st.session_state.df_final_processado = None
+
 # --- SISTEMA PÓS-LOGIN ---
 if os.path.exists(caminho_logo):
     st.markdown('<div class="logo-container">', unsafe_allow_html=True)
