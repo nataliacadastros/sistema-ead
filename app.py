@@ -156,7 +156,7 @@ def salvar_tags(dados):
     except Exception as e:
         st.error(f"Erro ao salvar tags: {e}")
 
-# 2. Depois de definidas, aí sim inicializamos o estado da sessão
+# Só agora você inicializa
 if "dados_tags" not in st.session_state:
     st.session_state.dados_tags = carregar_tags()
 
@@ -663,25 +663,28 @@ if tab_subir:
                 except: c_map = {}
                 
                 processed = []
-                for item in raw_list:
+for item in raw_list:
                     c_orig = str(item['Cour']).upper()
                     p_orig = str(item['Pay']).upper()
- # 1. Encontrar a posição de cada curso dentro da string original
-posicoes_tags = []
-for curso_nome, tag_valor in selected_tags.items():
-    if tag_valor: # Só processa se houver uma tag definida
-        pos = c_orig.find(curso_nome)
-        if pos != -1:
-            posicoes_tags.append((pos, tag_valor))
 
-# 2. Ordenar as tags pela posição que o curso aparece no texto original
-posicoes_tags.sort() # Ordena pelo primeiro item da tupla (a posição)
+                    # --- INÍCIO DA NOVA LÓGICA DE TAGS ---
+                    posicoes_tags = []
+                    for curso_nome, tag_valor in selected_tags.items():
+                        if tag_valor: 
+                            # Procura a posição do curso no texto digitado
+                            pos = c_orig.find(curso_nome.upper())
+                            if pos != -1:
+                                posicoes_tags.append((pos, tag_valor))
 
-# 3. Extrair apenas as tags já ordenadas e juntar com ponto
-tags_f = [t[1] for t in posicoes_tags]
-c_final = ".".join(tags_f).upper() if tags_f else c_orig
+                    # Ordena pela posição (quem aparece primeiro no texto)
+                    posicoes_tags.sort() 
 
-                    
+                    # Junta com ponto
+                    tags_f = [t[1] for t in posicoes_tags]
+                    c_final = ".".join(tags_f).upper() if tags_f else c_orig
+                    # --- FIM DA LÓGICA DE TAGS ---
+
+                    # Continue com o restante do seu código original bem alinhado:
                     p_final = "PENDENTE"
                     has_bol = "BOLETO" in p_orig
                     has_car = "CARTÃO" in p_orig or "LINK" in p_orig
