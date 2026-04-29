@@ -360,31 +360,21 @@ if tab_cad:
         col_p1, col_p2 = st.columns([3, 1])
         id_pesquisa = col_p1.text_input("Digite o ID do Aluno para editar:", key="id_pesq").strip()
         
-        if col_p2.button("🔍 PESQUISAR"):
+if col_p2.button("🔍 PESQUISAR"):
             if id_pesquisa:
                 try:
                     # 1. Tenta buscar no SUPABASE primeiro (Rápido)
-                    # Use "ID" ou "username" dependendo de como você nomeou no Supabase
                     res = supabase.table("alunos").select("*").eq("ID", id_pesquisa).execute()
                     
                     if res.data:
                         st.session_state.dados_aluno = res.data[0]
-                        st.success("Encontrado no Banco de Dados (Supabase)!")
+                        st.success("Encontrado no Banco de Dados!")
                     else:
-                        # 2. Se não achar, busca na PLANILHA (Segurança)
-                        st.info("Buscando na planilha...")
-                        response = supabase.table("alunos").select("*").execute()
-            df_banco = pd.DataFrame(response.data)
-                        resultado = df_banco[df_banco['ID'].astype(str) == id_pesquisa]
-                        if not resultado.empty:
-                            st.session_state.dados_aluno = resultado.iloc[0].to_dict()
-                            st.info("Encontrado na Planilha.")
-                        else:
-                            st.error("Aluno não encontrado.")
+                        st.error("Aluno não encontrado no banco de dados.")
                 except Exception as e:
-                    st.error(f"Erro na conexão: {e}")
+                    st.error(f"Erro na conexão com o banco: {e}")
             else:
-                st.warning("Digite um ID.")
+                st.warning("Digite um ID para pesquisar.")
 
 
 # --- ABA 3: RELATÓRIOS ---
