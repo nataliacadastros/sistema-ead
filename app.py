@@ -614,16 +614,14 @@ if tab_subir:
                     c_new, _ = st.columns([0.4, 0.6])
                     new_tag = c_new.text_input("", placeholder="Nova...", key=f"new_{i}", label_visibility="collapsed").upper()
                     if new_tag and new_tag not in tags_lista:
-                        if "tags" not in st.session_state.dados_tags: st.session_state.dados_tags["tags"] = {}
                         if curso not in st.session_state.dados_tags["tags"]: st.session_state.dados_tags["tags"][curso] = []
                         st.session_state.dados_tags["tags"][curso].append(new_tag)
                         st.session_state.dados_tags["last_selection"][curso] = new_tag
                         salvar_tags(st.session_state.dados_tags)
                         st.rerun()
-                    final_tag = (new_tag if new_tag else cur_tag).upper()
-                    selected_tags[curso] = final_tag
+                    selected_tags[curso] = (new_tag if new_tag else cur_tag).upper()
 
- if st.button("🚀 PROCESSAR DADOS", use_container_width=True):
+        if st.button("🚀 PROCESSAR DADOS", use_container_width=True):
             raw_list = []
             if modo == "MANUAL":
                 l_ids = u_user.strip().split('\n')
@@ -640,15 +638,9 @@ if tab_subir:
                     for i in range(min_len):
                         try:
                             raw_list.append({
-                                "User": l_ids[i], 
-                                "Nome": l_nomes[i] if i < len(l_nomes) else "", 
-                                "Pay": l_pays[i] if i < len(l_pays) else "", 
-                                "Cour": l_cours[i] if i < len(l_cours) else "", 
-                                "Cell": l_cells[i] if i < len(l_cells) else "", 
-                                "Doc": l_docs[i] if i < len(l_docs) else "", 
-                                "City": l_citys[i] if i < len(l_citys) else "", 
-                                "Sell": l_sells[i] if i < len(l_sells) else "", 
-                                "Date": l_dates[i] if i < len(l_dates) else ""
+                                "User": l_ids[i], "Nome": l_nomes[i], "Pay": l_pays[i], 
+                                "Cour": l_cours[i], "Cell": l_cells[i], "Doc": l_docs[i], 
+                                "City": l_citys[i], "Sell": l_sells[i], "Date": l_dates[i]
                             })
                         except: continue
             elif "df_auto_ready" in st.session_state and st.session_state.df_auto_ready is not None:
@@ -669,12 +661,12 @@ if tab_subir:
 
                     posicoes_tags = []
                     for curso_nome, tag_valor in selected_tags.items():
-                        if tag_valor: 
+                        if tag_valor:
                             pos = c_orig.find(curso_nome.upper())
                             if pos != -1:
                                 posicoes_tags.append((pos, tag_valor))
 
-                    posicoes_tags.sort() 
+                    posicoes_tags.sort()
                     tags_f = [t[1] for t in posicoes_tags]
                     c_final = ".".join(tags_f).upper() if tags_f else c_orig
 
@@ -688,25 +680,15 @@ if tab_subir:
                     ouro_val = "1" if "10 CURSOS PROFISSIONALIZANTES" in obs_final else "0"
                     
                     processed.append({
-                        "username": item['User'], 
-                        "email2": f"{item['User']}@profissionalizaead.com.br", 
+                        "username": item['User'], "email2": f"{item['User']}@profissionalizaead.com.br", 
                         "name": str(item['Nome']).split(" ")[0].upper(), 
                         "lastname": " ".join(str(item['Nome']).split(" ")[1:]).upper(), 
-                        "cellphone2": str(item['Cell']), 
-                        "document": item['Doc'], 
+                        "cellphone2": str(item['Cell']), "document": item['Doc'], 
                         "city2": c_map.get(str(item['City']).upper(), item['City']), 
-                        "courses": c_final, 
-                        "payment": p_final, 
-                        "observation": obs_final, 
-                        "ouro": ouro_val, 
-                        "password": "futuro", 
-                        "role": "1", 
-                        "secretary": "MGA", 
-                        "seller": item['Sell'], 
-                        "contract_date": item['Date'], 
-                        "active": "1"
+                        "courses": c_final, "payment": p_final, "observation": obs_final, 
+                        "ouro": ouro_val, "password": "futuro", "role": "1", 
+                        "secretary": "MGA", "seller": item['Sell'], "contract_date": item['Date'], "active": "1"
                     })
-
                 st.session_state.df_final_processado = pd.DataFrame(processed)
 
         if st.session_state.df_final_processado is not None:
