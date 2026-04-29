@@ -361,23 +361,29 @@ if tab_rel:
                 
                 total_final = v_taxa + v_cartao + v_entrada
 
-                # --- DASHBOARD (CARDS) ---
+# --- DASHBOARD (CARDS) ---
                 c1, c2, c3, c4, c5, c6 = st.columns(6)
-                with c1: st.markdown(f'<div class="card-hud neon-pink"><span class="stat-label">MATRÍCULAS</span><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
-                with c2: st.markdown(f'<div class="card-hud neon-green"><span class="stat-label">ATIVOS</span><h2>{len(df_f[df_f["STATUS"].str.upper()=="ATIVO"])}</h2></div>', unsafe_allow_html=True)
-                with c3: st.markdown(f'<div class="card-hud neon-red"><span class="stat-label">CANCELADOS</span><h2>{len(df_f[df_f["STATUS"].str.upper()=="CANCELADO"])}</h2></div>', unsafe_allow_html=True)
-                with c4: st.markdown(f'<div class="card-hud neon-blue"><span class="stat-label">TOTAL RECEBIDO</span><h2 style="font-size:22px">R${total_final:,.2f}</h2></div>', unsafe_allow_html=True)
                 
-               with c5:
-                # 1. Aplicamos a extração e convertemos IMEDIATAMENTE para número (float)
-                # errors='coerce' transforma o que der errado em "nada" (NaN), e .fillna(0) troca o "nada" por zero.
-                  df_f['v_tic'] = pd.to_numeric(df_f['Pagamento'].apply(extrair_valor_geral), errors='coerce').fillna(0.0)
-    
-                 # 2. Agora o cálculo da média (.mean()) vai funcionar porque os dados são numéricos
-                 tm_b = df_f[df_f['Pagamento'].str.contains('BOLETO', na=False, case=False)]['v_tic'].mean() or 0.0
-                 tm_c = df_f[df_f['Pagamento'].str.contains('CARTÃO|LINK', na=False, case=False)]['v_tic'].mean() or 0.0
-    
-                 st.markdown(f'<div class="card-hud neon-purple"><span class="stat-label">TICKET MÉDIO</span><div style="font-size:18px; font-weight:bold; color:#e0e0e0;">BOL: R${tm_b:.0f}<br>CAR: R${tm_c:.0f}</div></div>', unsafe_allow_html=True)
+                with c1: 
+                    st.markdown(f'<div class="card-hud neon-pink"><span class="stat-label">MATRÍCULAS</span><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
+                
+                with c2: 
+                    st.markdown(f'<div class="card-hud neon-green"><span class="stat-label">ATIVOS</span><h2>{len(df_f[df_f["STATUS"].str.upper()=="ATIVO"])}</h2></div>', unsafe_allow_html=True)
+                
+                with c3: 
+                    st.markdown(f'<div class="card-hud neon-red"><span class="stat-label">CANCELADOS</span><h2>{len(df_f[df_f["STATUS"].str.upper()=="CANCELADO"])}</h2></div>', unsafe_allow_html=True)
+                
+                with c4: 
+                    st.markdown(f'<div class="card-hud neon-blue"><span class="stat-label">TOTAL RECEBIDO</span><h2 style="font-size:22px">R${total_final:,.2f}</h2></div>', unsafe_allow_html=True)
+                
+                with c5:
+                    # Correção: Convertendo para numérico antes de calcular a média
+                    df_f['v_tic'] = pd.to_numeric(df_f['Pagamento'].apply(extrair_valor_geral), errors='coerce').fillna(0.0)
+                    
+                    tm_b = df_f[df_f['Pagamento'].str.contains('BOLETO', na=False, case=False)]['v_tic'].mean() or 0.0
+                    tm_c = df_f[df_f['Pagamento'].str.contains('CARTÃO|LINK', na=False, case=False)]['v_tic'].mean() or 0.0
+                    
+                    st.markdown(f'<div class="card-hud neon-purple"><span class="stat-label">TICKET MÉDIO</span><div style="font-size:18px; font-weight:bold; color:#e0e0e0;">BOL: R${tm_b:.0f}<br>CAR: R${tm_c:.0f}</div></div>', unsafe_allow_html=True)
                 
                 with c6:
                     c_banc = len(df_f[df_f["Curso"].str.contains("BANCÁRIO", case=False, na=False)])
@@ -387,6 +393,7 @@ if tab_rel:
                     st.markdown(f'''<div class="card-hud neon-blue"><span class="stat-label">POR ÁREA</span><div style="font-size:15px; text-align:left; color:#e0e0e0; line-height:1.4; padding-left:5px;">BANC: <b style="color:#00f2ff;">{c_banc}</b> | AGRO: <b style="color:#00f2ff;">{c_agro}</b><br>INGL: <b style="color:#00f2ff;">{c_ing}</b> | TECN: <b style="color:#00f2ff;">{c_tec}</b></div></div>''', unsafe_allow_html=True)
 
                 st.write("")
+                
                 if len(df_f) > 0:
                     at_c = len(df_f[df_f["STATUS"].str.upper()=="ATIVO"])
                     can_c = len(df_f[df_f["STATUS"].str.upper()=="CANCELADO"])
@@ -398,6 +405,7 @@ if tab_rel:
 
                 st.write("---")
                 col_graf_1, col_graf_2 = st.columns(2)
+                
                 with col_graf_1:
                     st.markdown("<h4 style='text-align:center; color:#00f2ff;'>📍 CIDADES E VENDEDORES</h4>", unsafe_allow_html=True)
                     df_city_full = df_f.copy()
@@ -410,9 +418,11 @@ if tab_rel:
                         count = len(df_city_full[df_city_full['Cidade'] == city])
                         df_city_vends.append({"Cidade": city, "Qtd": count, "Vendedores": vends_str})
                     df_city_plot = pd.DataFrame(df_city_vends)
-                    fig_city = go.Figure(go.Bar(x=df_city_plot['Cidade'], y=df_city_plot['Qtd'], text=df_city_plot.apply(lambda r: f"<b>{r['Qtd']}</b><br><span style='font-size:11px; color:#ff007a;'>{r['Vendedores']}</span>", axis=1), textposition='outside', marker=dict(color=df_city_plot['Qtd'], colorscale=[[0, '#1f295a'], [1, '#00f2ff']])))
-                    fig_city.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=450, xaxis=dict(showgrid=False), yaxis=dict(showgrid=False, showticklabels=False))
-                    st.plotly_chart(fig_city, use_container_width=True)
+                    
+                    if not df_city_plot.empty:
+                        fig_city = go.Figure(go.Bar(x=df_city_plot['Cidade'], y=df_city_plot['Qtd'], text=df_city_plot.apply(lambda r: f"<b>{r['Qtd']}</b><br><span style='font-size:11px; color:#ff007a;'>{r['Vendedores']}</span>", axis=1), textposition='outside', marker=dict(color=df_city_plot['Qtd'], colorscale=[[0, '#1f295a'], [1, '#00f2ff']])))
+                        fig_city.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=450, xaxis=dict(showgrid=False), yaxis=dict(showgrid=False, showticklabels=False))
+                        st.plotly_chart(fig_city, use_container_width=True)
 
                 with col_graf_2:
                     st.markdown("<h4 style='text-align:center; color:#bc13fe;'>⚡ PERFORMANCE DE VENDAS</h4>", unsafe_allow_html=True)
@@ -420,9 +430,11 @@ if tab_rel:
                     df_temp["Vendedor"] = df_temp["Vendedor"].str.split(" - ").str[0].str.strip()
                     df_stats = df_temp["Vendedor"].value_counts().reset_index().head(5)
                     df_stats.columns = ['Vendedor', 'Total']
-                    fig_vend = go.Figure(go.Scatter(x=df_stats['Vendedor'], y=df_stats['Total'], mode='lines+markers+text', text=df_stats['Total'], textposition="top center", line=dict(color='#bc13fe', width=4), fill='tozeroy', fillcolor='rgba(188, 19, 254, 0.2)'))
-                    fig_vend.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=400, xaxis=dict(showgrid=False), yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", showticklabels=False))
-                    st.plotly_chart(fig_vend, use_container_width=True)
+                    
+                    if not df_stats.empty:
+                        fig_vend = go.Figure(go.Scatter(x=df_stats['Vendedor'], y=df_stats['Total'], mode='lines+markers+text', text=df_stats['Total'], textposition="top center", line=dict(color='#bc13fe', width=4), fill='tozeroy', fillcolor='rgba(188, 19, 254, 0.2)'))
+                        fig_vend.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=400, xaxis=dict(showgrid=False), yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", showticklabels=False))
+                        st.plotly_chart(fig_vend, use_container_width=True)
 
 
 # --- ABA 4: SUBIR ALUNOS ---
