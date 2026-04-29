@@ -15,14 +15,14 @@ ARQUIVO_TAGS = "tags_salvas.json"
 ARQUIVO_CIDADES = "cidades.xlsx"
 
 # --- CONEXÕES ---
-# 1. Supabase (Configuração Correta)
+# 1. Supabase (Configuração via Streamlit Secrets)
 try:
-    # Aqui usamos os nomes das chaves que estão no seu Secrets
     SUPABASE_URL = st.secrets["supabase"]["url"]
     SUPABASE_KEY = st.secrets["supabase"]["key"]
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 except Exception as e:
     st.error(f"Erro nas credenciais do Supabase: {e}")
+
 
 def carregar_usuarios():
     try:
@@ -30,7 +30,8 @@ def carregar_usuarios():
         if response.data:
             return pd.DataFrame(response.data)
     except Exception as e:
-        st.error(f"Erro ao carregar usuários: {e}")
+        # Silencioso para não quebrar a tela de login se a tabela estiver vazia
+        pass
     return pd.DataFrame(columns=["usuario", "senha", "nivel"])
         
 def carregar_tags():
