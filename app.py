@@ -704,7 +704,7 @@ for item in raw_list:
                         "ouro": ouro_val, "password": "futuro", "role": "1", 
                         "secretary": "MGA", "seller": item['Sell'], "contract_date": item['Date'], "active": "1"
                     })
-                st.session_state.df_final_processado = pd.DataFrame(processed)
+            	    st.session_state.df_final_processado = pd.DataFrame(processed)
 
         if st.session_state.df_final_processado is not None:
             df = st.session_state.df_final_processado
