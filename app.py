@@ -257,32 +257,41 @@ if tab_cad:
                 st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
 # --- ABA 2: GERENCIAMENTO DE ALUNOS ---
-with tab_ger:  # Alterado de tab2 para tab_ger
-    st.header("📋 Gerenciar Matrículas")
-    
-    # Campo de pesquisa
-    col_p1, col_p2 = st.columns([3, 1])
-    id_pesquisa = col_p1.text_input("Digite o ID do Aluno para editar:", key="id_pesq").strip()
-    
-    # O botão deve estar indentado (para a direita) para pertencer ao "with tab_ger"
-    if col_p2.button("🔍 PESQUISAR"):
-        if id_pesquisa:
-            try:
-                # 1. Tenta buscar no SUPABASE primeiro (Rápido)
-                res = supabase.table("alunos").select("*").eq("ID", id_pesquisa).execute()
-                
-                if res.data:
-                    st.session_state.dados_aluno = res.data[0]
-                    st.success("Encontrado no Banco de Dados!")
-                    
-                    # Exemplo de como exibir os dados retornados
-                    st.write(st.session_state.dados_aluno)
-                else:
-                    st.error("Aluno não encontrado no banco de dados.")
-            except Exception as e:
-                st.error(f"Erro na conexão com o banco: {e}")
+with tab_ger:
+    st.header("📋 Gerenciamento de Matrículas")
+
+    # 1. Chamamos a função para buscar todos os alunos do banco
+    df_ger = safe_read()
+
+    if df_ger.empty:
+        st.info("Nenhum aluno encontrado na tabela 'alunos'. Verifique se há dados no Supabase.")
+    else:
+        # 2. Exibe a tabela completa logo de cara
+        st.subheader("Lista de Alunos")
+        
+        # Filtro rápido de busca na tabela
+        busca = st.text_input("Filtrar aluno pelo nome ou CPF:")
+        if busca:
+            # Filtra o dataframe com base no que foi digitado
+            df_exibir = df_ger[df_ger.astype(str).apply(lambda x: x.str.contains(busca, case=False)).any(axis=1)]
         else:
-            st.warning("Digite um ID para pesquisar.")
+            df_exibir = df_ger
+
+        st.dataframe(df_exibir, use_container_width=True, hide_index=True)
+
+        st.write("---")
+        
+        # 3. Área de Edição (Pesquisa por ID)
+        st.subheader("📝 Editar Registro")
+        id_pesquisa = st.text_input("Digite o ID exato para editar:")
+        
+        if st.button("🔍 CARREGAR PARA EDIÇÃO"):
+            aluno = df_ger[df_ger['ID'].astype(str) == id_pesquisa.strip()]
+            if not aluno.empty:
+                st.session_state.dados_aluno = aluno.iloc[0].to_dict()
+                st.success(f"Aluno {st.session_state.dados_aluno.get('Nome', '')} carregado!")
+            else:
+                st.error("ID não encontrado.")
             
 # --- ABA 3: RELATÓRIOS ---
 if tab_rel:
