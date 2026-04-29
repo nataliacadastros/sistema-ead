@@ -25,13 +25,13 @@ except Exception as e:
 # ADICIONE ESTA FUNÇÃO ABAIXO PARA CORRIGIR O ERRO 2:
 def safe_read():
     try:
-        # Busca TODOS os dados da tabela 'alunos'
+        # Busca os dados da tabela 'alunos'
         res = supabase.table("alunos").select("*").execute()
         if res.data:
             return pd.DataFrame(res.data)
         return pd.DataFrame()
     except Exception as e:
-        st.error(f"Erro ao conectar com a tabela: {e}")
+        st.error(f"Erro ao buscar dados: {e}")
         return pd.DataFrame()
         
 def carregar_tags():
