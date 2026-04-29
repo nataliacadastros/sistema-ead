@@ -701,10 +701,10 @@ if st.button("🚀 PROCESSAR DADOS", use_container_width=True):
                     })
                 st.session_state.df_final_processado = pd.DataFrame(processed)
 
-        if st.session_state.df_final_processado is not None:
+                if st.session_state.df_final_processado is not None:
             df = st.session_state.df_final_processado
             mask = df['payment'] == "PENDENTE"
-            if mask.any():
+                if mask.any():
                 st.warning("⚠️ Confirmação necessária:")
                 df_conf = df.loc[mask, ["username", "name", "observation"]].copy()
                 df_conf.columns = ["ID", "Nome", "Texto Original (Pagamento)"]
@@ -716,7 +716,7 @@ if st.button("🚀 PROCESSAR DADOS", use_container_width=True):
                     st.session_state.df_final_processado = df
                     st.rerun()
             
-            if not (st.session_state.df_final_processado['payment'] == "PENDENTE").any():
+                 if not (st.session_state.df_final_processado['payment'] == "PENDENTE").any():
                 output = BytesIO()
                 wb = Workbook()
                 ws = wb.active
