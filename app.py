@@ -143,15 +143,9 @@ if os.path.exists(caminho_logo):
     st.image(caminho_logo, width=90)
     st.markdown('</div>', unsafe_allow_html=True)
 
+# --- ABAS DO SISTEMA ---
 lista_abas = ["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"]
-
-abas = st.tabs(lista_abas)
-
-# Definição das variáveis para evitar o erro de "não definido"
-tab_cad = tab_ger = tab_rel = tab_subir = tab_users = None
-
-tab_cad, tab_ger, tab_rel, tab_subir = abas[0], abas[1], abas[2], abas[3]
-
+tab_cad, tab_ger, tab_rel, tab_subir = st.tabs(lista_abas)
 
 # --- ABA 1: CADASTRO ---
 if tab_cad: 
