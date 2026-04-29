@@ -592,8 +592,8 @@ if st.session_state.df_final_processado is not None:
 
 
 # --- SIDEBAR (BARRA LATERAL) ---
-# A Sidebar fica fora dos 'ifs' das abas para aparecer em todas as telas
-    st.write(f"Nível: **{st.session_state.nivel_ativo}**")
-    if st.button("SAIR"):
-        st.session_state.logado = False
-        st.rerun()
+# Certifique-se de que o "with" está colado na margem esquerda
+with st.sidebar:
+    st.markdown("### 🖥️ Painel de Controle")
+    st.write("Bem-vindo ao Sistema")
+    # Removi as linhas de 'Logado' e 'Nível' que causavam erro
