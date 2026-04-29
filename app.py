@@ -15,13 +15,11 @@ ARQUIVO_TAGS = "tags_salvas.json"
 ARQUIVO_CIDADES = "cidades.xlsx"
 
 # --- CONEXÕES ---
-# 1. Google Sheets (Atual)
-
-
-# 2. Supabase (Novo - Teste)
+# 1. Supabase (Configuração Correta)
 try:
-    SUPABASE_URL = st.secrets["supabase"]["https://fmrqxaovrrjwyofjbpwn.supabase.co/rest/v1/"
-    SUPABASE_KEY = st.secrets["supabase"]["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZtcnF4YW92cnJqd3lvZmpicHduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NzIwMzcsImV4cCI6MjA5MzA0ODAzN30.poZJusPiPnuRsezmJ_a_J8u6hDQOWo08kPzN9hxVV0M"
+    # Aqui usamos os nomes das chaves que estão no seu Secrets
+    SUPABASE_URL = st.secrets["supabase"]["url"]
+    SUPABASE_KEY = st.secrets["supabase"]["key"]
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 except Exception as e:
     st.error(f"Erro nas credenciais do Supabase: {e}")
