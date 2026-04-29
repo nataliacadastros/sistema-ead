@@ -3,66 +3,64 @@ import pandas as pd
 from datetime import date
 
 # Configuração da página
-st.set_page_config(page_title="Gerenciamento de Alunos", layout="wide")
+st.set_page_config(page_title="Gerenciamento de Alunos", layout="centered")
 
-# Inicialização do estado da sessão (Banco de dados temporário)
+# Inicialização do estado da sessão
 if 'pre_visualizacao' not in st.session_state:
     st.session_state.pre_visualizacao = []
 if 'banco_dados' not in st.session_state:
     st.session_state.banco_dados = []
 
-# Dicionário de Cursos
+# Tabela de Conversão de Cursos
 CURSOS_MAP = {
-    "1": "Preparatório Jovem Bancário",
-    "2": "10 Cursos Profissionalizantes",
-    "3": "Preparatório Agro",
-    "4": "Inglês",
-    "5": "Jovem no Direito",
-    "6": "Pré Militar",
-    "7": "Encceja",
-    "8": "Jovem na Aviação",
-    "9": "Informática",
-    "10": "Administração"
+    "1": "PREPARATÓRIO JOVEM BANCÁRIO",
+    "2": "10 CURSOS PROFISSIONALIZANTES",
+    "3": "PREPARATÓRIO AGRO",
+    "4": "INGLÊS",
+    "5": "JOVEM NO DIREITO",
+    "6": "PRÉ MILITAR",
+    "7": "ENCCEJA",
+    "8": "JOVEM NA AVIAÇÃO",
+    "9": "INFORMÁTICA",
+    "10": "ADMINISTRAÇÃO"
 }
 
-st.title("🚀 Sistema de Gestão de Alunos")
+st.title("🚀 Gestão de Alunos")
 
 tab1, tab2 = st.tabs(["📝 Cadastro", "📊 Gerenciamento"])
 
 with tab1:
-    st.header("Novo Cadastro")
+    st.header("Cadastro de Aluno")
     
-    col1, col2, col3 = st.columns(3)
+    # Campos um embaixo do outro
+    id_aluno = st.text_input("ID")
+    nome = st.text_input("ALUNO")
+    tel_resp = st.text_input("TEL. RESPONSÁVEL")
+    tel_aluno = st.text_input("TEL. ALUNO")
     
-    with col1:
-        id_aluno = st.text_input("ID")
-        nome = st.text_input("ALUNO (Nome Completo)")
-        tel_resp = st.text_input("TEL. RESPONSÁVEL")
-        tel_aluno = st.text_input("TEL. ALUNO")
-        
-    with col2:
-        # Formatação simples de CPF (exemplo didático)
-        cpf = st.text_input("CPF RESPONSÁVEL", placeholder="123.456.789-00")
-        cidade = st.text_input("CIDADE")
-        
-        # Automação do Campo CURSO
-        curso_input = st.text_input("CURSO (Digite o código ou nome)")
-        curso_final = CURSOS_MAP.get(curso_input, curso_input)
-        if curso_input in CURSOS_MAP:
-            st.info(f"Curso selecionado: **{curso_final}**")
+    # CPF com sugestão de formato
+    cpf = st.text_input("CPF RESPONSÁVEL", placeholder="000.000.000-00")
+    
+    cidade = st.text_input("CIDADE")
+    
+    # Campo CURSO Inteligente
+    curso_raw = st.text_input("CURSO CONTRATADO (Código ou Nome)")
+    curso_nome = CURSOS_MAP.get(curso_raw, curso_raw).upper()
+    if curso_raw in CURSOS_MAP:
+        st.caption(f"✅ Identificado: {curso_nome}")
 
-    with col3:
-        vendedor = st.text_input("VENDEDOR")
-        data_mat = st.date_input("DATA DA MATRÍCULA", value=date.today())
-        forma_pagto_base = st.text_area("FORMA DE PAGAMENTO", placeholder="Ex: 12x 49,90 no cartão")
+    vendedor = st.text_input("VENDEDOR")
+    data_mat = st.date_input("DATA DA MATRÍCULA", value=date.today())
+    
+    forma_pagto_base = st.text_input("FORMA DE PAGAMENTO", placeholder="Digite o valor/condição aqui")
 
-    # Checkboxes de automação
-    st.subheader("Observações Adicionais")
-    c_lib = st.checkbox("LIB. IN-GLÊS")
-    c_bonus = st.checkbox("CURSO BÔNUS")
-    c_conf = st.checkbox("CONFIRMAÇÃO")
+    # Checkboxes de automação (Abaixo da forma de pagamento)
+    st.write("---")
+    c_lib = st.checkbox("☑ LIB. IN-GLÊS")
+    c_bonus = st.checkbox("☑ CURSO BÔNUS")
+    c_conf = st.checkbox("☑ CONFIRMAÇÃO")
 
-    # Lógica de concatenação da Forma de Pagamento
+    # Lógica de concatenação
     obs = []
     if c_lib: obs.append("APÓS PAGAMENTO LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO IN-GLÊS")
     if c_bonus: obs.append("CASO PAGUE VIA LINK CARTÃO, AVISAR NATÁLIA PARA LIBERAÇÃO CURSO BÔNUS A ESCOLHA")
@@ -72,7 +70,8 @@ with tab1:
     if obs:
         texto_pagamento_final += " | " + " | ".join(obs)
 
-    if st.button("💾 SALVAR ALUNO (Pré-visualização)"):
+    st.write("---")
+    if st.button("💾 SALVAR ALUNO"):
         novo_aluno = {
             "ID": id_aluno,
             "ALUNO": nome.upper(),
@@ -80,34 +79,30 @@ with tab1:
             "TEL. ALUNO": tel_aluno,
             "CPF": cpf,
             "CIDADE": cidade.upper(),
-            "CURSO": curso_final.upper(),
-            "PAGAMENTO": texto_pagamento_final.upper(),
+            "CURSO": curso_nome,
+            "PAGAMENTO": texto_pagamento_final,
             "VENDEDOR": vendedor.upper(),
             "DATA": data_mat.strftime("%d/%m/%Y")
         }
         st.session_state.pre_visualizacao.append(novo_aluno)
-        st.success(f"Aluno {nome} adicionado à lista temporária!")
+        st.toast(f"Aluno {nome.split()[0]} enviado para pré-visualização!")
 
     # Seção de Pré-visualização
     if st.session_state.pre_visualizacao:
-        st.divider()
-        st.subheader("📋 PRÉ-VISUALIZAÇÃO (Lista Temporária)")
+        st.subheader("📋 PRÉ-VISUALIZAÇÃO")
         df_pre = pd.DataFrame(st.session_state.pre_visualizacao)
-        st.table(df_pre)
+        st.dataframe(df_pre)
         
-        if st.button("✅ FINALIZAR E ENVIAR PARA GERENCIAMENTO"):
+        if st.button("📤 Enviar todos para Gerenciamento"):
             st.session_state.banco_dados.extend(st.session_state.pre_visualizacao)
-            st.session_state.pre_visualizacao = [] # Limpa a pré-visualização
+            st.session_state.pre_visualizacao = [] 
+            st.success("Dados enviados com sucesso!")
             st.rerun()
 
 with tab2:
-    st.header("Alunos Cadastrados")
+    st.header("Base de Dados")
     if st.session_state.banco_dados:
         df_final = pd.DataFrame(st.session_state.banco_dados)
         st.dataframe(df_final, use_container_width=True)
-        
-        # Opção para exportar
-        csv = df_final.to_csv(index=False).encode('utf-8')
-        st.download_button("Baixar Planilha (CSV)", csv, "alunos.csv", "text/csv")
     else:
-        st.info("Nenhum aluno cadastrado no banco de dados ainda.")
+        st.info("Nenhum registro finalizado.")
