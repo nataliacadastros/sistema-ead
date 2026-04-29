@@ -11,22 +11,40 @@ import gspread
 from google.oauth2.service_account import Credentials
 from openpyxl import Workbook, load_workbook
 from io import BytesIO
+from supabase import create_client  # <--- Novo import
 
 # --- 1. CONFIGURAÇÕES TÉCNICAS ---
 ARQUIVO_TAGS = "tags_salvas.json"
 ARQUIVO_CIDADES = "cidades.xlsx"
 
-# --- CONEXÃO INICIAL ---
+# --- CONEXÕES ---
+# 1. Google Sheets (Atual)
 conn = st.connection("gsheets", type=GSheetsConnection)
 
+# 2. Supabase (Novo - Teste)
+try:
+    SUPABASE_URL = st.secrets["supabase"]["url"]
+    SUPABASE_KEY = st.secrets["supabase"]["key"]
+    supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+except Exception as e:
+    st.error(f"Erro nas credenciais do Supabase: {e}")
+
 def carregar_usuarios():
+    # Tenta carregar do Supabase primeiro
     try:
-        # TTL de 1s para garantir que novos usuários apareçam logo
+        response = supabase.table("usuarios").select("*").execute()
+        if response.data:
+            return pd.DataFrame(response.data)
+    except:
+        pass
+    
+    # Fallback para Google Sheets
+    try:
         df = conn.read(worksheet="usuários", ttl="1s")
         return df.dropna(how='all')
     except:
         return pd.DataFrame(columns=["usuario", "senha", "nivel"])
-
+        
 def carregar_tags():
     padrao = {"tags": {}, "last_selection": {}}
     if os.path.exists("tags_salvas.json"):
@@ -346,79 +364,39 @@ if tab_cad:
                 st.markdown(f"### 📋 PRÉ-VISUALIZAÇÃO ({len(st.session_state.lista_previa)} ALUNOS)")
                 st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
-# --- ABA 2: GERENCIAMENTO ---
-if tab_ger:
-    with tab_ger:
-        cf1, cf2, cf3, cf4 = st.columns([2.5, 1.5, 1.5, 0.5])
+# --- ABA 2: GERENCIAMENTO DE ALUNOS ---
+    with tab2:
+        st.header("📋 Gerenciar Matrículas")
         
-        with cf1: 
-            bu = st.text_input("🔍 Buscar...", key="busca_ger", placeholder="Nome ou ID", label_visibility="collapsed")
+        # Campo de pesquisa
+        col_p1, col_p2 = st.columns([3, 1])
+        id_pesquisa = col_p1.text_input("Digite o ID do Aluno para editar:", key="id_pesq").strip()
         
-        with cf2: 
-            fs = st.selectbox("Status", ["Todos", "ATIVO", "CANCELADO"], key="filtro_status", label_visibility="collapsed")
-        
-        with cf3: 
-            fu = st.selectbox("Unidade", ["Todos", "MGA"], key="filtro_unid", label_visibility="collapsed")
-        
-        with cf4: 
-            if st.button("🔄", key="btn_ref"): 
-                st.cache_data.clear()
-                st.rerun()
+        if col_p2.button("🔍 PESQUISAR"):
+            if id_pesquisa:
+                try:
+                    # 1. Tenta buscar no SUPABASE primeiro (Rápido)
+                    # Use "ID" ou "username" dependendo de como você nomeou no Supabase
+                    res = supabase.table("alunos").select("*").eq("ID", id_pesquisa).execute()
+                    
+                    if res.data:
+                        st.session_state.dados_aluno = res.data[0]
+                        st.success("Encontrado no Banco de Dados (Supabase)!")
+                    else:
+                        # 2. Se não achar, busca na PLANILHA (Segurança)
+                        st.info("Buscando na planilha...")
+                        df_banco = conn.read(worksheet="BANCO_EAD", ttl="0s")
+                        resultado = df_banco[df_banco['ID'].astype(str) == id_pesquisa]
+                        if not resultado.empty:
+                            st.session_state.dados_aluno = resultado.iloc[0].to_dict()
+                            st.info("Encontrado na Planilha.")
+                        else:
+                            st.error("Aluno não encontrado.")
+                except Exception as e:
+                    st.error(f"Erro na conexão: {e}")
+            else:
+                st.warning("Digite um ID.")
                 
-        df_g = safe_read()
-        
-        if not df_g.empty:
-            # Garante que as colunas existam antes de renomear para evitar erros
-            try:
-                df_g.columns = ['STATUS', 'UNID.', 'TURMA', '10C', 'ING', 'DT_CAD', 'ID', 'ALUNO', 'TEL_RESP', 'TEL_ALU', 'CPF', 'CIDADE', 'CURSO', 'PAGTO', 'VEND.', 'DT_MAT']
-                
-                # Filtros dinâmicos
-                if bu: 
-                    df_g = df_g[df_g['ALUNO'].str.contains(bu, case=False, na=False) | df_g['ID'].str.contains(bu, case=False, na=False)]
-                if fs != "Todos": 
-                    df_g = df_g[df_g['STATUS'] == fs]
-                if fu != "Todos": 
-                    df_g = df_g[df_g['UNID.'] == fu]
-                
-                rows = ""
-                # Itera sobre o DataFrame invertido (mais recentes primeiro)
-                for _, r in df_g.iloc[::-1].iterrows():
-                    sc = "status-badge status-ativo" if r['STATUS'] == "ATIVO" else "status-badge status-cancelado"
-                    rows += f"""
-                    <tr>
-                        <td><span class='{sc}'>{r['STATUS']}</span></td>
-                        <td>{r['UNID.']}</td>
-                        <td>{r['TURMA']}</td>
-                        <td>{r['10C']}</td>
-                        <td>{r['ING']}</td>
-                        <td>{r['DT_CAD']}</td>
-                        <td style='color:#00f2ff;font-weight:bold'>{r['ID']}</td>
-                        <td style='color:#00f2ff;font-weight:bold'>{r['ALUNO']}</td>
-                        <td>{r['TEL_RESP']}</td>
-                        <td>{r['TEL_ALU']}</td>
-                        <td>{r['CPF']}</td>
-                        <td>{r['CIDADE']}</td>
-                        <td>{r['CURSO']}</td>
-                        <td>{r['PAGTO']}</td>
-                        <td>{r['VEND.']}</td>
-                        <td>{r['DT_MAT']}</td>
-                    </tr>"""
-                
-                # Montagem da tabela em HTML/CSS
-                st.markdown(f'''
-                    <div class="custom-table-wrapper">
-                        <table class="custom-table">
-                            <thead>
-                                <tr>{''.join([f'<th>{h}</th>' for h in df_g.columns])}</tr>
-                            </thead>
-                            <tbody>
-                                {rows}
-                            </tbody>
-                        </table>
-                    </div>
-                ''', unsafe_allow_html=True)
-            except Exception as e:
-                st.error(f"Erro ao processar dados de gerenciamento: {e}")
 
 # --- ABA 3: RELATÓRIOS ---
 if tab_rel:
@@ -737,20 +715,38 @@ if tab_users:
             ns = col2.text_input("Senha").strip()
             nv = col3.selectbox("Nível", ["ADMIN", "CONSULTA"])
             
-            if st.form_submit_button("CADASTRAR"):
-                if nu and ns:
+if st.form_submit_button("CADASTRAR ALUNO"):
+                if n_id and n_nome:
+                    # 1. Preparar lista para Google Sheets
+                    novo_registro_lista = [n_id, n_email, n_p_nome, n_s_nome, n_tel, n_cpf, n_cid, n_cur, n_pag, n_obs, n_ou, "futuro", "1", "MGA", n_ven, n_dat, "1"]
+                    
+                    # 2. Preparar dicionário para Supabase (use os nomes das colunas que você criou)
+                    dados_supabase = {
+                        "ID": n_id, "STATUS": "1", "SEC": "MGA", "TURMA": "1", 
+                        "10 CURSOS?": n_ou, "INGLÊS?": "Não", "Data Cadastro": n_dat,
+                        "Aluno": f"{n_p_nome} {n_s_nome}", "Tel. Resp": n_tel, 
+                        "Tel. Aluno": n_tel, "CPF": n_cpf, "Cidade": n_cid, 
+                        "Curso": n_cur, "Pagamento": n_pag, "Vendedor": n_ven, 
+                        "Data Matrícula": n_dat
+                    }
+
                     try:
+                        # Salva no Google Sheets (Original)
                         c_info = st.secrets["connections"]["gsheets"]
                         sc = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
                         creds = Credentials.from_service_account_info(c_info, scopes=sc)
                         client = gspread.authorize(creds)
-                        ws = client.open_by_url(c_info["spreadsheet"]).worksheet("usuários")
-                        ws.append_row([nu, ns, nv])
-                        st.success("Cadastrado!")
-                        st.cache_data.clear()
-                        st.rerun()
-                    except Exception as e: 
-                        st.error(f"Erro: {e}")
+                        ws = client.open_by_url(c_info["spreadsheet"]).worksheet("BANCO_EAD")
+                        ws.append_row(novo_registro_lista)
+                        
+                        # Salva no Supabase (Novo)
+                        supabase.table("alunos").insert(dados_supabase).execute()
+                        
+                        st.success("Aluno cadastrado com sucesso (Planilha + Banco de Dados)!")
+                        st.balloons()
+                    except Exception as e:
+                        st.error(f"Erro ao salvar: {e}")
+
 
         st.write("---")
         # Mostra a tabela de usuários cadastrados
