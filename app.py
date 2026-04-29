@@ -37,6 +37,13 @@ def carregar_tags():
             return padrao
     return padrao
 
+def salvar_tags(dados):
+    try:
+        with open("tags_salvas.json", "w", encoding="utf-8") as f:
+            json.dump(dados, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        st.error(f"Erro ao salvar tags: {e}")
+
 
 # --- ESTADOS DE SESSÃO ---
 if "logado" not in st.session_state:
@@ -596,7 +603,10 @@ if tab_subir:
                     st.markdown(f"<p style='font-size:10px; margin-bottom:2px; color:#00f2ff; font-weight:bold;'>{curso}</p>", unsafe_allow_html=True)
                     tags_lista = st.session_state.dados_tags.get("tags", {}).get(curso, [])
                     last_sel = st.session_state.dados_tags.get("last_selection", {}).get(curso, "")
+                    
+                    # Define o index baseado na última escolha
                     idx_default = (tags_lista.index(last_sel) + 1) if last_sel in tags_lista else 0
+                    
                     c_sel, c_del = st.columns([0.4, 0.6])
                     cur_tag = c_sel.selectbox("", [""] + tags_lista, index=idx_default, key=f"sel_{curso}", label_visibility="collapsed")
                     
@@ -621,7 +631,7 @@ if tab_subir:
                         st.rerun()
                     selected_tags[curso] = (new_tag if new_tag else cur_tag).upper()
 
-        if st.button("🚀 PROCESSAR DADOS", use_container_width=True):
+if st.button("🚀 PROCESSAR DADOS", use_container_width=True):
             raw_list = []
             if modo == "MANUAL":
                 l_ids = u_user.strip().split('\n')
