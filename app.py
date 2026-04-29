@@ -23,24 +23,37 @@ except Exception as e:
     st.error(f"Erro nas credenciais do Supabase: {e}")
 
 # ADICIONE ESTA FUNÇÃO ABAIXO PARA CORRIGIR O ERRO 2:
-def safe_read(limit=1000, search_query=None):
+def safe_read():
+    all_data = []
+    step = 1000 
+    offset = 0
     try:
-        query = supabase.table("alunos").select("*")
-        
-        if search_query:
-            # Busca em várias colunas ao mesmo tempo (Nome ou CPF)
-            # O .or() é ótimo para buscas rápidas no banco
-            query = query.or_(f"Nome.ilike.%{search_query}%,CPF.ilike.%{search_query}%")
-        
-        # Limitamos a 1000 para manter a velocidade
-        res = query.limit(limit).execute()
-        
-        if res.data:
-            return pd.DataFrame(res.data)
+        while True:
+            # Busca em blocos para contornar o limite de 1000 da API
+            res = supabase.table("alunos").select("*").range(offset, offset + step - 1).execute()
+            if not res.data: 
+                break
+            all_data.extend(res.data)
+            # Se vier menos que o step, chegamos ao fim dos dados
+            if len(res.data) < step: 
+                break
+            offset += step
+            
+        if all_data:
+            return pd.DataFrame(all_data)
         return pd.DataFrame()
     except Exception as e:
-        st.error(f"Erro: {e}")
+        st.error(f"Erro ao sincronizar dados com o Supabase: {e}")
         return pd.DataFrame()
+
+# --- MOTOR DE SINCRONIZAÇÃO (MEMÓRIA INTERNA) ---
+def atualizar_memoria_local():
+    with st.spinner("📥 Sincronizando base de dados..."):
+        st.session_state.banco_interno = safe_read()
+
+# Carregamento inicial automático ao abrir o programa
+if "banco_interno" not in st.session_state:
+    atualizar_memoria_local()
         
 def carregar_tags():
     padrao = {"tags": {}, "last_selection": {}}
@@ -230,19 +243,19 @@ if tab_cad:
             _, b1, b2, _ = st.columns([1.2, 1.9, 1.9, 0.2])
             
             with b1:
-                if st.button("💾 SALVAR ALUNO"):
+                if st.button("💾 SALVAR NA LISTA"):
                     if st.session_state[f"f_nome_{s_al}"]:
                         st.session_state.lista_previa.append({
                             "ID": st.session_state[f"f_id_{s_al}"].upper(),
-                            "Aluno": st.session_state[f"f_nome_{s_al}"].upper(),
+                            "Nome": st.session_state[f"f_nome_{s_al}"].upper(),
                             "Tel_Resp": str(st.session_state[f"f_tel_resp_{s_al}"]), 
                             "Tel_Aluno": str(st.session_state[f"f_tel_aluno_{s_al}"]),
                             "CPF": st.session_state[f"f_cpf_{s_al}"],
                             "Cidade": st.session_state[f"f_cid_{s_ge}"].upper(), 
-                            "Course": st.session_state[f"input_curso_key_{s_al}"].upper(),
-                            "Pagto": st.session_state[f"f_pagto_{s_al}"].upper(),
+                            "Curso": st.session_state[f"input_curso_key_{s_al}"].upper(),
+                            "Pagamento": st.session_state[f"f_pagto_{s_al}"].upper(),
                             "Vendedor": st.session_state[f"f_vend_{s_ge}"].upper(),
-                            "Data_Mat": st.session_state[f"f_data_{s_ge}"]
+                            "Data_Matricula": st.session_state[f"f_data_{s_ge}"]
                         })
                         st.session_state.reset_aluno += 1
                         st.rerun()
@@ -250,33 +263,25 @@ if tab_cad:
                         st.warning("Preencha pelo menos o nome do aluno.")
                         
             with b2:
-                if st.button("📤 ENVIAR PLANILHA"):
+                if st.button("📤 ENVIAR PARA O BACKUP (Supabase)"):
                     if st.session_state.lista_previa:
                         try:
-                            creds_info = st.secrets["connections"]["gsheets"]
-                            client = gspread.authorize(Credentials.from_service_account_info(creds_info, scopes=["https://www.googleapis.com/auth/spreadsheets"]))
-                            ws = client.open_by_url(creds_info["spreadsheet"]).get_worksheet(0)
+                            # 1. Envia os dados para a tabela 'alunos' do Supabase
+                            # Nota: Certifique-se que os nomes das chaves batem com as colunas do banco
+                            res = supabase.table("alunos").insert(st.session_state.lista_previa).execute()
                             
-                            d_f = []
-                            for a in st.session_state.lista_previa:
-                                d_f.append([
-                                    "ATIVO", "MGA", "A DEFINIR", 
-                                    "SIM" if "10 CURSOS" in a["Course"] else "NÃO", 
-                                    "A DEFINIR" if "INGLÊS" in a["Course"] else "NÃO", 
-                                    date.today().strftime("%d/%m/%Y"), 
-                                    a["ID"], a["Aluno"], a["Tel_Resp"], a["Tel_Aluno"], 
-                                    a["CPF"], a["Cidade"], a["Course"], a["Pagto"], 
-                                    a["Vendedor"], a["Data_Mat"]
-                                ])
-                            
-                            ws.append_rows(d_f, value_input_option='RAW')
+                            # 2. Limpa a lista de espera
                             st.session_state.lista_previa = []
                             st.session_state.reset_geral += 1
-                            st.success("Enviado com sucesso!")
-                            st.cache_data.clear()
+                            
+                            # 3. ATUALIZAÇÃO CRÍTICA: Sincroniza a memória interna imediatamente
+                            # Isso faz com que o novo aluno apareça no Gerenciamento na hora
+                            st.session_state.banco_interno = sincronizar_banco_completo()
+                            
+                            st.success("Dados sincronizados com o backup com sucesso!")
                             st.rerun()
                         except Exception as e:
-                            st.error(f"Erro ao enviar: {e}")
+                            st.error(f"Erro ao enviar para o Supabase: {e}")
                     else:
                         st.info("Nenhum aluno na lista de pré-visualização.")
             
