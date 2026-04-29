@@ -666,8 +666,21 @@ if tab_subir:
                 for item in raw_list:
                     c_orig = str(item['Cour']).upper()
                     p_orig = str(item['Pay']).upper()
-                    tags_f = [selected_tags[k] for k in cursos_tags if k in c_orig and selected_tags.get(k)]
-                    c_final = ",".join(tags_f).upper() if tags_f else c_orig
+ # 1. Encontrar a posição de cada curso dentro da string original
+posicoes_tags = []
+for curso_nome, tag_valor in selected_tags.items():
+    if tag_valor: # Só processa se houver uma tag definida
+        pos = c_orig.find(curso_nome)
+        if pos != -1:
+            posicoes_tags.append((pos, tag_valor))
+
+# 2. Ordenar as tags pela posição que o curso aparece no texto original
+posicoes_tags.sort() # Ordena pelo primeiro item da tupla (a posição)
+
+# 3. Extrair apenas as tags já ordenadas e juntar com ponto
+tags_f = [t[1] for t in posicoes_tags]
+c_final = ".".join(tags_f).upper() if tags_f else c_orig
+
                     
                     p_final = "PENDENTE"
                     has_bol = "BOLETO" in p_orig
