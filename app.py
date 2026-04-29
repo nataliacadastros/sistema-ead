@@ -15,8 +15,9 @@ ARQUIVO_TAGS = "tags_salvas.json"
 ARQUIVO_CIDADES = "cidades.xlsx"
 
 # --- CONEXÕES ---
-# 1. Supabase (Configuração via Streamlit Secrets)
+# 1. Supabase (Configuração Correta)
 try:
+    # Aqui usamos os nomes das chaves que estão no seu Secrets
     SUPABASE_URL = st.secrets["supabase"]["url"]
     SUPABASE_KEY = st.secrets["supabase"]["key"]
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -24,15 +25,6 @@ except Exception as e:
     st.error(f"Erro nas credenciais do Supabase: {e}")
 
 
-def carregar_usuarios():
-    try:
-        response = supabase.table("usuarios").select("*").execute()
-        if response.data:
-            return pd.DataFrame(response.data)
-    except Exception as e:
-        # Silencioso para não quebrar a tela de login se a tabela estiver vazia
-        pass
-    return pd.DataFrame(columns=["usuario", "senha", "nivel"])
         
 def carregar_tags():
     padrao = {"tags": {}, "last_selection": {}}
@@ -238,22 +230,14 @@ DIC_CURSOS = {"00": "COLÉGIO COMBO", "1": "PREPARATÓRIO JOVEM BANCÁRIO", "2":
 is_admin = st.session_state.nivel_ativo == "ADMIN"
 is_consulta = st.session_state.nivel_ativo == "CONSULTA"
 
-if is_admin:
-    lista_abas = ["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS", "👥 USUÁRIOS"]
-elif is_consulta:
-    lista_abas = ["🖥️ GERENCIAMENTO", "📊 RELATÓRIOS"]
-else:
-    lista_abas = ["🖥️ GERENCIAMENTO"]
+lista_abas = ["📑 CADASTRO", "🖥️ GERENCIAMENTO", "📊 RELATÓRIOS", "📤 SUBIR ALUNOS"]
 
 abas = st.tabs(lista_abas)
 
 # Definição das variáveis para evitar o erro de "não definido"
 tab_cad = tab_ger = tab_rel = tab_subir = tab_users = None
 
-if is_admin:
-    tab_cad, tab_ger, tab_rel, tab_subir, tab_users = abas[0], abas[1], abas[2], abas[3], abas[4]
-elif is_consulta:
-    tab_ger, tab_rel = abas[0], abas[1]
+tab_cad, tab_ger, tab_rel, tab_subir = abas[0], abas[1], abas[2], abas[3]
 
 
 # --- ABA 1: CADASTRO ---
