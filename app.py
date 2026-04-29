@@ -25,8 +25,9 @@ except Exception as e:
 # ADICIONE ESTA FUNÇÃO ABAIXO PARA CORRIGIR O ERRO 2:
 def safe_read():
     try:
-        # Busca os dados da tabela 'alunos'
-        res = supabase.table("alunos").select("*").execute()
+        # Adicionamos .limit(5000) ou o número que você precisar
+        # O padrão do Supabase é 1000 se você não especificar
+        res = supabase.table("alunos").select("*").limit(5000).execute()
         if res.data:
             return pd.DataFrame(res.data)
         return pd.DataFrame()
