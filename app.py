@@ -694,7 +694,7 @@ for item in raw_list:
                     obs_final = f"{c_final} | {c_orig} | {p_orig}".upper()
                     ouro_val = "1" if "10 CURSOS PROFISSIONALIZANTES" in obs_final else "0"
                     
-                    processed.append({
+ processed.append({
                         "username": item['User'], "email2": f"{item['User']}@profissionalizaead.com.br", 
                         "name": str(item['Nome']).split(" ")[0].upper(), 
                         "lastname": " ".join(str(item['Nome']).split(" ")[1:]).upper(), 
@@ -704,7 +704,9 @@ for item in raw_list:
                         "ouro": ouro_val, "password": "futuro", "role": "1", 
                         "secretary": "MGA", "seller": item['Sell'], "contract_date": item['Date'], "active": "1"
                     })
-                    st.session_state.df_final_processado = pd.DataFrame(processed)
+
+                # Note que esta linha abaixo está com menos espaços que a de cima:
+                st.session_state.df_final_processado = pd.DataFrame(processed)
 
         if st.session_state.df_final_processado is not None:
             df = st.session_state.df_final_processado
