@@ -623,7 +623,7 @@ if tab_subir:
                     final_tag = (new_tag if new_tag else cur_tag).upper()
                     selected_tags[curso] = final_tag
 
-        if st.button("🚀 PROCESSAR DADOS", use_container_width=True):
+ if st.button("🚀 PROCESSAR DADOS", use_container_width=True):
             raw_list = []
             if modo == "MANUAL":
                 l_ids = u_user.strip().split('\n')
@@ -662,23 +662,22 @@ if tab_subir:
                     c_map = {str(r[1]).strip().upper(): str(r[2]) for r in ws_c.iter_rows(min_row=2, values_only=True) if r[1]}
                 except: c_map = {}
                 
-processed = []
+                processed = []
                 for item in raw_list:
                     c_orig = str(item['Cour']).upper()
                     p_orig = str(item['Pay']).upper()
 
-                    # --- LÓGICA DE TAGS POR POSIÇÃO ---
                     posicoes_tags = []
                     for curso_nome, tag_valor in selected_tags.items():
-                        if tag_valor:
+                        if tag_valor: 
                             pos = c_orig.find(curso_nome.upper())
                             if pos != -1:
                                 posicoes_tags.append((pos, tag_valor))
 
-                    posicoes_tags.sort()
+                    posicoes_tags.sort() 
                     tags_f = [t[1] for t in posicoes_tags]
                     c_final = ".".join(tags_f).upper() if tags_f else c_orig
-                    
+
                     p_final = "PENDENTE"
                     has_bol = "BOLETO" in p_orig
                     has_car = "CARTÃO" in p_orig or "LINK" in p_orig
@@ -688,7 +687,6 @@ processed = []
                     obs_final = f"{c_final} | {c_orig} | {p_orig}".upper()
                     ouro_val = "1" if "10 CURSOS PROFISSIONALIZANTES" in obs_final else "0"
                     
-                    # O append deve estar exatamente aqui
                     processed.append({
                         "username": item['User'], 
                         "email2": f"{item['User']}@profissionalizaead.com.br", 
@@ -709,10 +707,6 @@ processed = []
                         "active": "1"
                     })
 
-                # Fora do loop, alinhado com o 'for'
-                st.session_state.df_final_processado = pd.DataFrame(processed)
-
-                # Note que esta linha abaixo está com menos espaços que a de cima:
                 st.session_state.df_final_processado = pd.DataFrame(processed)
 
         if st.session_state.df_final_processado is not None:
