@@ -23,16 +23,23 @@ except Exception as e:
     st.error(f"Erro nas credenciais do Supabase: {e}")
 
 # ADICIONE ESTA FUNÇÃO ABAIXO PARA CORRIGIR O ERRO 2:
-def safe_read():
+def safe_read(limit=1000, search_query=None):
     try:
-        # Adicionamos .limit(100000) ou o número que você precisar
-        # O padrão do Supabase é 1000 se você não especificar
-        res = supabase.table("alunos").select("*").limit(5000).execute()
+        query = supabase.table("alunos").select("*")
+        
+        if search_query:
+            # Busca em várias colunas ao mesmo tempo (Nome ou CPF)
+            # O .or() é ótimo para buscas rápidas no banco
+            query = query.or_(f"Nome.ilike.%{search_query}%,CPF.ilike.%{search_query}%")
+        
+        # Limitamos a 1000 para manter a velocidade
+        res = query.limit(limit).execute()
+        
         if res.data:
             return pd.DataFrame(res.data)
         return pd.DataFrame()
     except Exception as e:
-        st.error(f"Erro ao buscar dados: {e}")
+        st.error(f"Erro: {e}")
         return pd.DataFrame()
         
 def carregar_tags():
@@ -257,67 +264,31 @@ if tab_cad:
                 st.markdown(f"### 📋 PRÉ-VISUALIZAÇÃO ({len(st.session_state.lista_previa)} ALUNOS)")
                 st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
-# --- ABA 2: GERENCIAMENTO DE ALUNOS ---
+# --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
     st.header("📋 Gerenciamento de Matrículas")
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        termo = st.text_input("🔍 Buscar por Nome ou CPF (Pressione Enter):")
+    with col2:
+        st.write(" ") # Alinhamento
+        st.write(" ")
+        btn_busca = st.button("PESQUISAR NO BANCO")
 
-    # 1. Chamamos a função para buscar todos os alunos do banco
-    # A função safe_read deve estar definida no topo com .limit(5000)
-    df_ger = safe_read()
-
-    if df_ger.empty:
-        st.info("Nenhum aluno encontrado na tabela 'alunos'. Verifique se há dados no Supabase ou se a conexão está correta.")
+    if termo or btn_busca:
+        # Aqui o código vai no Supabase e traz SÓ quem bate com o termo
+        df_ger = safe_read(search_query=termo)
     else:
-        # Exibe o total de alunos encontrados para você ter controle
-        st.write(f"Total de registros encontrados: **{len(df_ger)}**")
-        
-        # 2. Área de busca e visualização
-        st.subheader("Lista de Alunos")
-        
-        busca = st.text_input("Filtrar aluno pelo nome, CPF ou qualquer dado:")
-        
-        if busca:
-            # Filtro inteligente: transforma tudo em texto e busca o termo
-            mask = df_ger.astype(str).apply(lambda x: x.str.contains(busca, case=False, na=False)).any(axis=1)
-            df_exibir = df_ger[mask]
-        else:
-            df_exibir = df_ger
+        # Mostra apenas os últimos 50 cadastrados para a tela não começar vazia
+        df_ger = safe_read(limit=50)
 
-        # Exibição da tabela com altura ajustada para facilitar a rolagem
-        st.dataframe(
-            df_exibir, 
-            use_container_width=True, 
-            hide_index=True,
-            height=500  # Define uma altura fixa para evitar que a página fique infinita
-        )
-
-        st.write("---")
+    if not df_ger.empty:
+        st.write(f"Exibindo {len(df_ger)} registros.")
+        st.dataframe(df_ger, use_container_width=True, hide_index=True)
+    else:
+        st.warning("Nenhum aluno encontrado para esta busca.")
         
-        # 3. Área de Edição (Pesquisa por ID)
-        st.subheader("📝 Editar Registro")
-        col_id, col_btn = st.columns([3, 1])
-        
-        with col_id:
-            id_pesquisa = st.text_input("Digite o ID exato para editar:", key="id_edit")
-        
-        with col_btn:
-            st.write(" ") # Espaçador para alinhar o botão
-            st.write(" ") 
-            btn_carregar = st.button("🔍 CARREGAR")
-
-        if btn_carregar:
-            if id_pesquisa:
-                # Busca o aluno no dataframe que já foi carregado (mais rápido que ir no banco de novo)
-                aluno = df_ger[df_ger['ID'].astype(str) == id_pesquisa.strip()]
-                
-                if not aluno.empty:
-                    st.session_state.dados_aluno = aluno.iloc[0].to_dict()
-                    st.success(f"✅ Aluno **{st.session_state.dados_aluno.get('Nome', 'Sem Nome')}** carregado com sucesso!")
-                    st.info("Agora vá para a aba de 'Cadastro' ou use o formulário de edição abaixo.")
-                else:
-                    st.error("❌ ID não encontrado na lista atual.")
-            else:
-                st.warning("Por favor, digite um ID.")
             
 # --- ABA 3: RELATÓRIOS ---
 if tab_rel:
