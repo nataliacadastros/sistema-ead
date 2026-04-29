@@ -59,6 +59,26 @@ def salvar_tags(dados):
     except Exception as e:
         st.error(f"Erro ao salvar tags: {e}")
 
+# --- 2. MOTOR DE SINCRONIZAÇÃO (MEMÓRIA INTERNA) ---
+
+# Esta função busca TUDO do Supabase (contornando o limite de 1000)
+def sincronizar_banco_completo():
+    all_data = []
+    step = 1000
+    offset = 0
+    while True:
+        res = supabase.table("alunos").select("*").range(offset, offset + step - 1).execute()
+        if not res.data: break
+        all_data.extend(res.data)
+        if len(res.data) < step: break
+        offset += step
+    return pd.DataFrame(all_data)
+
+# Se o programa acabou de abrir, ele puxa os dados para a "memória RAM"
+if "banco_interno" not in st.session_state:
+    with st.spinner("🚀 Inicializando Gerenciador de Alunos..."):
+        st.session_state.banco_interno = sincronizar_banco_completo()
+
 # --- DEFINIÇÃO DO CAMINHO DA LOGO ---
 diretorio_atual = os.path.dirname(os.path.abspath(__file__))
 caminho_logo = os.path.join(diretorio_atual, "logo.png")
@@ -266,181 +286,44 @@ if tab_cad:
 
 # --- ABA 2: GERENCIAMENTO ---
 with tab_ger:
-    st.header("📋 Gerenciamento de Matrículas")
+    st.header("📋 Gerenciador Interno de Alunos")
     
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        termo = st.text_input("🔍 Buscar por Nome ou CPF (Pressione Enter):")
-    with col2:
-        st.write(" ") # Alinhamento
-        st.write(" ")
-        btn_busca = st.button("PESQUISAR NO BANCO")
+    # Botão de Sincronização Manual (Caso você queira atualizar o 'backup')
+    if st.button("🔄 ATUALIZAR MEMÓRIA (Puxar do Supabase)"):
+        st.session_state.banco_interno = sincronizar_banco_completo()
+        st.success("Memória interna atualizada!")
+        st.rerun()
 
-    if termo or btn_busca:
-        # Aqui o código vai no Supabase e traz SÓ quem bate com o termo
-        df_ger = safe_read(search_query=termo)
-    else:
-        # Mostra apenas os últimos 50 cadastrados para a tela não começar vazia
-        df_ger = safe_read(limit=50)
+    df_memoria = st.session_state.banco_interno
 
-    if not df_ger.empty:
-        st.write(f"Exibindo {len(df_ger)} registros.")
-        st.dataframe(df_ger, use_container_width=True, hide_index=True)
+    if df_memoria.empty:
+        st.info("Nenhum aluno carregado na memória.")
     else:
-        st.warning("Nenhum aluno encontrado para esta busca.")
+        st.write(f"Total de alunos no sistema: **{len(df_memoria)}**")
         
-            
-# --- ABA 3: RELATÓRIOS ---
-if tab_rel:
-    with tab_rel:
-        df_r = safe_read()
-        if not df_r.empty:
-            # Limpeza de nomes de colunas
-            df_r.columns = [c.strip() for c in df_r.columns]
-            
-            dt_col = "Data Matrícula"
-            df_r[dt_col] = pd.to_datetime(df_r[dt_col], dayfirst=True, errors='coerce')
-            
-            # Filtro de data
-            iv = st.date_input("Filtrar Período (Data de Matrícula)", 
-                              value=(date.today()-timedelta(days=7), date.today()), 
-                              format="DD/MM/YYYY")
-            
-            if len(iv) == 2:
-                df_f = df_r.loc[(df_r[dt_col].dt.date >= iv[0]) & (df_r[dt_col].dt.date <= iv[1])].copy()
-                
-                # --- LÓGICA DE PROCESSAMENTO (RESILIENTE) ---
-                v_taxa = 0.0
-                v_cartao = 0.0
-                v_entrada = 0.0
-                pagamentos = df_f['Pagamento'].tolist()
+        # Busca Instantânea (Acontece na memória do seu PC, sem internet)
+        busca = st.text_input("🔍 Pesquisar aluno (Nome, CPF ou ID):")
+        
+        if busca:
+            df_exibir = df_memoria[df_memoria.astype(str).apply(lambda x: x.str.contains(busca, case=False, na=False)).any(axis=1)]
+        else:
+            df_exibir = df_memoria
 
-                for linha in pagamentos:
-                    if not linha or str(linha).strip() == "": continue
-                    linha_upper = str(linha).upper()
-                    
-                    # 1. TRATAMENTO DE ALTERAÇÕES
-                    if "ALTERAÇÃO" in linha_upper or "ALTEROU PARA" in linha_upper:
-                        match_alt = re.search(r'\((?:.*?PARA\s+)?(.*?)\)', linha_upper)
-                        if match_alt:
-                            linha_upper = match_alt.group(1)
+        st.dataframe(df_exibir, use_container_width=True, hide_index=True, height=500)
 
-                    # 2. CAPTURA DE TAXAS
-                    taxas_na_linha = re.findall(r'TAXA.*?(\d+)', linha_upper)
-                    for t in taxas_na_linha:
-                        try: v_taxa += float(t)
-                        except: pass
-                    if "TAXA" in linha_upper and "PAGA" in linha_upper and not taxas_na_linha:
-                        v_taxa += 50.0
-
-                    # 3. REGRA DO CARTÃO
-                    match_mult = re.findall(r'(\d+)\s*[X]\s*(?:R\$)?\s*([\d\.,]+)', linha_upper)
-                    if match_mult and ("CARTÃO" in linha_upper or "LINK" in linha_upper):
-                        for qtd, val in match_mult:
-                            try:
-                                v_u = val.replace('.', '').replace(',', '.')
-                                v_cartao += int(qtd) * float(v_u)
-                            except: pass
-                    else:
-                        match_fixo = re.findall(r'(?:PAGO|R\$)\s*([\d\.]+,\d{2}|[\d\.]+)', linha_upper)
-                        for val in match_fixo:
-                            try:
-                                v_l = val.replace('.', '').replace(',', '.')
-                                valor_limpo = float(v_l)
-                                if valor_limpo != 50.0:
-                                    if "CARTÃO" in linha_upper or "LINK" in linha_upper:
-                                        v_cartao += valor_limpo
-                                    else:
-                                        v_entrada += valor_limpo
-                            except: pass
-
-                    # 4. ENTRADAS DIVERSAS
-                    if any(x in linha_upper for x in ["BOLETO", "PIX", "DINHEIRO", "DÉBITO"]):
-                        match_ent = re.findall(r'(?:PARCELA|ENTRADA|PIX|DINHEIRO|DÉBITO).*?(?:R\$)?\s*([\d\.,]+)', linha_upper)
-                        for val in match_ent:
-                            try:
-                                v_e = val.replace('.', '').replace(',', '.')
-                                valor_ent = float(v_e)
-                                if valor_ent not in [float(v.replace('.', '').replace(',', '.')) for v in re.findall(r'(?:PAGO|R\$)\s*([\d\.]+,\d{2}|[\d\.]+)', linha_upper) if v]:
-                                    v_entrada += valor_ent
-                            except: pass
-                
-                total_final = v_taxa + v_cartao + v_entrada
-
-# --- DASHBOARD (CARDS) ---
-                c1, c2, c3, c4, c5, c6 = st.columns(6)
-                
-                with c1: 
-                    st.markdown(f'<div class="card-hud neon-pink"><span class="stat-label">MATRÍCULAS</span><h2>{len(df_f)}</h2></div>', unsafe_allow_html=True)
-                
-                with c2: 
-                    st.markdown(f'<div class="card-hud neon-green"><span class="stat-label">ATIVOS</span><h2>{len(df_f[df_f["STATUS"].str.upper()=="ATIVO"])}</h2></div>', unsafe_allow_html=True)
-                
-                with c3: 
-                    st.markdown(f'<div class="card-hud neon-red"><span class="stat-label">CANCELADOS</span><h2>{len(df_f[df_f["STATUS"].str.upper()=="CANCELADO"])}</h2></div>', unsafe_allow_html=True)
-                
-                with c4: 
-                    st.markdown(f'<div class="card-hud neon-blue"><span class="stat-label">TOTAL RECEBIDO</span><h2 style="font-size:22px">R${total_final:,.2f}</h2></div>', unsafe_allow_html=True)
-                
-                with c5:
-                    # Correção: Convertendo para numérico antes de calcular a média
-                    df_f['v_tic'] = pd.to_numeric(df_f['Pagamento'].apply(extrair_valor_geral), errors='coerce').fillna(0.0)
-                    
-                    tm_b = df_f[df_f['Pagamento'].str.contains('BOLETO', na=False, case=False)]['v_tic'].mean() or 0.0
-                    tm_c = df_f[df_f['Pagamento'].str.contains('CARTÃO|LINK', na=False, case=False)]['v_tic'].mean() or 0.0
-                    
-                    st.markdown(f'<div class="card-hud neon-purple"><span class="stat-label">TICKET MÉDIO</span><div style="font-size:18px; font-weight:bold; color:#e0e0e0;">BOL: R${tm_b:.0f}<br>CAR: R${tm_c:.0f}</div></div>', unsafe_allow_html=True)
-                
-                with c6:
-                    c_banc = len(df_f[df_f["Curso"].str.contains("BANCÁRIO", case=False, na=False)])
-                    c_agro = len(df_f[df_f["Curso"].str.contains("AGRO", case=False, na=False)])
-                    c_ing = len(df_f[df_f["Curso"].str.contains("INGLÊS", case=False, na=False)])
-                    c_tec = len(df_f[df_f["Curso"].str.contains("TECNOLOGIA|INFORMÁTICA", case=False, na=False)])
-                    st.markdown(f'''<div class="card-hud neon-blue"><span class="stat-label">POR ÁREA</span><div style="font-size:15px; text-align:left; color:#e0e0e0; line-height:1.4; padding-left:5px;">BANC: <b style="color:#00f2ff;">{c_banc}</b> | AGRO: <b style="color:#00f2ff;">{c_agro}</b><br>INGL: <b style="color:#00f2ff;">{c_ing}</b> | TECN: <b style="color:#00f2ff;">{c_tec}</b></div></div>''', unsafe_allow_html=True)
-
-                st.write("")
-                
-                if len(df_f) > 0:
-                    at_c = len(df_f[df_f["STATUS"].str.upper()=="ATIVO"])
-                    can_c = len(df_f[df_f["STATUS"].str.upper()=="CANCELADO"])
-                    fig_status = go.Figure()
-                    fig_status.add_trace(go.Bar(y=["STATUS"], x=[at_c], orientation='h', marker=dict(color='#2ecc71'), text=[f"<b>ATIVOS: {at_c}</b>"], textposition='inside'))
-                    fig_status.add_trace(go.Bar(y=["STATUS"], x=[can_c], orientation='h', marker=dict(color='#ff4b4b'), text=[f"<b>CANCELADOS: {can_c}</b>"], textposition='inside'))
-                    fig_status.update_layout(barmode='stack', showlegend=False, height=40, margin=dict(t=5, b=5, l=10, r=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(showgrid=False, showticklabels=False), yaxis=dict(showgrid=False, showticklabels=False))
-                    st.plotly_chart(fig_status, use_container_width=True, config={'displayModeBar': False})
-
-                st.write("---")
-                col_graf_1, col_graf_2 = st.columns(2)
-                
-                with col_graf_1:
-                    st.markdown("<h4 style='text-align:center; color:#00f2ff;'>📍 CIDADES E VENDEDORES</h4>", unsafe_allow_html=True)
-                    df_city_full = df_f.copy()
-                    df_city_full["Vendedor_Limpo"] = df_city_full["Vendedor"].str.split(" - ").str[0].str.strip()
-                    top_cities = df_city_full['Cidade'].value_counts().head(5).index
-                    df_city_vends = []
-                    for city in top_cities:
-                        vends = df_city_full[df_city_full['Cidade'] == city]['Vendedor_Limpo'].unique()
-                        vends_str = ", ".join(list(vends))
-                        count = len(df_city_full[df_city_full['Cidade'] == city])
-                        df_city_vends.append({"Cidade": city, "Qtd": count, "Vendedores": vends_str})
-                    df_city_plot = pd.DataFrame(df_city_vends)
-                    
-                    if not df_city_plot.empty:
-                        fig_city = go.Figure(go.Bar(x=df_city_plot['Cidade'], y=df_city_plot['Qtd'], text=df_city_plot.apply(lambda r: f"<b>{r['Qtd']}</b><br><span style='font-size:11px; color:#ff007a;'>{r['Vendedores']}</span>", axis=1), textposition='outside', marker=dict(color=df_city_plot['Qtd'], colorscale=[[0, '#1f295a'], [1, '#00f2ff']])))
-                        fig_city.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=450, xaxis=dict(showgrid=False), yaxis=dict(showgrid=False, showticklabels=False))
-                        st.plotly_chart(fig_city, use_container_width=True)
-
-                with col_graf_2:
-                    st.markdown("<h4 style='text-align:center; color:#bc13fe;'>⚡ PERFORMANCE DE VENDAS</h4>", unsafe_allow_html=True)
-                    df_temp = df_f.copy()
-                    df_temp["Vendedor"] = df_temp["Vendedor"].str.split(" - ").str[0].str.strip()
-                    df_stats = df_temp["Vendedor"].value_counts().reset_index().head(5)
-                    df_stats.columns = ['Vendedor', 'Total']
-                    
-                    if not df_stats.empty:
-                        fig_vend = go.Figure(go.Scatter(x=df_stats['Vendedor'], y=df_stats['Total'], mode='lines+markers+text', text=df_stats['Total'], textposition="top center", line=dict(color='#bc13fe', width=4), fill='tozeroy', fillcolor='rgba(188, 19, 254, 0.2)'))
-                        fig_vend.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=400, xaxis=dict(showgrid=False), yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", showticklabels=False))
-                        st.plotly_chart(fig_vend, use_container_width=True)
+        st.write("---")
+        
+        # Área de Edição
+        st.subheader("📝 Editar Registro")
+        id_pesquisa = st.text_input("ID para editar:", key="id_edit_ger")
+        
+        if st.button("🔍 CARREGAR DADOS"):
+            aluno = df_memoria[df_memoria['ID'].astype(str) == id_pesquisa.strip()]
+            if not aluno.empty:
+                st.session_state.dados_aluno = aluno.iloc[0].to_dict()
+                st.success(f"Aluno {st.session_state.dados_aluno.get('Nome', '')} carregado!")
+            else:
+                st.error("ID não encontrado na memória local.")
 
 
 # --- ABA 4: SUBIR ALUNOS ---
