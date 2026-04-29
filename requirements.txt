@@ -1,2 +1,8 @@
 streamlit
 pandas
+plotly
+st-gsheets-connection
+gspread
+google-auth
+openpyxl
+streamlit-aggrid
