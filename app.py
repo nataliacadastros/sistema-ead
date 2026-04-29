@@ -668,7 +668,7 @@ if tab_subir:
 
                     posicoes_tags.sort()
                     tags_f = [t[1] for t in posicoes_tags]
-                    c_final = ".".join(tags_f).upper() if tags_f else c_orig
+                    c_final = ",".join(tags_f).upper() if tags_f else c_orig
 
                     p_final = "PENDENTE"
                     has_bol = "BOLETO" in p_orig
