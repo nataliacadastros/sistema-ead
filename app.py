@@ -22,6 +22,18 @@ try:
 except Exception as e:
     st.error(f"Erro nas credenciais do Supabase: {e}")
 
+# ADICIONE ESTA FUNÇÃO ABAIXO PARA CORRIGIR O ERRO 2:
+def safe_read():
+    try:
+        # Busca os dados da tabela 'alunos' no Supabase
+        res = supabase.table("alunos").select("*").execute()
+        if res.data:
+            return pd.DataFrame(res.data)
+        return pd.DataFrame()
+    except Exception as e:
+        st.error(f"Erro ao ler dados do Supabase: {e}")
+        return pd.DataFrame()
+        
 def carregar_tags():
     padrao = {"tags": {}, "last_selection": {}}
     if os.path.exists("tags_salvas.json"):
@@ -245,30 +257,33 @@ if tab_cad:
                 st.dataframe(pd.DataFrame(st.session_state.lista_previa), use_container_width=True, hide_index=True)
 
 # --- ABA 2: GERENCIAMENTO DE ALUNOS ---
-    with tab2:
-        st.header("📋 Gerenciar Matrículas")
-        
-        # Campo de pesquisa
-        col_p1, col_p2 = st.columns([3, 1])
-        id_pesquisa = col_p1.text_input("Digite o ID do Aluno para editar:", key="id_pesq").strip()
-        
-if col_p2.button("🔍 PESQUISAR"):
-            if id_pesquisa:
-                try:
-                    # 1. Tenta buscar no SUPABASE primeiro (Rápido)
-                    res = supabase.table("alunos").select("*").eq("ID", id_pesquisa).execute()
+with tab_ger:  # Alterado de tab2 para tab_ger
+    st.header("📋 Gerenciar Matrículas")
+    
+    # Campo de pesquisa
+    col_p1, col_p2 = st.columns([3, 1])
+    id_pesquisa = col_p1.text_input("Digite o ID do Aluno para editar:", key="id_pesq").strip()
+    
+    # O botão deve estar indentado (para a direita) para pertencer ao "with tab_ger"
+    if col_p2.button("🔍 PESQUISAR"):
+        if id_pesquisa:
+            try:
+                # 1. Tenta buscar no SUPABASE primeiro (Rápido)
+                res = supabase.table("alunos").select("*").eq("ID", id_pesquisa).execute()
+                
+                if res.data:
+                    st.session_state.dados_aluno = res.data[0]
+                    st.success("Encontrado no Banco de Dados!")
                     
-                    if res.data:
-                        st.session_state.dados_aluno = res.data[0]
-                        st.success("Encontrado no Banco de Dados!")
-                    else:
-                        st.error("Aluno não encontrado no banco de dados.")
-                except Exception as e:
-                    st.error(f"Erro na conexão com o banco: {e}")
-            else:
-                st.warning("Digite um ID para pesquisar.")
-
-
+                    # Exemplo de como exibir os dados retornados
+                    st.write(st.session_state.dados_aluno)
+                else:
+                    st.error("Aluno não encontrado no banco de dados.")
+            except Exception as e:
+                st.error(f"Erro na conexão com o banco: {e}")
+        else:
+            st.warning("Digite um ID para pesquisar.")
+            
 # --- ABA 3: RELATÓRIOS ---
 if tab_rel:
     with tab_rel:
