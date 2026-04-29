@@ -33,7 +33,7 @@ def safe_read():
     except Exception as e:
         st.error(f"Erro ao ler dados do Supabase: {e}")
         return pd.DataFrame()
-        
+
 def carregar_tags():
     padrao = {"tags": {}, "last_selection": {}}
     if os.path.exists("tags_salvas.json"):
@@ -589,13 +589,3 @@ if st.session_state.df_final_processado is not None:
                     ws.append([str(val) for val in r])
                 wb.save(output)
                 st.download_button("📥 BAIXAR EXCEL FINAL", output.getvalue(), f"ead_{date.today()}.xlsx", on_click=reset_campos_subir, use_container_width=True)
-
-
-# --- SIDEBAR (BARRA LATERAL) ---
-# A Sidebar fica fora dos 'ifs' das abas para aparecer em todas as telas
-with st.sidebar:
-    st.write(f"Logado: **{st.session_state.usuario_ativo}**")
-    st.write(f"Nível: **{st.session_state.nivel_ativo}**")
-    if st.button("SAIR"):
-        st.session_state.logado = False
-        st.rerun()
