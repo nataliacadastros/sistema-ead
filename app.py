@@ -662,29 +662,23 @@ if tab_subir:
                     c_map = {str(r[1]).strip().upper(): str(r[2]) for r in ws_c.iter_rows(min_row=2, values_only=True) if r[1]}
                 except: c_map = {}
                 
-                processed = []
-for item in raw_list:
+processed = []
+                for item in raw_list:
                     c_orig = str(item['Cour']).upper()
                     p_orig = str(item['Pay']).upper()
 
-                    # --- INÍCIO DA NOVA LÓGICA DE TAGS ---
+                    # --- LÓGICA DE TAGS POR POSIÇÃO ---
                     posicoes_tags = []
                     for curso_nome, tag_valor in selected_tags.items():
-                        if tag_valor: 
-                            # Procura a posição do curso no texto digitado
+                        if tag_valor:
                             pos = c_orig.find(curso_nome.upper())
                             if pos != -1:
                                 posicoes_tags.append((pos, tag_valor))
 
-                    # Ordena pela posição (quem aparece primeiro no texto)
-                    posicoes_tags.sort() 
-
-                    # Junta com ponto
+                    posicoes_tags.sort()
                     tags_f = [t[1] for t in posicoes_tags]
                     c_final = ".".join(tags_f).upper() if tags_f else c_orig
-                    # --- FIM DA LÓGICA DE TAGS ---
-
-                    # Continue com o restante do seu código original bem alinhado:
+                    
                     p_final = "PENDENTE"
                     has_bol = "BOLETO" in p_orig
                     has_car = "CARTÃO" in p_orig or "LINK" in p_orig
@@ -694,16 +688,29 @@ for item in raw_list:
                     obs_final = f"{c_final} | {c_orig} | {p_orig}".upper()
                     ouro_val = "1" if "10 CURSOS PROFISSIONALIZANTES" in obs_final else "0"
                     
- processed.append({
-                        "username": item['User'], "email2": f"{item['User']}@profissionalizaead.com.br", 
+                    # O append deve estar exatamente aqui
+                    processed.append({
+                        "username": item['User'], 
+                        "email2": f"{item['User']}@profissionalizaead.com.br", 
                         "name": str(item['Nome']).split(" ")[0].upper(), 
                         "lastname": " ".join(str(item['Nome']).split(" ")[1:]).upper(), 
-                        "cellphone2": str(item['Cell']), "document": item['Doc'], 
+                        "cellphone2": str(item['Cell']), 
+                        "document": item['Doc'], 
                         "city2": c_map.get(str(item['City']).upper(), item['City']), 
-                        "courses": c_final, "payment": p_final, "observation": obs_final, 
-                        "ouro": ouro_val, "password": "futuro", "role": "1", 
-                        "secretary": "MGA", "seller": item['Sell'], "contract_date": item['Date'], "active": "1"
+                        "courses": c_final, 
+                        "payment": p_final, 
+                        "observation": obs_final, 
+                        "ouro": ouro_val, 
+                        "password": "futuro", 
+                        "role": "1", 
+                        "secretary": "MGA", 
+                        "seller": item['Sell'], 
+                        "contract_date": item['Date'], 
+                        "active": "1"
                     })
+
+                # Fora do loop, alinhado com o 'for'
+                st.session_state.df_final_processado = pd.DataFrame(processed)
 
                 # Note que esta linha abaixo está com menos espaços que a de cima:
                 st.session_state.df_final_processado = pd.DataFrame(processed)
