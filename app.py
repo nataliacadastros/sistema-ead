@@ -138,9 +138,28 @@ if not st.session_state.logado:
 # --- VARIÁVEL ADMIN (Criada agora para não dar erro) ---
 is_admin = st.session_state.nivel_ativo == "ADMIN"
 
-# --- INICIALIZAÇÃO DE TAGS ---
+# 1. Primeiro definimos as funções (as "receitas")
+def carregar_tags():
+    padrao = {"tags": {}, "last_selection": {}}
+    if os.path.exists("tags_salvas.json"):
+        try:
+            with open("tags_salvas.json", "r", encoding="utf-8") as f:
+                return json.load(f)
+        except: 
+            return padrao
+    return padrao
+
+def salvar_tags(dados):
+    try:
+        with open("tags_salvas.json", "w", encoding="utf-8") as f:
+            json.dump(dados, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        st.error(f"Erro ao salvar tags: {e}")
+
+# 2. Depois de definidas, aí sim inicializamos o estado da sessão
 if "dados_tags" not in st.session_state:
     st.session_state.dados_tags = carregar_tags()
+
 
 # --- BLOCO DE FUNÇÕES MOTOR (OBRIGATÓRIO) ---
 def transformar_curso(chave):
