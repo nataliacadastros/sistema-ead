@@ -45,21 +45,59 @@ def safe_read():
     except Exception as e:
         st.error(f"Erro ao sincronizar dados com o Supabase: {e}")
         return pd.DataFrame()
+# --- MOTOR DE DADOS (SUPABASE + MEMÓRIA RAM) ---
 
-# --- MOTOR DE SINCRONIZAÇÃO (MEMÓRIA INTERNA) ---
-def atualizar_memoria_local():
-    with st.spinner("📥 Sincronizando base de dados..."):
-        st.session_state.banco_interno = safe_read()
+def sincronizar_banco_completo():
+    """Busca todos os registros do banco sem limite de 1000 linhas."""
+    all_data = []
+    step = 1000
+    offset = 0
+    try:
+        while True:
+            res = supabase.table("alunos").select("*").range(offset, offset + step - 1).execute()
+            if not res.data: break
+            all_data.extend(res.data)
+            if len(res.data) < step: break
+            offset += step
+        return pd.DataFrame(all_data)
+    except Exception as e:
+        st.error(f"Erro na sincronização: {e}")
+        return pd.DataFrame()
 
-# Carregamento inicial automático ao abrir o programa
+def atualizar_sistema():
+    """Recarrega a memória interna e limpa caches de relatórios."""
+    with st.spinner("📥 Sincronizando sistema com o backup..."):
+        st.session_state.banco_interno = sincronizar_banco_completo()
+        st.cache_data.clear()
+
+# Inicialização automática ao abrir o app
 if "banco_interno" not in st.session_state:
-    atualizar_memoria_local()
+    atualizar_sistema()
+
+def salvar_mudancas_aluno(id_aluno, novos_dados):
+    """Atualiza o aluno no Backup e reflete instantaneamente no Gerenciamento."""
+    try:
+        # 1. Atualiza no Supabase (Backup)
+        supabase.table("alunos").update(novos_dados).eq("ID", id_aluno).execute()
         
+        # 2. Localiza o aluno na memória interna (st.session_state) e atualiza
+        df = st.session_state.banco_interno
+        idx = df.index[df['ID'] == id_aluno]
+        
+        if not idx.empty:
+            for coluna, valor in novos_dados.items():
+                st.session_state.banco_interno.at[idx[0], coluna] = valor
+            st.success(f"Alterações salvas para o ID {id_aluno}!")
+            return True
+    except Exception as e:
+        st.error(f"Erro ao salvar alterações: {e}")
+        return False
+
 def carregar_tags():
     padrao = {"tags": {}, "last_selection": {}}
-    if os.path.exists("tags_salvas.json"):
+    if os.path.exists(ARQUIVO_TAGS):
         try:
-            with open("tags_salvas.json", "r", encoding="utf-8") as f:
+            with open(ARQUIVO_TAGS, "r", encoding="utf-8") as f:
                 return json.load(f)
         except: 
             return padrao
@@ -67,30 +105,15 @@ def carregar_tags():
 
 def salvar_tags(dados):
     try:
-        with open("tags_salvas.json", "w", encoding="utf-8") as f:
+        with open(ARQUIVO_TAGS, "w", encoding="utf-8") as f:
             json.dump(dados, f, ensure_ascii=False, indent=4)
     except Exception as e:
         st.error(f"Erro ao salvar tags: {e}")
 
-# --- 2. MOTOR DE SINCRONIZAÇÃO (MEMÓRIA INTERNA) ---
+# Inicializa as tags na sessão
+if "dados_tags" not in st.session_state:
+    st.session_state.dados_tags = carregar_tags()
 
-# Esta função busca TUDO do Supabase (contornando o limite de 1000)
-def sincronizar_banco_completo():
-    all_data = []
-    step = 1000
-    offset = 0
-    while True:
-        res = supabase.table("alunos").select("*").range(offset, offset + step - 1).execute()
-        if not res.data: break
-        all_data.extend(res.data)
-        if len(res.data) < step: break
-        offset += step
-    return pd.DataFrame(all_data)
-
-# Se o programa acabou de abrir, ele puxa os dados para a "memória RAM"
-if "banco_interno" not in st.session_state:
-    with st.spinner("🚀 Inicializando Gerenciador de Alunos..."):
-        st.session_state.banco_interno = sincronizar_banco_completo()
 
 # --- DEFINIÇÃO DO CAMINHO DA LOGO ---
 diretorio_atual = os.path.dirname(os.path.abspath(__file__))
