@@ -262,37 +262,62 @@ with tab_ger:
     st.header("📋 Gerenciamento de Matrículas")
 
     # 1. Chamamos a função para buscar todos os alunos do banco
+    # A função safe_read deve estar definida no topo com .limit(100000)
     df_ger = safe_read()
 
     if df_ger.empty:
-        st.info("Nenhum aluno encontrado na tabela 'alunos'. Verifique se há dados no Supabase.")
+        st.info("Nenhum aluno encontrado na tabela 'alunos'. Verifique se há dados no Supabase ou se a conexão está correta.")
     else:
-        # 2. Exibe a tabela completa logo de cara
+        # Exibe o total de alunos encontrados para você ter controle
+        st.write(f"Total de registros encontrados: **{len(df_ger)}**")
+        
+        # 2. Área de busca e visualização
         st.subheader("Lista de Alunos")
         
-        # Filtro rápido de busca na tabela
-        busca = st.text_input("Filtrar aluno pelo nome ou CPF:")
+        busca = st.text_input("Filtrar aluno pelo nome, CPF ou qualquer dado:")
+        
         if busca:
-            # Filtra o dataframe com base no que foi digitado
-            df_exibir = df_ger[df_ger.astype(str).apply(lambda x: x.str.contains(busca, case=False)).any(axis=1)]
+            # Filtro inteligente: transforma tudo em texto e busca o termo
+            mask = df_ger.astype(str).apply(lambda x: x.str.contains(busca, case=False, na=False)).any(axis=1)
+            df_exibir = df_ger[mask]
         else:
             df_exibir = df_ger
 
-        st.dataframe(df_exibir, use_container_width=True, hide_index=True)
+        # Exibição da tabela com altura ajustada para facilitar a rolagem
+        st.dataframe(
+            df_exibir, 
+            use_container_width=True, 
+            hide_index=True,
+            height=500  # Define uma altura fixa para evitar que a página fique infinita
+        )
 
         st.write("---")
         
         # 3. Área de Edição (Pesquisa por ID)
         st.subheader("📝 Editar Registro")
-        id_pesquisa = st.text_input("Digite o ID exato para editar:")
+        col_id, col_btn = st.columns([3, 1])
         
-        if st.button("🔍 CARREGAR PARA EDIÇÃO"):
-            aluno = df_ger[df_ger['ID'].astype(str) == id_pesquisa.strip()]
-            if not aluno.empty:
-                st.session_state.dados_aluno = aluno.iloc[0].to_dict()
-                st.success(f"Aluno {st.session_state.dados_aluno.get('Nome', '')} carregado!")
+        with col_id:
+            id_pesquisa = st.text_input("Digite o ID exato para editar:", key="id_edit")
+        
+        with col_btn:
+            st.write(" ") # Espaçador para alinhar o botão
+            st.write(" ") 
+            btn_carregar = st.button("🔍 CARREGAR")
+
+        if btn_carregar:
+            if id_pesquisa:
+                # Busca o aluno no dataframe que já foi carregado (mais rápido que ir no banco de novo)
+                aluno = df_ger[df_ger['ID'].astype(str) == id_pesquisa.strip()]
+                
+                if not aluno.empty:
+                    st.session_state.dados_aluno = aluno.iloc[0].to_dict()
+                    st.success(f"✅ Aluno **{st.session_state.dados_aluno.get('Nome', 'Sem Nome')}** carregado com sucesso!")
+                    st.info("Agora vá para a aba de 'Cadastro' ou use o formulário de edição abaixo.")
+                else:
+                    st.error("❌ ID não encontrado na lista atual.")
             else:
-                st.error("ID não encontrado.")
+                st.warning("Por favor, digite um ID.")
             
 # --- ABA 3: RELATÓRIOS ---
 if tab_rel:
