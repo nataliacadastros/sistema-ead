@@ -396,7 +396,7 @@ if tab_cad:
                     st.error(f"Erro na conexão: {e}")
             else:
                 st.warning("Digite um ID.")
-                
+
 
 # --- ABA 3: RELATÓRIOS ---
 if tab_rel:
@@ -704,54 +704,43 @@ if st.session_state.df_final_processado is not None:
                 wb.save(output)
                 st.download_button("📥 BAIXAR EXCEL FINAL", output.getvalue(), f"ead_{date.today()}.xlsx", on_click=reset_campos_subir, use_container_width=True)
 
-# --- ABA USUÁRIOS (Corrigida com Scopes) ---
-if tab_users: 
-    with tab_users:
-        st.markdown("### 👥 GESTÃO DE ACESSOS")
+# --- ABA 4: CONFIGURAÇÕES (Gestão de Usuários) ---
+with tab4:
+    st.markdown("### 👥 GESTÃO DE ACESSOS")
+    
+    with st.form("form_novo_usuario", clear_on_submit=True):
+        st.subheader("Cadastrar Novo Usuário")
+        col1, col2, col3 = st.columns(3)
+        nu = col1.text_input("Novo Usuário").strip()
+        ns = col2.text_input("Senha").strip()
+        nv = col3.selectbox("Nível", ["ADMIN", "CONSULTA"])
         
-        with st.form("novo_user_final", clear_on_submit=True):
-            col1, col2, col3 = st.columns(3)
-            nu = col1.text_input("Novo Usuário").strip()
-            ns = col2.text_input("Senha").strip()
-            nv = col3.selectbox("Nível", ["ADMIN", "CONSULTA"])
-            
-if st.form_submit_button("CADASTRAR ALUNO"):
-                if n_id and n_nome:
-                    # 1. Preparar lista para Google Sheets
-                    novo_registro_lista = [n_id, n_email, n_p_nome, n_s_nome, n_tel, n_cpf, n_cid, n_cur, n_pag, n_obs, n_ou, "futuro", "1", "MGA", n_ven, n_dat, "1"]
+        if st.form_submit_button("CADASTRAR USUÁRIO"):
+            if nu and ns:
+                try:
+                    # 1. Salva no Google Sheets (usuários)
+                    c_info = st.secrets["connections"]["gsheets"]
+                    sc = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+                    creds = Credentials.from_service_account_info(c_info, scopes=sc)
+                    client = gspread.authorize(creds)
+                    ws = client.open_by_url(c_info["spreadsheet"]).worksheet("usuários")
+                    ws.append_row([nu, ns, nv])
                     
-                    # 2. Preparar dicionário para Supabase (use os nomes das colunas que você criou)
-                    dados_supabase = {
-                        "ID": n_id, "STATUS": "1", "SEC": "MGA", "TURMA": "1", 
-                        "10 CURSOS?": n_ou, "INGLÊS?": "Não", "Data Cadastro": n_dat,
-                        "Aluno": f"{n_p_nome} {n_s_nome}", "Tel. Resp": n_tel, 
-                        "Tel. Aluno": n_tel, "CPF": n_cpf, "Cidade": n_cid, 
-                        "Curso": n_cur, "Pagamento": n_pag, "Vendedor": n_ven, 
-                        "Data Matrícula": n_dat
-                    }
+                    # 2. Salva no Supabase (usuarios)
+                    supabase.table("usuarios").insert({"usuario": nu, "senha": ns, "nivel": nv}).execute()
+                    
+                    st.success("Usuário cadastrado com sucesso!")
+                    st.cache_data.clear()
+                    st.rerun()
+                except Exception as e: 
+                    st.error(f"Erro ao cadastrar usuário: {e}")
 
-                    try:
-                        # Salva no Google Sheets (Original)
-                        c_info = st.secrets["connections"]["gsheets"]
-                        sc = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-                        creds = Credentials.from_service_account_info(c_info, scopes=sc)
-                        client = gspread.authorize(creds)
-                        ws = client.open_by_url(c_info["spreadsheet"]).worksheet("BANCO_EAD")
-                        ws.append_row(novo_registro_lista)
-                        
-                        # Salva no Supabase (Novo)
-                        supabase.table("alunos").insert(dados_supabase).execute()
-                        
-                        st.success("Aluno cadastrado com sucesso (Planilha + Banco de Dados)!")
-                        st.balloons()
-                    except Exception as e:
-                        st.error(f"Erro ao salvar: {e}")
-
-
-        st.write("---")
-        # Mostra a tabela de usuários cadastrados
-        st.dataframe(carregar_usuarios(), use_container_width=True, hide_index=True)
-
+    st.write("---")
+    st.subheader("Usuários Cadastrados")
+    # Carrega a lista (tentando Supabase primeiro)
+    df_users = carregar_usuarios()
+    st.dataframe(df_users, use_container_width=True, hide_index=True)
+    
 # --- SIDEBAR (BARRA LATERAL) ---
 # A Sidebar fica fora dos 'ifs' das abas para aparecer em todas as telas
 with st.sidebar:
