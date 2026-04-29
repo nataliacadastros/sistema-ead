@@ -368,11 +368,16 @@ if tab_rel:
                 with c3: st.markdown(f'<div class="card-hud neon-red"><span class="stat-label">CANCELADOS</span><h2>{len(df_f[df_f["STATUS"].str.upper()=="CANCELADO"])}</h2></div>', unsafe_allow_html=True)
                 with c4: st.markdown(f'<div class="card-hud neon-blue"><span class="stat-label">TOTAL RECEBIDO</span><h2 style="font-size:22px">R${total_final:,.2f}</h2></div>', unsafe_allow_html=True)
                 
-                with c5:
-                    df_f['v_tic'] = df_f['Pagamento'].apply(extrair_valor_geral)
-                    tm_b = df_f[df_f['Pagamento'].str.contains('BOLETO', na=False, case=False)]['v_tic'].mean() or 0.0
-                    tm_c = df_f[df_f['Pagamento'].str.contains('CARTÃO|LINK', na=False, case=False)]['v_tic'].mean() or 0.0
-                    st.markdown(f'<div class="card-hud neon-purple"><span class="stat-label">TICKET MÉDIO</span><div style="font-size:18px; font-weight:bold; color:#e0e0e0;">BOL: R${tm_b:.0f}<br>CAR: R${tm_c:.0f}</div></div>', unsafe_allow_html=True)
+               with c5:
+    # 1. Aplicamos a extração e convertemos IMEDIATAMENTE para número (float)
+    # errors='coerce' transforma o que der errado em "nada" (NaN), e .fillna(0) troca o "nada" por zero.
+    df_f['v_tic'] = pd.to_numeric(df_f['Pagamento'].apply(extrair_valor_geral), errors='coerce').fillna(0.0)
+    
+    # 2. Agora o cálculo da média (.mean()) vai funcionar porque os dados são numéricos
+    tm_b = df_f[df_f['Pagamento'].str.contains('BOLETO', na=False, case=False)]['v_tic'].mean() or 0.0
+    tm_c = df_f[df_f['Pagamento'].str.contains('CARTÃO|LINK', na=False, case=False)]['v_tic'].mean() or 0.0
+    
+    st.markdown(f'<div class="card-hud neon-purple"><span class="stat-label">TICKET MÉDIO</span><div style="font-size:18px; font-weight:bold; color:#e0e0e0;">BOL: R${tm_b:.0f}<br>CAR: R${tm_c:.0f}</div></div>', unsafe_allow_html=True)
                 
                 with c6:
                     c_banc = len(df_f[df_f["Curso"].str.contains("BANCÁRIO", case=False, na=False)])
