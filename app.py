@@ -62,6 +62,109 @@ st.set_page_config(
     page_icon=caminho_logo if os.path.exists(caminho_logo) else None
 )
 
+# --- CSS HUD NEON ---
+st.markdown("""
+    <style>
+    .stApp { background-color: #0b0e1e; color: #e0e0e0; }
+    .stTabs [data-baseweb="tab-list"] { 
+        background-color: #121629; border-bottom: 1px solid #1f295a;
+        position: fixed; top: 0; left: 0 !important; width: 100vw !important;
+        z-index: 999; justify-content: center; height: 35px !important;
+    }
+    .stTabs [data-baseweb="tab"] { color: #64748b !important; font-size: 11px !important; padding: 0 30px !important; }
+    .stTabs [aria-selected="true"] { color: #00f2ff !important; border-bottom: 2px solid #00f2ff !important; background-color: rgba(0, 242, 255, 0.05) !important; }
+    
+    .main .block-container { padding-top: 40px !important; max-width: 100% !important; margin: 0 auto !important; }
+    
+    label { color: #00f2ff !important; font-weight: bold !important; font-size: 17px !important; display: flex; align-items: center; justify-content: flex-end; }
+    
+    /* CADASTRO EM MAIÚSCULO */
+    .stTabs div[data-testid="stTextInput"] input { text-transform: uppercase !important; }
+    
+    /* LOGIN EM MINÚSCULO E ESTILO */
+    .login-box div[data-testid="stTextInput"] input { text-transform: none !important; background-color: white !important; color: black !important; }
+    
+    .login-box { 
+        background: rgba(18, 22, 41, 0.9); padding: 40px; border-radius: 15px; 
+        border: 2px solid #1f295a; box-shadow: 0 0 30px rgba(0, 242, 255, 0.1);
+        margin-top: 100px; text-align: center;
+    }
+    
+    .login-box button { background-color: #bc13fe !important; color: white !important; font-weight: bold !important; }
+    .stTextInput input { background-color: white !important; color: black !important; font-size: 12px !important; height: 18px !important; border-radius: 5px !important; }
+    .stCheckbox label p { color: #2ecc71 !important; font-weight: bold !important; font-size: 11px !important; }
+
+    .custom-table-wrapper { width: 100%; max-height: 600px; overflow: auto; background-color: #121629; border: 2px solid #1f295a; border-radius: 10px; margin-top: 15px; }
+    .custom-table { width: 100%; border-collapse: collapse; min-width: 2500px !important; }
+    .custom-table th { background-color: #1f295a; color: #00f2ff; text-align: left; padding: 15px; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; z-index: 99; }
+    .custom-table td { padding: 12px; border-bottom: 1px solid #1f295a; font-size: 11px; color: #e0e0e0; white-space: pre-wrap !important; }
+    
+    .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }
+    .status-ativo { background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
+    .status-cancelado { background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
+
+    .card-hud { background: rgba(18, 22, 41, 0.7); border: 1px solid #1f295a; padding: 12px; border-radius: 10px; text-align: center; height: 100%; min-height: 110px; display: flex; flex-direction: column; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+    .neon-pink { color: #ff007a; border-top: 2px solid #ff007a; }
+    .neon-green { color: #2ecc71; border-top: 2px solid #2ecc71; }
+    .neon-blue { color: #00f2ff; border-top: 2px solid #00f2ff; }
+    .neon-purple { color: #bc13fe; border-top: 2px solid #bc13fe; }
+    .neon-red { color: #ff4b4b; border-top: 2px solid #ff4b4b; }
+    
+    div.stButton > button { background-color: #00f2ff !important; color: #000000 !important; font-weight: bold !important; border: none !important; }
+    header {visibility: hidden;} footer {visibility: hidden;}
+    .logo-container { position: relative; top: -10px; left: 0px; margin-bottom: 10px; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- TELA DE LOGIN ---
+if not st.session_state.logado:
+    _, centro_login, _ = st.columns([1, 1.2, 1])
+    with centro_login:
+        st.markdown('<div class="login-box">', unsafe_allow_html=True)
+        if os.path.exists(caminho_logo):
+            st.image(caminho_logo, width=180)
+        st.markdown("<h2 style='color: #00f2ff; margin-bottom:30px;'>ACESSO RESTRITO</h2>", unsafe_allow_html=True)
+        user_in = st.text_input("USUÁRIO", key="l_u").strip()
+        pass_in = st.text_input("SENHA", type="password", key="l_p").strip()
+        if st.button("ENTRAR NO SISTEMA", use_container_width=True):
+            df_u = carregar_usuarios()
+            def limpar(v): return str(v).strip().upper().replace('.0', '')
+            valido = df_u[(df_u['usuario'].apply(limpar) == user_in.upper()) & 
+                          (df_u['senha'].apply(limpar) == pass_in.upper())]
+            if not valido.empty:
+                st.session_state.logado = True
+                st.session_state.usuario_ativo = user_in
+                st.session_state.nivel_ativo = str(valido.iloc[0]['nivel']).upper()
+                st.rerun()
+            else:
+                st.error("Usuário ou senha incorretos.")
+        st.markdown('</div>', unsafe_allow_html=True)
+    st.stop()
+
+# --- VARIÁVEL ADMIN (Criada agora para não dar erro) ---
+is_admin = st.session_state.nivel_ativo == "ADMIN"
+
+# 1. Primeiro definimos as funções (as "receitas")
+def carregar_tags():
+    padrao = {"tags": {}, "last_selection": {}}
+    if os.path.exists("tags_salvas.json"):
+        try:
+            with open("tags_salvas.json", "r", encoding="utf-8") as f:
+                return json.load(f)
+        except: 
+            return padrao
+    return padrao
+
+def salvar_tags(dados):
+    try:
+        with open("tags_salvas.json", "w", encoding="utf-8") as f:
+            json.dump(dados, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        st.error(f"Erro ao salvar tags: {e}")
+
+# Só agora você inicializa
+if "dados_tags" not in st.session_state:
+    st.session_state.dados_tags = carregar_tags()
 
 
 # --- BLOCO DE FUNÇÕES MOTOR (OBRIGATÓRIO) ---
@@ -565,6 +668,42 @@ if st.session_state.df_final_processado is not None:
                 wb.save(output)
                 st.download_button("📥 BAIXAR EXCEL FINAL", output.getvalue(), f"ead_{date.today()}.xlsx", on_click=reset_campos_subir, use_container_width=True)
 
+# --- ABA 4: CONFIGURAÇÕES (Gestão de Usuários) ---
+with tab4:
+    st.markdown("### 👥 GESTÃO DE ACESSOS")
+    
+    with st.form("form_novo_usuario", clear_on_submit=True):
+        st.subheader("Cadastrar Novo Usuário")
+        col1, col2, col3 = st.columns(3)
+        nu = col1.text_input("Novo Usuário").strip()
+        ns = col2.text_input("Senha").strip()
+        nv = col3.selectbox("Nível", ["ADMIN", "CONSULTA"])
+        
+        if st.form_submit_button("CADASTRAR USUÁRIO"):
+            if nu and ns:
+                try:
+                    # 1. Salva no Google Sheets (usuários)
+                    c_info = st.secrets["connections"]["gsheets"]
+                    sc = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+                    creds = Credentials.from_service_account_info(c_info, scopes=sc)
+                    client = gspread.authorize(creds)
+                    ws = client.open_by_url(c_info["spreadsheet"]).worksheet("usuários")
+                    ws.append_row([nu, ns, nv])
+                    
+                    # 2. Salva no Supabase (usuarios)
+                    supabase.table("usuarios").insert({"usuario": nu, "senha": ns, "nivel": nv}).execute()
+                    
+                    st.success("Usuário cadastrado com sucesso!")
+                    st.cache_data.clear()
+                    st.rerun()
+                except Exception as e: 
+                    st.error(f"Erro ao cadastrar usuário: {e}")
+
+    st.write("---")
+    st.subheader("Usuários Cadastrados")
+    # Carrega a lista (tentando Supabase primeiro)
+    df_users = carregar_usuarios()
+    st.dataframe(df_users, use_container_width=True, hide_index=True)
 
 # --- SIDEBAR (BARRA LATERAL) ---
 # A Sidebar fica fora dos 'ifs' das abas para aparecer em todas as telas
