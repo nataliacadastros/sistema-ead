@@ -262,7 +262,7 @@ with tab_ger:
     st.header("📋 Gerenciamento de Matrículas")
 
     # 1. Chamamos a função para buscar todos os alunos do banco
-    # A função safe_read deve estar definida no topo com .limit(100000)
+    # A função safe_read deve estar definida no topo com .limit(5000)
     df_ger = safe_read()
 
     if df_ger.empty:
